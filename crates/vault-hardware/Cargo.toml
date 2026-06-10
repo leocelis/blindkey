@@ -1,0 +1,19 @@
+[package]
+name = "vault-hardware"
+description = "Optional hardware-backed unlock stanzas for Vault: FIDO2, TPM 2.0, macOS Secure Enclave, Windows DPAPI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+vault-core = { path = "../vault-core" }
+
+# Hardware integrations are feature-gated so users without a given device compile none of its code.
+[features]
+default = []
+fido2 = []     # libfido2 raw CTAP2 (constraints C6, C14)
+tpm = []       # TPM 2.0 PCR sealing (constraint C15)
+secure-enclave = []  # macOS Secure Enclave (ECIES)
+dpapi = []     # Windows DPAPI

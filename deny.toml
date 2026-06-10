@@ -1,0 +1,39 @@
+# cargo-deny configuration — supply-chain policy (constraints C3, C24).
+# Run: `cargo deny check`  (advisories + licenses + bans + sources)
+
+[advisories]
+version = 2
+# CI fails on any unresolved advisory in the dependency tree.
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+# Only permissive, audit-friendly licenses (constraint C24).
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.93
+
+[bans]
+# Keep the trusted surface small; flag duplicate versions and risky crates.
+multiple-versions = "warn"
+wildcards = "deny"
+# Disallow crates that pull in heavy/old C TLS or unaudited crypto into the core path.
+deny = [
+    { name = "openssl" },
+    { name = "openssl-sys" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# Only crates.io by default.
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

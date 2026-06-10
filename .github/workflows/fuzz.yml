@@ -1,0 +1,32 @@
+name: Fuzz
+
+# Smoke-fuzzes the untrusted-input parsers on every PR that touches them, so a hostile or
+# corrupt vault file can never panic/over-allocate on open (coverage-gap A4).
+# Long-running fuzzing is delegated to OSS-Fuzz once enrolled.
+
+on:
+  pull_request:
+    paths:
+      - "crates/vault-core/src/format/**"
+      - "fuzz/**"
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [header_parse, stanza_parse, block_stream]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+      - name: Smoke-run ${{ matrix.target }} (60s)
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=60
+        continue-on-error: true   # remove once fuzz targets are implemented (M2)

@@ -1,0 +1,83 @@
+name: Release
+
+# Builds release binaries, signs them keylessly with Sigstore cosign, generates SLSA build
+# provenance, and publishes checksums — so users can verify exactly what they run.
+# See docs/VERIFYING_RELEASES.md. (Supply-chain trust: coverage-gap D1.)
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-musl }
+          - { os: macos-latest,   target: aarch64-apple-darwin }
+          - { os: macos-latest,   target: x86_64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build (locked, reproducible flags)
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package + checksum
+        shell: bash
+        run: |
+          mkdir -p dist
+          bin="vault"
+          [ "${{ matrix.os }}" = "windows-latest" ] && bin="vault.exe"
+          cp "target/${{ matrix.target }}/release/${bin}" "dist/vault-${{ matrix.target }}-${bin##*.}" 2>/dev/null || \
+            cp "target/${{ matrix.target }}/release/${bin}" "dist/vault-${{ matrix.target }}"
+          cd dist && shasum -a 256 * > "SHA256SUMS-${{ matrix.target }}.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/
+
+  sign-and-publish:
+    name: sign (cosign) + provenance + publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the GitHub Release
+      id-token: write      # keyless OIDC signing (Sigstore) + SLSA provenance
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Keyless-sign every artifact
+        run: |
+          for f in dist/*; do
+            [ -f "$f" ] || continue
+            cosign sign-blob --yes --output-signature "$f.sig" --output-certificate "$f.pem" "$f"
+          done
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+            dist/*.sig
+            dist/*.pem
+
+  provenance:
+    name: SLSA build provenance
+    needs: [build, sign-and-publish]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"

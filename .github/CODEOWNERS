@@ -1,0 +1,9 @@
+# Code ownership — the code owner's review is required to merge.
+# Leo (@leocelis) is the code owner for the whole repository.
+*                       @leocelis
+
+# Security-critical paths (explicit for clarity; covered by the wildcard above).
+/crates/vault-core/     @leocelis
+/docs/THREAT_MODEL.md   @leocelis
+/SECURITY.md            @leocelis
+/.github/workflows/     @leocelis

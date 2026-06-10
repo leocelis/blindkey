@@ -1,0 +1,50 @@
+# Vault — Cargo workspace.
+# The security core (`vault-core`) is a separate library from the CLI so it can be audited,
+# fuzzed, and reused independently. Hardware factors live behind an optional crate.
+[workspace]
+resolver = "2"
+members = [
+    "crates/vault-core",
+    "crates/vault-cli",
+    "crates/vault-hardware",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.82"            # MSRV — keep in sync with rust-toolchain.toml (constraint C24)
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/leocelis/vault"
+homepage = "https://github.com/leocelis/vault"
+authors = ["The Vault maintainers"]
+keywords = ["password-manager", "encryption", "security", "argon2", "vault"]
+categories = ["command-line-utilities", "cryptography", "authentication"]
+
+# Centralized, pinned dependency versions. Only audited crypto libraries (constraint C3).
+[workspace.dependencies]
+# --- Cryptography (audited libraries only — no custom primitives) ---
+chacha20poly1305 = "0.10"       # C1  XChaCha20-Poly1305 / STREAM
+argon2           = "0.5"        # C2  Argon2id KDF
+hkdf             = "0.12"       # C5  HKDF-SHA-256 key wrapping
+hmac             = "0.12"       # C9/C10 header + block HMAC
+sha2             = "0.10"       # C9  SHA-256 header hash
+subtle           = "2"          # C25 constant-time comparison
+getrandom        = "0.2"        # C4/C26 OS CSPRNG
+# --- Memory hardening ---
+zeroize          = { version = "1", features = ["derive"] }   # C11
+secrecy          = "0.8"        # C11 secret wrappers
+# --- CLI / support ---
+clap             = { version = "4", features = ["derive"] }   # C21 CLI
+thiserror        = "2"
+# --- Dev / test ---
+proptest         = "1"          # property tests (e.g. parser round-trips)
+
+# Optimize release builds; strip symbols (also reduces accidental secret-name leakage).
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"                 # no unwinding through secret-holding frames
+strip = "symbols"
+
+# A reproducible-build-friendly profile is documented in docs/VERIFYING_RELEASES.md.

@@ -1,0 +1,6 @@
+# Pinned toolchain — a prerequisite for reproducible builds (see docs/VERIFYING_RELEASES.md).
+# Bump deliberately and record the change in CHANGELOG.md.
+[toolchain]
+channel = "1.82.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

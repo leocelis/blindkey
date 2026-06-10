@@ -1,0 +1,26 @@
+# Rust
+/target
+**/target
+Cargo.lock.bak
+*.rs.bk
+# Fuzzing
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+# Coverage
+*.profraw
+/coverage
+# Vault runtime artifacts — NEVER commit a real vault or its local state
+*.vlt
+*.vlt.bak
+*.state
+.vault.toml
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+# Secrets — defense in depth; nothing secret should ever live in-tree
+*.key
+*.pem
+secrets/

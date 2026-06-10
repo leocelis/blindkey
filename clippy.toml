@@ -1,0 +1,7 @@
+# Conservative thresholds for a security-critical codebase.
+cognitive-complexity-threshold = 20
+too-many-arguments-threshold = 8
+# Disallow constructs that are dangerous around secret material.
+disallowed-methods = [
+  { path = "std::mem::forget", reason = "use ManuallyDrop deliberately; leaking secrets defeats zeroize (C11)" },
+]

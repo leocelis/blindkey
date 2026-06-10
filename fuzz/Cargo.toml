@@ -1,0 +1,31 @@
+[package]
+name = "vault-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+vault-core = { path = "../crates/vault-core" }
+
+# Fuzz targets cover every parser that consumes untrusted bytes (coverage-gap A4).
+[[bin]]
+name = "header_parse"
+path = "fuzz_targets/header_parse.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "stanza_parse"
+path = "fuzz_targets/stanza_parse.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "block_stream"
+path = "fuzz_targets/block_stream.rs"
+test = false
+doc = false

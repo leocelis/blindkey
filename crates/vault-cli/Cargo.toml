@@ -1,0 +1,30 @@
+[package]
+name = "vault-cli"
+description = "Vault — a zero-plaintext, local-first credential vault for the AI era. The `vault` binary."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+# Installed as `cargo install vault-cli`; the binary is named `vault` (constraint C20, C21).
+[[bin]]
+name = "vault"
+path = "src/main.rs"
+
+[dependencies]
+vault-core = { path = "../vault-core" }
+clap.workspace = true
+zeroize.workspace = true
+secrecy.workspace = true
+
+[features]
+default = []
+# Enable optional hardware-backed stanzas.
+hardware = ["dep:vault-hardware"]
+
+[dependencies.vault-hardware]
+path = "../vault-hardware"
+optional = true

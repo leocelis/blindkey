@@ -1,0 +1,28 @@
+[package]
+name = "vault-core"
+description = "Vault security core: XChaCha20-Poly1305 STREAM, Argon2id, age-style envelope, zeroizing memory. No custom crypto."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+chacha20poly1305.workspace = true
+argon2.workspace = true
+hkdf.workspace = true
+hmac.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+getrandom.workspace = true
+zeroize.workspace = true
+secrecy.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = []

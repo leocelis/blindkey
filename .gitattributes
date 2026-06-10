@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.rs   text diff=rust
+*.md   text diff=markdown
+*.png  binary
+*.vlt  binary
+# Keep the lockfile in normal diffs; it is security-relevant.
+Cargo.lock text merge=binary
