@@ -38,12 +38,13 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
 ## Data flow: opening a vault
 
 1. Read plaintext header; verify `SHA-256(header)` (fast corruption check — no key needed). `C9`
-2. Run Argon2id over the master password using the **file's** KDF params (validated against the
-   floor **and** ceiling). `C2`, `C8`
-3. Derive the master key → verify `header_hmac`. On failure: abort, decrypt nothing. `C9`
-4. Unwrap the data key from the first valid stanza (OR model). `C4`–`C6`
-5. Verify each HmacBlockStream block, then STREAM-decrypt each 64 KiB chunk (tag-checked before
-   release) into `mlock`'d, zeroizing buffers. `C1`, `C10`–`C12`
+2. Validate the **file's** KDF params against the floor **and** ceiling. `C2`, `C8`
+3. Unwrap the data key from the first valid stanza (OR model; password path runs Argon2id —
+   wrong password and tampered KDF params both fail here, indistinguishably). `C4`–`C6`, `C9`
+4. Verify `header_hmac` with the data-key-derived key (works on every unlock path, including
+   hardware-only). On failure: abort, decrypt nothing. `C9`
+5. Verify each HmacBlockStream block (data-key-keyed), then STREAM-decrypt each 64 KiB chunk
+   (tag-checked before release) into `mlock`'d, zeroizing buffers. `C1`, `C10`–`C12`
 6. Read the inner header; check the monotonic counter against the local anchor (rollback). `C16`, `C19`
 
 ## Invariants the code must uphold

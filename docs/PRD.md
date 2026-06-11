@@ -1,7 +1,7 @@
 # Vault — Product Requirements Document (PRD)
 
 > **Status:** Draft v0.1 · June 2026 · pre-alpha (no functional release yet)
-> **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (27 testable constraints),
+> **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (34 testable constraints),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),
 > [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md).
@@ -149,8 +149,9 @@ message and a `vault re-enroll-tpm` path, not a lockout.
 Vault treats its own file as untrusted input. Bad magic → "not a vault file". Newer format
 version → clear upgrade message. KDF params below the OWASP floor → prominent warning +
 upgrade offer (never silent). KDF params absurdly *high* (a memory-exhaustion trap) →
-rejected before allocation. A tampered header fails the keyed HMAC with an intentionally
-ambiguous "header tampered or wrong password" — no oracle. Parsers are fuzzed in CI.
+rejected before allocation. Tampered KDF params and a wrong password both fail the stanza
+unwrap with one intentionally ambiguous "invalid credentials or tampered header" — no oracle;
+the data-key-keyed header HMAC then catches any other header tampering. Parsers are fuzzed in CI.
 
 ### UC-11 · Keep KDF cost calibrated as hardware improves
 **Persona:** P2, P5 · **Constraints:** C2, C22, C8
@@ -265,5 +266,5 @@ distribution & trust (UC-13) → M9 hardening backlog (C35+ Part-2 candidates fr
    defer to M9?
 3. **Naming/positioning** — "credential vault" vs the broader "security layer for the AI
    era" as scope grows post-1.0 (files, databases, app secrets).
-4. **Clipboard on Wayland/headless** — clipboard-default (C27) needs a defined fallback
-   where no clipboard exists; candidate: refuse with guidance toward `--stdout`.
+4. **Clipboard on Wayland/headless** — ✅ resolved 2026-06-10 (intent v1.3.0): C27 mandates
+   refusal with exit code 7 and guidance toward `--stdout`; never a silent stdout fallback.

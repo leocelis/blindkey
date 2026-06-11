@@ -23,9 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
+      - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
+        run: rustup toolchain install
       - run: cargo fmt --all -- --check
 
   clippy:
@@ -33,9 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+      - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
+        run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -48,7 +46,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
+        run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all-features --workspace
 
@@ -65,9 +64,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-musl
+      - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
+        run: rustup toolchain install
+      - run: rustup target add x86_64-unknown-linux-musl
       - run: cargo build --release --target x86_64-unknown-linux-musl
       - name: Assert the binary is statically linked
         run: |

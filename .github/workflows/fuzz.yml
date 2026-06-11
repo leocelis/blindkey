@@ -1,7 +1,7 @@
 name: Fuzz
 
 # Smoke-fuzzes the untrusted-input parsers on every PR that touches them, so a hostile or
-# corrupt vault file can never panic/over-allocate on open (coverage-gap A4).
+# corrupt vault file can never panic/over-allocate on open (constraint C30).
 # Long-running fuzzing is delegated to OSS-Fuzz once enrolled.
 
 on:
@@ -24,6 +24,8 @@ jobs:
         target: [header_parse, stanza_parse, block_stream]
     steps:
       - uses: actions/checkout@v4
+      # Deliberate exemption from the rust-toolchain.toml pin: cargo-fuzz requires nightly.
+      # The shipped binary is never built here (C34 reproducibility is unaffected).
       - uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz

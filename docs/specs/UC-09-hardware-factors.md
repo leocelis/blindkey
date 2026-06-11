@@ -99,7 +99,7 @@ Requires user presence (touch); PIN/UV honored if the authenticator enforces it.
 
 **YubiKey HMAC-SHA1 CR (type 3 · `info="vault-yk-wrap-v1"` · C5).** Challenge is the header
 `master_seed`; the 20-byte response is hashed — `yk_ikm = SHA-256(response)` — before HKDF
-(avoids zero-padding bias, C5). Because `master_seed` rotates on every save, the stanza must be
+(avoids zero-padding bias, C5). Because `master_seed` rotates on every body-writing save (C8), the stanza must be
 **re-wrapped at save time**, which needs the device present:
 
 - Device present at save → recompute response for the new seed, re-wrap, store
@@ -108,9 +108,9 @@ Requires user presence (touch); PIN/UV honored if the authenticator enforces it.
   the stanza answers to its stored challenge, not the rotated header seed) and print
   `WARNING: yubikey stanza not refreshed (key absent); insert it and save to restore challenge rotation.`
 
-`extra = { slot: u8 (1|2), challenge: [u8; 32] }`. The graceful-staleness design is a deviation
-from a strict reading of C5 ("master_seed … is the challenge") traded for not bricking saves —
-flagged in §7.
+`extra = { slot: u8 (1|2), challenge: [u8; 32] }`. The graceful-staleness design was ADOPTED
+into C5 on 2026-06-10 (Gate 0 G0.7, intent v1.3.0), with `yubikey_strict` / `--strict-yubikey` opting into the abort-on-absent behavior —
+originally flagged in §7, now resolved.
 
 **TPM 2.0 (type 4 · `info="vault-tpm-wrap-v1"` · C15).** Seal a 32-byte CSPRNG `tpm_ikm` (not
 the data key itself — keeps the C5 recipe uniform) to a PCR policy via tss-esapi/tpm2-tools.
@@ -193,14 +193,14 @@ to preserve.
 | Browser WebAuthn PRF instead of libfido2 | No C dependency | Different salt transform → secrets incompatible with raw CTAP2; needs a browser | **Prohibited** (C6/C14) |
 | Wrap data_key directly inside TPM/SE (no ikm indirection) | One less step | Breaks the uniform C5 recipe; ties wrapped_key size/format to each backend's blob format | Reject |
 | PCR 0+2+4+7 default for TPM | Detects more boot changes | Re-enroll on every kernel/firmware update; C15's brittleness warning becomes the common case | Reject as default; allow via `--pcrs` |
-| YubiKey strict mode (refuse save without device) | Pure C5 replay property | Bricks saves when the key is in a drawer | Offer as `--strict` later; graceful default (§3.3) |
+| YubiKey strict mode (refuse save without device) | Pure C5 replay property | Bricks saves when the key is in a drawer | ✅ Adopted as `yubikey_strict` config / `--strict-yubikey` (C5/G0.7); graceful remains the default |
 | CNG/TPM instead of DPAPI on Windows | Hardware-bound | More moving parts; DPAPI is the documented C5 type 6 | DPAPI v1, CNG candidate v2 |
 
 ## 5. Constraint compliance map
 
 | Constraint | How this design satisfies it |
 |---|---|
-| C5 | All five types use the exact HKDF(ikm, salt=vault_id, info=label) + XChaCha20 wrap recipe and the stanza record layout; password stanza mandatory and irremovable; ≤ 8 stanzas; YubiKey ikm = SHA-256(response); graceful-staleness deviation flagged in §7, not silently shipped |
+| C5 | All five types use the exact HKDF(ikm, salt=vault_id, info=label) + XChaCha20 wrap recipe and the stanza record layout; password stanza mandatory and irremovable; ≤ 8 stanzas; YubiKey ikm = SHA-256(response); graceful staleness is now C5's specified default (G0.7), strict mode opt-in |
 | C6 | FIDO2 = raw CTAP2 hmac-secret via libfido2 only; salt = SHA-256(vault_id ‖ "fido2-hw-v1"); PRF output is IKM into HKDF, never a key |
 | C14 | Stanza stores credential_id, rp_id, salt_hash exactly as specified; wrong-device → "no matching FIDO2 credential", no crash |
 | C15 | PCR policy + re-enroll command + verbatim PCR-mismatch message; bus-attack limitation documented in §3.6 and `--help` text carries "PCR"/"firmware"/"re-enroll" |
@@ -226,10 +226,10 @@ to preserve.
 
 ## 7. Open questions
 
-1. **C21 amendment** for `vault enroll <type>` / `vault stanzas list|remove` (intent currently
+1. **C21 amendment** — ✅ Resolved 2026-06-10 (intent v1.3.0): C21 now specifies `vault stanzas list|add|remove` (intent previously
    names only `enroll-tpm`/`re-enroll-tpm`); keep the hyphenated forms as permanent aliases.
-2. **YubiKey graceful staleness vs. strict C5 wording** — accept the stored-challenge design
-   (this spec) into the intent, or mandate device-at-save? Needs an explicit C5 note either way.
+2. **YubiKey graceful staleness vs. strict C5 wording** — ✅ Resolved 2026-06-10 (G0.7): the stored-challenge design
+   (this spec) is C5's specified behavior; strict device-at-save is the `yubikey_strict` opt-in.
 3. **DPAPI optional entropy** — using `vault_id` as `pbOptionalEntropy` is public knowledge
    (it's in the header); is a per-enrollment CSPRNG entropy value stored… where? (Storing it in
    `extra` is circular.) Likely answer: vault_id is fine — DPAPI's boundary is the user

@@ -45,7 +45,9 @@ master password ──Argon2id(salt, m,t,p)──▶ master_key
 - **NFC normalization of the master password** (C2): macOS keyboards commonly emit NFD where Linux
   emits NFC; without normalization the same typed password derives different keys per platform.
 - **KDBX-4-style integrity**: unauthenticated `SHA-256(header)` for fast corruption detection, plus
-  master-key-**keyed** `HMAC-SHA-256(header)` so an attacker can't downgrade the KDF undetected.
+  a **data-key-keyed** `HMAC-SHA-256(header)` verifiable on every unlock path — including
+  hardware-only — and stable across password rotation (G0.2). KDF downgrade is caught by the
+  password stanza's AEAD tag (tampered params ⇒ wrong wrapping key ⇒ unwrap fails).
 
 ## What we deliberately do *not* do
 

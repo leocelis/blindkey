@@ -41,7 +41,7 @@ meta:
   intent_type: "feature"        # scope: single deliverable, not system-level
   name: vault
   tagline: "Zero-plaintext · local-first · open-source credential vault"
-  version: "1.3.0"   # 1.1.0: C1 nonce_prefix fix · 1.2.0: C27-UI extension + GUI non-goal (UC-18) · 1.3.0: C28–C34 promotion + C2 ceiling/NFC + contradiction fixes
+  version: "1.4.0"   # 1.1.0: C1 nonce_prefix fix · 1.2.0: C27-UI extension + GUI non-goal (UC-18) · 1.3.0: C28–C34 promotion + C2 ceiling/NFC + contradiction fixes · 1.4.0: Gate 0 close-out (G0.2 HMAC re-keying + master_seed binding, G0.3 upgrade-kdf full save, G0.6 clipboard helper, G0.7 YubiKey staleness, exit codes, C27 no-clipboard rule)
   license: "MIT OR Apache-2.0"
   language: rust
   ifscale_density: high         # IVD Rule 1: 34 constraints → segmented implementation
@@ -229,8 +229,9 @@ constraints:
         "KDF parameters exceed safe limits — possible hostile or corrupt file"
       with no upgrade prompt (unlike below-floor params, above-ceiling params are
       never legitimate). Note the ordering is deliberate: the keyed header HMAC (C9)
-      cannot be verified until the KDF has run, so a hostile file's allocation bomb
-      must be rejected by this bounds check, not by the HMAC.
+      cannot be verified until a stanza has been unwrapped — which on the password
+      path requires the KDF to run — so a hostile file's allocation bomb must be
+      rejected by this bounds check, not by the HMAC.
       UNICODE: the master password MUST be normalized to Unicode NFC before being
       passed to Argon2id, identically on every platform. (NFC, not NFKC — NFC fixes
       the macOS-NFD vs Linux-NFC encoding mismatch that makes the same typed password
@@ -244,6 +245,11 @@ constraints:
         (b) Offer the user an upgrade prompt before unlocking.
         (c) NOT silently proceed without warning.
       The vault MUST provide `vault upgrade-kdf` to re-derive with current recommended params.
+      `vault upgrade-kdf` MUST be a FULL body-writing save (Gate 0 G0.3): it MUST
+      increment vault_version (C16), regenerate master_seed and nonce_prefix (C8, C1),
+      and rewrite the encrypted body. A header-only KDF upgrade would not bump the
+      version counter, letting a sync backend serve the older weak-KDF file undetected
+      by rollback detection — the exact blind spot this rule closes.
     rationale: |
       RFC 9106: "Argon2id MUST be supported." Memory-hard — GPU/ASIC parallelism
       provides no advantage at 64 MiB per attempt (each cracking attempt needs 64 MiB RAM).
@@ -292,6 +298,9 @@ constraints:
         (e.g. "é" as U+00E9 vs U+0065 U+0301); assert identical derived keys.
       INTEGRATION: Run `vault upgrade-kdf`; assert vault re-encrypts with default params
         and old params are no longer present in the header.
+      INTEGRATION (G0.3): Run `vault upgrade-kdf`; assert vault_version incremented by 1,
+        master_seed and nonce_prefix both regenerated, and the body ciphertext differs
+        from the pre-upgrade file (full save, not a header-only rewrite).
 
   - id: C3
     group: G1
@@ -348,8 +357,11 @@ constraints:
       UNIT: Create two vaults with identical passwords; extract data keys via test-mode
         decryption; assert the two data keys are different (CSPRNG).
       UNIT: Change master password on an existing vault (re-wrap stanza);
-        assert payload ciphertext bytes are byte-for-byte identical before and after
-        (data key unchanged, only stanza wrapping changed).
+        assert the ENTIRE encrypted body — ciphertext AND block-HMAC fields — is
+        byte-for-byte identical before and after. (Possible because block-HMAC keys
+        derive from the data key, not the master_key (C10), and master_seed /
+        nonce_prefix do not rotate on header-only saves (C8, C1). Data key unchanged,
+        only the stanza wrapping changed — verify via test-mode extraction.)
       UNIT: Inspect vault file bytes for the literal value of the data key
         (from a test-only extraction); assert it does not appear in the file.
 
@@ -387,20 +399,29 @@ constraints:
         yk_ikm = SHA-256(yubikey_response_20_bytes)   → 32 bytes
       then used as IKM into HKDF (info="vault-yk-wrap-v1"). Using SHA-256 rather than
       zero-padding avoids a biased IKM and is consistent with the 32-byte IKM convention
-      for all other stanza types. The master_seed rotation on each save means a replayed
-      old YubiKey response cannot unlock a newer vault version.
-      SAVE-TIME COUPLING (explicit): because master_seed is the challenge and rotates on
-      every save, a vault containing a YubiKey stanza REQUIRES the physical device to be
-      present (and touched, if touch-required is configured) at EVERY save, to re-wrap
-      the stanza under the response to the new seed. This is the same trade-off
-      KeePassXC ships for challenge-response and is the price of the anti-replay
-      property (the static-challenge alternative — the KeeChallenge design — is
-      replayable and rejected). If the device is unavailable at save time, the vault
-      MUST abort the save with a clear error naming the device (e.g. "YubiKey stanza
-      requires the device at save; reconnect it or remove the stanza") and MUST NOT
-      silently write a vault whose YubiKey stanza can no longer unlock it. An explicit
-      `vault save --remove-stale-stanza yubikey` override MAY be offered; it MUST print
-      a prominent warning that the YubiKey factor is being dropped.
+      for all other stanza types.
+      CHALLENGE STORAGE AND FRESHNESS (amended 2026-06-10, Gate 0 G0.7 — adopts the
+      UC-09 stored-challenge design): the YubiKey stanza's extra bytes hold
+        extra = { slot: u8 (1|2), challenge: [u8; 32] }
+      and unlock always challenges the device with extra.challenge (not the current
+      master_seed directly). On every BODY-WRITING save (master_seed rotates — C8):
+        - Device present: re-challenge with the new master_seed, re-wrap the data key
+          under the new response, set extra.challenge = master_seed. Anti-replay holds:
+          a recorded old response cannot unlock the new file.
+        - Device absent (default, graceful staleness): the save proceeds; the stanza
+          keeps its previous challenge and wrapping, and the vault MUST print:
+          "WARNING: yubikey stanza not refreshed (key absent); insert it and save to
+          restore challenge rotation." A stale stanza still unlocks (with the response
+          to the stored challenge); the replay window stays open only until the next
+          device-present save.
+        - Strict mode (config `yubikey_strict = true` or `--strict-yubikey`): the save
+          MUST abort with a clear error naming the device instead of writing a stale
+          stanza — the KeePassXC challenge-response behavior, for users who want the
+          unconditional anti-replay property over save availability.
+      Rationale for graceful-as-default: a save that cannot complete because a key is
+      in a drawer risks data loss, which outweighs a bounded replay window that is
+      loudly warned about and self-heals on the next device-present save. The
+      static-challenge KeeChallenge design (never rotates) remains rejected.
       Limitation: YubiKey/OnlyKey specific; FIDO2 PRF stanza is device-agnostic.
     rationale: |
       Apple Platform Security: SE key "can only be used by that specific SE" — device-bound,
@@ -425,10 +446,16 @@ constraints:
         Assert vault opens successfully without password.
       UNIT: Corrupt stanza 2 in a 2-stanza vault; assert stanza 1 still unlocks.
       UNIT: Attempt to create vault without a password stanza; assert hard error.
-      INTEGRATION (mocked YubiKey): Create vault with password + YubiKey stanza. Make
-        the device unavailable. Modify an entry and attempt a save. Assert the save
-        aborts with an error naming the YubiKey, and the vault file on disk is
-        byte-for-byte unchanged.
+      INTEGRATION (mocked YubiKey, device present): Body-writing save; assert
+        extra.challenge == new master_seed, and a response recorded against the OLD
+        challenge fails to unlock the new file (anti-replay).
+      INTEGRATION (mocked YubiKey, device absent, default): Body-writing save; assert
+        the save SUCCEEDS, a warning containing "not refreshed" is printed to stderr,
+        and the vault still unlocks via the stale stanza (response to the stored
+        challenge) and via the password.
+      INTEGRATION (mocked YubiKey, device absent, strict): With yubikey_strict=true,
+        attempt a body-writing save; assert it aborts with an error naming the YubiKey
+        and the vault file on disk is byte-for-byte unchanged.
 
   - id: C6
     group: G2
@@ -501,8 +528,14 @@ constraints:
               argon2id_salt:     [u8; 32] (CSPRNG, generated ONCE at vault creation;
                                            MUST NOT be regenerated on saves —
                                            regenerating invalidates all password stanzas)
-              master_seed:       [u8; 32] (CSPRNG; MUST be regenerated on every vault save;
-                                           used as additional salt in per-block HMAC — C10)
+              master_seed:       [u8; 32] (CSPRNG; MUST be regenerated on every save that
+                                           writes the encrypted body, like nonce_prefix;
+                                           MUST NOT be regenerated by header-only rewrites
+                                           such as password rotation — it salts the
+                                           per-block HMAC keys (C10), so rotating it
+                                           without re-MACing the body would invalidate
+                                           every stored block HMAC. It is also the
+                                           YubiKey challenge — C5)
               nonce_prefix:      [u8; 16] (CSPRNG; HKDF salt for the C1 payload key derivation.
                                            MUST be regenerated on every save that writes the
                                            encrypted body. MUST NOT be regenerated by header-only
@@ -532,8 +565,11 @@ constraints:
       UNIT: Set kdf_algorithm=2 (unknown); assert error "unsupported KDF algorithm".
       UNIT: Assert argon2id_salt is NOT regenerated across two sequential saves of the
         same vault (read salt from header before save N, after save N+1; assert equal).
-      UNIT: Assert master_seed IS different across two sequential saves of the same vault
-        (read master_seed before save N, after save N+1; assert different).
+      UNIT: Assert master_seed IS different across two sequential BODY-WRITING saves of
+        the same vault (read master_seed before save N, after save N+1; assert different).
+      UNIT: Assert master_seed is NOT regenerated by a stanza-only rewrite (password
+        rotation): read master_seed before and after; assert byte-for-byte equal
+        (rotating it would orphan the stored block HMACs — C10).
       UNIT: Assert nonce_prefix IS different across two sequential body-writing saves of the
         same vault (read nonce_prefix before save N, after save N+1; assert different).
       UNIT: Assert nonce_prefix is NOT regenerated during a password rotation: read
@@ -542,22 +578,43 @@ constraints:
 
   - id: C9
     group: G3
-    title: "Header integrity: unauthenticated SHA-256 + master-key-authenticated HMAC"
+    title: "Header integrity: unauthenticated SHA-256 + data-key-authenticated HMAC"
     description: |
       Directly after the KDF params block (and stanza data) in the plaintext header, store:
         header_hash:  SHA-256(all preceding header bytes)              [32 bytes]
         header_hmac:  HMAC-SHA-256(all preceding header bytes,         [32 bytes]
-                        key=HKDF-SHA-256(master_key, salt=b"", info=b"vault-header-hmac-v1"))
+                        key=HKDF-SHA-256(ikm=data_key, salt=b"", info=b"vault-header-hmac-v2"))
+      The HMAC key derives from the DATA KEY, not the Argon2id master_key: every unlock
+      path (password, FIDO2, YubiKey, TPM, OS keystore) reaches the data key, while only
+      the password path derives a master_key — a hardware-only unlock (C5 OR-model) could
+      never verify a master_key-keyed HMAC. (Amended 2026-06-10, Gate 0 G0.2; the v1
+      info string is retired with the keying change.)
       Verification order:
         1. Verify header_hash (no key required — fast corruption check).
-        2. Derive master_key via Argon2id using the header KDF params.
-        3. Verify header_hmac. On failure: emit "header tampered or wrong password" and abort.
-        4. MUST NOT decrypt any payload byte if header_hmac verification fails.
+        2. Validate KDF params against the C2 floor and ceiling.
+        3. Unwrap the data key from any valid stanza (on the password path this runs
+           Argon2id with the header KDF params).
+        4. Verify header_hmac with the data-key-derived key. On failure: emit
+           "header tampered" and abort.
+        5. MUST NOT decrypt any payload byte before header_hmac verification succeeds.
+      ERROR SEMANTICS: a wrong password and tampered KDF params are both detected at
+      step 3 as a stanza unwrap failure (the derived wrapping key fails the stanza's
+      Poly1305 tag) and MUST share one indistinguishable error:
+      "invalid credentials or tampered header". A header_hmac failure at step 4 occurs
+      only after a stanza unwrapped successfully (the factor was valid), so it is
+      unambiguously tampering of header fields not covered by the stanza tag
+      (master_seed, nonce_prefix, stanza extras, vault_id) and reports "header tampered".
     rationale: |
       KDBX 4 verbatim: "non-encrypted SHA-256 hash of the header allows detection of
       unintentional corruptions, without knowing the master key. Directly after: the
-      HMAC-SHA-256 value of the header." Keyed HMAC prevents KDF downgrade attack:
-      an attacker lowering m_cost cannot recompute the HMAC without the master key.
+      HMAC-SHA-256 value of the header."
+      KDF-downgrade defense is preserved without the master_key keying: an attacker who
+      lowers m_cost (and fixes the unkeyed header_hash) changes the Argon2id output, so
+      the derived wrapping key fails the password stanza's AEAD tag — the open aborts
+      before any payload work. The data-key-keyed header_hmac then authenticates the
+      header fields the stanza tag does NOT cover. Keying from the data key also keeps
+      block HMACs (C10) and the header HMAC verifiable on hardware-only unlocks and
+      stable across password rotation (the data key never changes — C4).
     sources:
       - url: "https://keepass.info/help/kb/kdbx_4.html"
       - url: "https://palant.info/2023/03/29/documenting-keepass-kdbx4-file-format/"
@@ -565,11 +622,17 @@ constraints:
       UNIT: Flip one bit in the m_cost field; assert header_hash fails before any
         Argon2id computation is performed (timing: must be faster than one Argon2id call).
       UNIT: Provide correct password, flip one bit in header_hmac; assert error
-        "header tampered or wrong password" with no payload bytes returned.
-      UNIT: Lower m_cost in header without updating header_hmac; assert HMAC failure.
-      UNIT: Wrong password → Argon2id derives different master_key → header_hmac fails;
-        assert "header tampered or wrong password" (not "wrong password" alone — intentional
-        to prevent oracle distinguishing tamper from wrong password).
+        "header tampered" with no payload bytes returned.
+      UNIT: Lower m_cost in header and recompute header_hash (attacker-recomputable);
+        assert the password stanza unwrap fails with "invalid credentials or tampered
+        header" and no payload bytes are returned.
+      UNIT: Wrong password → different wrapping key → stanza tag failure; assert the
+        SAME error string as the KDF-tamper case above (no oracle distinguishing wrong
+        password from header tamper at step 3).
+      UNIT (hardware path): Unlock via a mocked FIDO2 stanza with NO password available;
+        assert header_hmac verification succeeds (key reachable from data_key alone).
+      UNIT: Flip one bit in master_seed (recompute header_hash); unlock with correct
+        password; assert "header tampered" from header_hmac at step 4.
 
   - id: C10
     group: G3
@@ -578,13 +641,18 @@ constraints:
       The encrypted payload MUST be split into blocks (default: 1 MiB = 1048576 bytes).
       Each block on disk: [hmac: 32 bytes][size: u32 LE][ciphertext: size bytes].
       HMAC = HMAC-SHA-256(
-               key  = HKDF-SHA-256(master_key, salt=block_index_u64_LE||master_seed_32,
-                                   info=b"vault-block-hmac-v1"),
+               key  = HKDF-SHA-256(ikm=data_key, salt=block_index_u64_LE||master_seed_32,
+                                   info=b"vault-block-hmac-v2"),
                data = block_index_u64_LE || size_u32_LE || ciphertext)
+      Like the header HMAC (C9), block-HMAC keys derive from the DATA KEY so every unlock
+      path can verify them and a password rotation does not invalidate them (the data key
+      never changes — C4). Because master_seed is part of the HKDF salt, master_seed MUST
+      only rotate on saves that rewrite the body (C8) — rotating it on a header-only save
+      would orphan every stored block HMAC. (Amended 2026-06-10, Gate 0 G0.2.)
       Block with size=0 marks end of stream. The final block MAY be smaller than 1 MiB.
       Each block's HMAC MUST be verified before decrypting it.
       NOTE: C9 defines a separate, standalone HMAC for the plaintext header using a
-      different key derivation (info="vault-header-hmac-v1", no master_seed). C10's
+      different key derivation (info="vault-header-hmac-v2", no master_seed). C10's
       HmacBlockStream applies to the encrypted body ONLY; the body starts after the
       header_hmac field defined in C9. Do NOT conflate these two distinct HMAC schemes.
       LAYERING: The HmacBlockStream blocks (1 MiB) wrap the raw STREAM ciphertext
@@ -677,24 +745,42 @@ constraints:
     title: "Clipboard auto-clear after configurable timeout"
     description: |
       On `vault get ENTRY --field password` (or any field copy to clipboard):
-        1. Copy value to clipboard.
+        1. Copy value to clipboard (with the C33 concealment marks).
         2. Print to stderr: "Clipboard will be cleared in <N>s."
         3. After N seconds (default=30, min=5, max=300, configurable in ~/.vault.toml):
-           overwrite clipboard with empty string.
-        4. On vault process exit before timer: attempt clipboard clear as best-effort.
-      Timer MUST run in a background thread and MUST NOT block the vault process.
+           clear the clipboard.
+      TIMER LIFETIME (amended 2026-06-10, Gate 0 G0.6): `vault get` is a one-shot CLI
+      command — a background THREAD dies with the process and can never fire the clear.
+      The timer MUST therefore survive the invoking command's exit: a detached helper
+      process (or equivalent OS mechanism) owns the delayed clear, and the main command
+      MUST NOT block waiting for it.
+      CLEAR-IFF-UNCHANGED: at timeout the helper MUST clear the clipboard ONLY if it
+      still holds the value the vault placed there; if the user has since copied
+      something else, the helper MUST NOT overwrite it. The comparison MUST use the
+      constant-time equality of C25 (it involves the secret value).
+      The helper MUST hold the secret under the same C11/C12 memory rules as the main
+      process and MUST exit immediately after clearing (or after detecting the
+      clipboard changed).
     rationale: |
       A password left on the clipboard is readable by any process on the desktop.
-      30s is the KeePassXC / industry-standard default. Configurable for power users.
+      30s is the KeePassXC / industry-standard default; KeePassXC can rely on a thread
+      because it is a long-lived GUI process — a one-shot CLI cannot (UC-04 §7).
+      Clear-iff-unchanged prevents the delayed clear from destroying unrelated user
+      clipboard content.
     sources:
       - url: "https://keepassxc.org/docs/KeePassXC_UserGuide"
         note: "KeePassXC clipboard clear default"
     test: |
-      INTEGRATION: Copy a known password to clipboard; wait 31 seconds (default config);
-        assert clipboard contents are empty or differ from the password.
-      INTEGRATION: Copy a password; send SIGTERM to the vault process; assert clipboard
-        is cleared before the process exits (SIGTERM can be caught; SIGKILL cannot and
-        is explicitly not tested — best-effort on SIGKILL is documented, not asserted).
+      INTEGRATION: `vault get` a known password; assert the `vault` process exits
+        promptly (does not block for the timeout); wait 31 seconds (default config);
+        assert clipboard contents are empty or differ from the password — the clear
+        fired from the detached helper AFTER the invoking command had exited.
+      INTEGRATION (clear-iff-unchanged): `vault get` a password; within the timeout,
+        place a different value on the clipboard; wait past the timeout; assert the
+        user's value is still on the clipboard (the helper did not overwrite it).
+      INTEGRATION: SIGTERM the helper process before timeout; assert best-effort clear
+        runs in the signal path (SIGKILL is explicitly not tested — documented as
+        best-effort only).
       UNIT: Set clipboard_timeout=5; copy; wait 6s; assert cleared.
 
   # ── G5: Hardware and multi-factor unlock ──────────────────────────────────
@@ -980,6 +1066,9 @@ constraints:
         vault upgrade-kdf                  Re-derive with current recommended params
         vault tune                         Benchmark and recommend Argon2id params
         vault merge OLD.vlt NEW.vlt        Manual merge of two conflicting vault versions
+        vault stanzas list                 Show enrolled unlock stanzas (types only — no secrets)
+        vault stanzas add TYPE             Enroll a hardware/OS-keystore stanza (C5; a save)
+        vault stanzas remove TYPE          Remove a stanza (password stanza is irremovable — C5)
         vault enroll-tpm                   Seal a TPM stanza to current PCR values (optional)
         vault re-enroll-tpm                Re-seal TPM stanza after firmware/kernel update
       All commands exposing secrets MUST require a valid unlock session or prompt for
@@ -987,6 +1076,19 @@ constraints:
       No command accepts a secret value as a command-line argument (see C31):
       `vault add` / `vault edit` / `vault import` read secrets via no-echo prompt,
       stdin, or `--password-fd`.
+      STABLE EXIT CODES (frozen for scripts; amended 2026-06-10 per UC-10 §7):
+        0  success
+        1  generic / unexpected error
+        2  rollback detected, not overridden (C16)
+        3  not a vault file, or created by a newer format version (C7)
+        4  corruption — header_hash, block HMAC, or AEAD tag failure (C9, C10, C1)
+        5  authentication — invalid credentials or tampered header (C9 step 3/4)
+        6  KDF parameters outside the safe range (C2 ceiling)
+        7  no clipboard available and --stdout not given (C27)
+        8  usage error (bad arguments/flags; clap MUST be configured to exit 8, not its
+           default 2, which is reserved for rollback by C16)
+        9  entry or field not found / ambiguous
+      Exit codes MUST NOT be repurposed; new codes append.
     rationale: |
       Covers 95%+ of daily use. `import --format txt` specifically enables migration from
       unstructured flat-file credential stores. `tune` ensures KDF cost stays calibrated
@@ -997,6 +1099,9 @@ constraints:
     test: |
       INTEGRATION: `vault --help` exits 0 with non-empty usage text.
       INTEGRATION: Each subcommand with `--help` exits 0 with non-empty usage text.
+      INTEGRATION (exit codes): trigger each failure class (bad magic, corrupt block,
+        wrong password, above-ceiling KDF params, rollback decline, headless `get`
+        without --stdout); assert exit codes 3, 4, 5, 6, 2, 7 respectively.
       INTEGRATION: Full round-trip test:
         vault init → vault add test-entry → vault get test-entry --field password
         → vault ls → vault edit test-entry → vault rm test-entry
@@ -1186,6 +1291,14 @@ constraints:
       default (consistent with C13), NOT to stdout. Printing a secret to stdout MUST require an
       explicit `--stdout` flag, and that flag MUST print a WARNING to stderr:
         "plaintext written to stdout; ensure no AI agent or untrusted process captures this stream."
+      NO-CLIPBOARD FALLBACK (amended 2026-06-10, promoted from UC-04 §7): when no OS
+      clipboard is available (headless SSH, no $DISPLAY/$WAYLAND_DISPLAY, compositor
+      without a data-control protocol), `vault get` without `--stdout` MUST refuse with
+      exit code 7 (C21) and the message:
+        "no clipboard available on this session; use --stdout (prints a security
+        warning) if you accept plaintext on stdout."
+      It MUST NOT silently degrade to stdout — the model-blind default never downgrades
+      itself.
       NO SECRET TO ANY MODEL/NETWORK: the vault MUST contain no code path that transmits secret
       material to a network endpoint or an LLM API (reinforces C23's zero-network property for
       the specific case of secret payloads).
@@ -1230,6 +1343,9 @@ constraints:
         NOT appear on stdout and the OS clipboard contains it.
       INTEGRATION: `vault get X --field password --stdout`; assert the secret appears on stdout
         AND the warning string "plaintext written to stdout" appears on stderr.
+      INTEGRATION (headless): with no clipboard available (e.g. unset DISPLAY/WAYLAND_DISPLAY
+        on Linux), `vault get X` without --stdout exits with code 7, prints the "no clipboard
+        available" message, and emits NO secret bytes on any stream.
       STATIC: grep the dependency tree and secret-handling modules for any HTTP client, raw
         socket, or LLM SDK; assert zero matches in code paths that touch secret material
         (reinforces C23).
@@ -1559,12 +1675,17 @@ constraint_satisfiability:
         (including stanza-only rewrites), the body would need to be re-encrypted to match the new
         HKDF salt, breaking C4's O(1) rotation property.
       resolution: |
-        Bind nonce_prefix regeneration to body writes, not to all saves. master_seed still
-        rotates on every save (preserving the C5 YubiKey anti-replay property). nonce_prefix
-        rotates only when the encrypted body is (re-)written. A password rotation rewrites the
-        header only (new stanza data, new master_seed, new header_hash, new header_hmac) and
-        leaves nonce_prefix and the body ciphertext unchanged. C1's cross-save independence
-        test therefore targets body-writing saves only; the C4 test remains fully satisfied.
+        Bind nonce_prefix regeneration to body writes, not to all saves. master_seed is
+        bound to body writes for the same reason (Gate 0 G0.2: it salts the C10
+        block-HMAC keys, which must stay valid across header-only saves — the original
+        resolution's "new master_seed" on a header-only rewrite would have orphaned
+        every stored block HMAC). The C5 YubiKey challenge therefore also rotates per
+        body-writing save, with graceful staleness per C5/G0.7. A password rotation
+        rewrites the header only (new stanza data, new header_hash, new header_hmac)
+        and leaves master_seed, nonce_prefix, and the entire body — ciphertext AND
+        block HMACs — unchanged (block-HMAC keys derive from the data key, which never
+        changes). C1's cross-save independence test targets body-writing saves only;
+        the C4 test remains fully satisfied.
       priority: C4 > C1_rotation_scope  # O(1) password rotation is an explicit design goal; freshness binds to body writes.
 
     - id: SC7
@@ -1594,7 +1715,8 @@ constraint_satisfiability:
         never a silent fallback to compiled-in defaults. C8 forbids overriding; C2
         mandates validating; rejection-with-error satisfies both. The ceiling check
         deliberately runs BEFORE Argon2id — and therefore before the C9 header HMAC can
-        be verified, since the HMAC key requires the KDF output — because the
+        be verified, since verifying it requires unwrapping the data key from a stanza,
+        which on the password path requires the KDF output — because the
         memory-exhaustion DoS happens at allocation time. header_hash alone cannot
         gate this (it is unkeyed and attacker-recomputable).
       priority: C2_bounds_validation > C8_verbatim_use  # validate bounds, then use the file's values verbatim

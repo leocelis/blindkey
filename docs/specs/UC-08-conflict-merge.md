@@ -80,7 +80,7 @@ vault merge OLD.vlt NEW.vlt [--output PATH] [--prefer newest|left|right] [--dry-
    Hardware stanzas are tried per the UC-09 ordering before each password prompt.
 3. Decrypt both payloads into mlock'd `SecretBuffer`s (C11/C12); compute the entry union (§3.4).
 4. Resolve conflicts: interactively per entry (default on a TTY, masked diff §3.4), or by
-   `--prefer` non-interactively. Non-TTY without `--prefer` → exit 3, nothing written.
+   `--prefer` non-interactively. Non-TTY without `--prefer` → exit 8 (usage), nothing written.
 5. Write the merged vault atomically; print a summary (counts only, no field values).
 
 `--dry-run` prints the summary and per-entry resolution plan (masked) without writing.
@@ -208,7 +208,7 @@ The merged vault is a **new** save of the active vault lineage:
 5. **INTEGRATION (version):** OLD v7, NEW v9 → merged v10; reopen advances anchor to 10, no
    rollback warning; subsequently opening NEW (v9) again *does* warn (regression vs. 10).
 6. **INTEGRATION (non-interactive):** stdin from `/dev/null`, conflicts present, no `--prefer` →
-   exit 3, no output file written.
+   exit 8 (usage), no output file written.
 7. **INTEGRATION (identity):** `vault_id` mismatch → error "different vaults", exit 1.
 8. **INTEGRATION (stanzas):** OLD has password+fido2, NEW has password only → merged has both;
    attempt to construct a merge dropping the password stanza → hard error (C5).

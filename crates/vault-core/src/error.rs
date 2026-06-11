@@ -24,10 +24,15 @@ pub enum Error {
     #[error("vault header is corrupt")]
     HeaderCorrupt,
 
-    /// Header HMAC failed: tampered header *or* wrong password — intentionally indistinguishable
-    /// (constraint C9).
-    #[error("header tampered or wrong password")]
+    /// Stanza unwrap failed: wrong credentials *or* tampered KDF params — intentionally
+    /// indistinguishable (constraint C9 step 3, exit code 5).
+    #[error("invalid credentials or tampered header")]
     HeaderAuth,
+
+    /// Header HMAC failed AFTER a stanza unwrapped successfully: the factor was valid, so this
+    /// is unambiguous tampering of header fields outside the stanza tag (constraint C9 step 4).
+    #[error("header tampered")]
+    HeaderTampered,
 
     /// KDF parameters exceed the enforced ceiling, or the KiB→bytes math overflows —
     /// never legitimate; rejected before any allocation (constraint C2 ceiling).

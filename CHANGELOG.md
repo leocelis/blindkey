@@ -44,6 +44,29 @@ All notable changes to this project are documented here. The format is based on
   satisfiability conflicts grew to 8 (`SC7` argv-vs-scriptability, `SC8` ceiling-vs-file-authoritative;
   `SC6` is the C1/C4 nonce_prefix binding from the keystream fix below). Intent version 1.2.0.
 
+### Security (2026-06-10 — Gate 0 close-out, intent v1.3.0)
+- `C9`/`C10` (G0.2): header and block HMAC keys now derive from the **data key**
+  (`vault-header-hmac-v2` / `vault-block-hmac-v2`) — verifiable on hardware-only unlocks and
+  stable across password rotation. Corollary fix: `master_seed` rotation is bound to
+  **body-writing saves** (rotating it on a header-only save would have orphaned every stored
+  block HMAC — a latent contradiction in SC6's original resolution). C9's error semantics are
+  now two-stage: wrong password / tampered KDF params fail the stanza unwrap with one
+  indistinguishable error; a header-HMAC failure after a valid unwrap is unambiguous tampering.
+- `C2` (G0.3): `vault upgrade-kdf` is a full body-writing save (version bump, fresh
+  `master_seed`/`nonce_prefix`, body re-encrypted) — a sync backend can no longer serve the
+  pre-upgrade weak-KDF file undetected.
+- `C13` (G0.6): the clipboard clear-timer is a **detached helper process** (a thread cannot
+  outlive a one-shot CLI) with clear-iff-unchanged semantics and constant-time comparison.
+- `C5` (G0.7): YubiKey challenge stored per-stanza (`extra = {slot, challenge}`), refreshed on
+  device-present body-writing saves; graceful staleness with a loud warning is the default,
+  `yubikey_strict` / `--strict-yubikey` opts into abort-on-absent (supersedes the v1.2.0
+  strict-abort wording; resolves the C5↔UC-09 contradiction).
+- `C21`/`C27` (G0.8): frozen exit-code map 0–9 (rollback keeps 2; clap usage moves to 8);
+  new `vault stanzas list|add|remove` commands; headless `vault get` without `--stdout`
+  refuses with exit 7 — never a silent stdout fallback.
+- CI now installs the `rust-toolchain.toml`-pinned toolchain in every job (was `@stable` —
+  a reproducibility leak vs `C34`); fuzz jobs keep nightly by documented exemption.
+
 ### Security (2026-06-10 — C1 keystream-reuse fix, intent v1.1.0)
 - `C1`/`C8`: the empty-HKDF-salt deviation from age allowed XChaCha20 **keystream reuse across
   saves** (constant data key + counter nonces restarting at 0 ⇒ a history-keeping sync backend

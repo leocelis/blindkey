@@ -1,7 +1,7 @@
 # UC-05 — Scripts & CI: Explicit, Warned Plaintext Opt-Outs
 
 > **Tech spec** · Draft v0.1 · June 2026
-> **PRD:** [docs/PRD.md](../PRD.md) §5 UC-5 · **Constraints:** C27, C21, SC5 (resolution); C23; gap B1 (candidate constraint proposed §3.5)
+> **PRD:** [docs/PRD.md](../PRD.md) §5 UC-5 · **Constraints:** C27, C21, SC5 (resolution); C23; C31 (promoted from gap B1, §3.5)
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
@@ -66,15 +66,20 @@ that must be newline-free should be consumed with `$(...)` (strips it) or `--fie
 through `tr -d '\n'`. Documented in CLI.md rather than adding a `--no-newline` flag (v1 keeps
 the surface minimal; revisit on demand — §7 Q2).
 
-**Exit codes (whole CLI, normative here):**
+**Exit codes — the normative map is C21 (intent v1.3.0); this table mirrors it:**
 
 | Code | Meaning |
 |---|---|
 | 0 | Success |
-| 1 | Runtime error (I/O, crypto failure, clipboard failure) |
-| 2 | Usage error (clap) **or** safety abort requiring an explicit override (e.g. rollback, C16) |
-| 3 | Entry or field not found / no clipboard available (UC-04 §3.7) |
-| 4 | Authentication failed / vault locked and non-interactive |
+| 1 | Generic / unexpected runtime error (I/O, clipboard failure) |
+| 2 | Rollback detected, not overridden (C16 — reserved) |
+| 3 | Not a vault file / newer format version (C7) |
+| 4 | Corruption — header hash, block HMAC, or AEAD tag (C9/C10/C1) |
+| 5 | Authentication — invalid credentials or tampered header (C9) |
+| 6 | KDF parameters outside the safe range (C2) |
+| 7 | No clipboard available and `--stdout` not given (C27, UC-04 §3.7) |
+| 8 | Usage error, incl. missing `--yes` on confirmation-requiring piped commands (clap configured away from its default 2) |
+| 9 | Entry or field not found / ambiguous |
 
 ### 3.2 Reading secrets in (the other direction)
 
@@ -97,18 +102,18 @@ never block waiting for input that cannot come; behave deterministically** (PRD 
 |---|---|---|---|
 | TTY | TTY | TTY | Full interactive: no-echo password prompt, confirmations allowed |
 | TTY | pipe | TTY | Interactive prompts OK (they go via the TTY); `--stdout` output flows to the pipe; warning still on stderr |
-| pipe | any | any | **No prompts.** Password must arrive via §3.2 or exit 4. Confirmation-requiring commands (`rm`, `export`) require `--yes` or exit 2. Rollback condition (C16): abort, exit 2, no prompt — `--allow-rollback` to proceed. |
+| pipe | any | any | **No prompts.** Password must arrive via §3.2 or exit 5. Confirmation-requiring commands (`rm`, `export`) require `--yes` or exit 8 (usage). Rollback condition (C16): abort, exit 2, no prompt — `--allow-rollback` to proceed. |
 | any | any | pipe | Warnings are still written to stderr (captured by the pipe — that is the point); no behavior change |
 
 Additional rule: `vault get` *without* `--stdout` in a fully non-TTY context still goes to the
-clipboard if one exists (a windowed CI runner is rare but possible); headless → exit 3 with the
+clipboard if one exists (a windowed CI runner is rare but possible); headless → exit 7 with the
 UC-04 §3.7 guidance. No environment auto-detection ever flips output to stdout implicitly.
 
 ### 3.4 `vault export --format json`
 
 - **Confirmation:** if stdout is a TTY → interactive prompt
   `Export ALL entries as plaintext JSON to stdout? [y/N]`; if stdout is a pipe/file → require
-  `--yes` (exit 2 otherwise). Both paths print to stderr first:
+  `--yes` (exit 8 otherwise). Both paths print to stderr first:
   `WARNING: export writes ALL decrypted entries as plaintext. Anything that reads this output (including AI agents) learns every secret.`
 - **Schema (v1):**
 
@@ -216,10 +221,10 @@ in-payload access log is the only shape compatible with the intent — out of sc
 2. **INTEGRATION (warning unconditional):** same command with stdout to a pipe and stderr to a
    file → warning present in the file.
 3. **INTEGRATION (matrix):** for each row of §3.3: stdin from `/dev/null` + no `--password-fd`
-   → exit 4, no prompt, stderr explains; `rm` with piped stdin and no `--yes` → exit 2;
+   → exit 5, no prompt, stderr explains; `rm` with piped stdin and no `--yes` → exit 8;
    rollback condition piped → exit 2 (C16 test reuse).
 4. **INTEGRATION (export TTY):** under a PTY, `export --format json` prompts `[y/N]`; `n` →
-   exit 2, zero stdout bytes. Piped without `--yes` → exit 2. Piped with `--yes` → valid JSON
+   exit 1 (declined), zero stdout bytes. Piped without `--yes` → exit 8. Piped with `--yes` → valid JSON
    (schema-validated), warning on stderr.
 5. **UNIT (schema):** round-trip export→import preserves every field byte-for-byte.
 6. **INTEGRATION (B1):** spawn each secret-input form; scan `/proc/<pid>/cmdline` + `environ`

@@ -15,12 +15,12 @@
 │ argon2id_t_cost  u32                                      │
 │ argon2id_p_cost  u32                                      │
 │ argon2id_salt    [32]  CSPRNG, fixed at creation          │  C8
-│ master_seed      [32]  CSPRNG, regenerated every save     │  C8/C10
+│ master_seed      [32]  CSPRNG, regenerated every body write│  C8/C10 (block-HMAC salt, YubiKey challenge)
 │ nonce_prefix     [16]  CSPRNG, regenerated every body write│  C1/C8  (HKDF salt for payload key)
 │ stanza_count     u8    1..=8                               │  C5
 │ stanzas          [..]  stanza_count × stanza_record       │  C5
 │ header_hash      [32]  SHA-256(all bytes above)           │  C9  (corruption, no key)
-│ header_hmac      [32]  HMAC-SHA-256(above, key=HKDF(mk))  │  C9  (tamper / KDF-downgrade)
+│ header_hmac      [32]  HMAC-SHA-256(above, key=HKDF(dk))  │  C9  (tamper; data-key-keyed)
 └───────────────────────────────────────────────────────────┘
 ┌──────────────────── encrypted body ──────────────────────┐
 │ HmacBlockStream of 1 MiB blocks, each:                    │  C10
@@ -55,9 +55,15 @@ version counter — lives inside the AEAD body.** (C18)
 
 1. `header_hash` (fast, keyless) → reject corrupt files cheaply.
 2. **Reject KDF params outside floor *and* ceiling** before running Argon2id (C2 — the ceiling
-   check must precede the KDF because the keyed HMAC in step 3 *requires* the KDF to run).
-3. Argon2id → master key → `header_hmac` → abort on mismatch, decrypt nothing.
-4. Per-block HMAC → per-chunk AEAD tag → only then release plaintext.
+   check must precede the KDF because step 3 *requires* the KDF on the password path).
+3. Unwrap the data key from any valid stanza (password path: Argon2id with the file's params;
+   a wrong password or tampered KDF params fail HERE, at the stanza's Poly1305 tag — one
+   indistinguishable "invalid credentials or tampered header" error).
+4. Verify `header_hmac` with the **data-key-derived** key (HKDF, `info="vault-header-hmac-v2"`) —
+   verifiable on every unlock path, including hardware-only (C9/G0.2). Abort on mismatch
+   ("header tampered"), decrypt nothing.
+5. Per-block HMAC (data-key-keyed, `info="vault-block-hmac-v2"`) → per-chunk AEAD tag → only
+   then release plaintext.
 
 ## Writing (atomic saves — C32)
 

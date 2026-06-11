@@ -159,9 +159,9 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
 
 | Condition | Behavior |
 |---|---|
-| No clipboard available (headless SSH, no `$DISPLAY`/`$WAYLAND_DISPLAY`, compositor lacks data-control) | **Refuse**, exit 3: `no clipboard available on this session; use --stdout (prints a security warning) if you accept plaintext on stdout`. Never silently degrade to stdout — PRD §9.4's candidate resolution, adopted here (§7 Q3 tracks promotion into the intent). |
+| No clipboard available (headless SSH, no `$DISPLAY`/`$WAYLAND_DISPLAY`, compositor lacks data-control) | **Refuse**, exit 7: `no clipboard available on this session; use --stdout (prints a security warning) if you accept plaintext on stdout`. Never silently degrade to stdout — PRD §9.4's resolution — promoted into C27 with exit code 7, 2026-06-10 (intent v1.3.0). |
 | Helper spawn fails | Copy is **not** performed (a copy with no timer violates C13); exit 1 with cause. |
-| Entry/field not found | exit 3 / 4 per the UC-05 exit-code table; message echoes the *queried* name only after A2 sanitization. |
+| Entry/field not found | exit 9 per the C21 exit-code map; message echoes the *queried* name only after A2 sanitization. |
 | Clipboard write fails mid-flight | Zeroize, exit 1; nothing partial left on the clipboard. |
 
 ## 4. Alternatives considered
@@ -199,7 +199,7 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
 5. **INTEGRATION (hints, Linux CI):** read back offered MIME types while holder is alive;
    assert `x-kde-passwordManagerHint` present with value `secret`. Windows/macOS equivalents
    behind platform CI gates.
-6. **INTEGRATION (headless):** run with `DISPLAY`/`WAYLAND_DISPLAY` unset → exit 3, stderr
+6. **INTEGRATION (headless):** run with `DISPLAY`/`WAYLAND_DISPLAY` unset → exit 7, stderr
    mentions `--stdout`, clipboard untouched, stdout empty.
 7. **UNIT (no secret on argv/env):** spawn the holder; read its `/proc/<pid>/cmdline` and
    `environ`; assert the secret appears in neither.
@@ -217,9 +217,9 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
    hardware.)
 2. **macOS Universal Clipboard:** confirm empirically that `ConcealedType`/`TransientType`
    suppress Handoff sync to other devices, or document as residual risk alongside B2.
-3. **Promote the headless-refusal rule** (§3.7) from this spec into the intent (PRD §9.4 open
-   question) — candidate text: "If no OS clipboard is available, `vault get` MUST refuse and
-   point to `--stdout`; it MUST NOT fall back to stdout silently."
+3. **Promote the headless-refusal rule** — ✅ Resolved 2026-06-10 (intent v1.3.0): C27 now
+   mandates refusal with exit code 7 and the exact guidance message; never a silent stdout
+   fallback.
 4. **Wayland history tools** (`cliphist` et al.) ignore suppression hints today — pursue an
    upstream `ext-data-control` "sensitive" convention, or accept the timed-clear backstop?
 5. **Should the helper re-assert the clipboard** if another process overwrites it within the

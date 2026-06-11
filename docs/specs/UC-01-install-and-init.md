@@ -134,8 +134,8 @@ boxed diagram. Fixed prefix is **116 bytes** (`magic 4 + version 2 + vault_id 16
 m/t/p 12 + salt 32 + master_seed 32 + nonce_prefix 16 + stanza_count 1`), followed by stanza records, then:
 
 - `header_hash = SHA-256(magic ‖ … ‖ last stanza byte)` (C9, keyless corruption check);
-- `header_hmac = HMAC-SHA-256(same bytes, key = HKDF-SHA-256(ikm=master_key, salt=b"",
-  info="vault-header-hmac-v1"))` (C9, anti-downgrade).
+- `header_hmac = HMAC-SHA-256(same bytes, key = HKDF-SHA-256(ikm=data_key, salt=b"",
+  info="vault-header-hmac-v2"))` (C9 — data-key-keyed per G0.2, so every unlock path verifies it; KDF downgrade is caught by the password stanza tag).
 
 Minimal init-time header: 116 + 77 (password stanza record) + 64 = **257 bytes**. Serialization is
 hand-rolled field-by-field writes (no serde in the trust boundary), mirroring the hand-rolled
@@ -144,7 +144,7 @@ bounded parser of UC-10.
 The body is written even for an empty vault: inner header + `vault_version=0` (C16) + zero entries,
 TLV-encoded (UC-03 §3.2), STREAM-encrypted under
 `payload_key = HKDF-SHA-256(ikm=data_key, salt=nonce_prefix, info="vault-payload-v1")` (C1), wrapped in
-HmacBlockStream blocks keyed from `master_key`/`master_seed` (C10).
+HmacBlockStream blocks keyed from `data_key`/`master_seed` (C10, `info="vault-block-hmac-v2"` — G0.2).
 
 ### 3.6 Atomic file creation
 

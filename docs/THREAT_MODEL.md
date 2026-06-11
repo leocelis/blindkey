@@ -21,10 +21,10 @@
 | Adversary | Capability | Primary defenses | Constraints |
 |-----------|-----------|------------------|-------------|
 | **Offline brute-forcer** | Has the stolen blob; rents GPUs | Argon2id (floor enforced); XChaCha20-Poly1305; CSPRNG-generated passwords | C1, C2, C26 |
-| **Malicious / compromised sync backend** | Serves, withholds, reorders, or rolls back the file | STREAM segment-binding; keyed header HMAC; monotonic counter + local anchor | C9, C10, C16 |
+| **Malicious / compromised sync backend** | Serves, withholds, reorders, or rolls back the file | STREAM segment-binding; per-save payload-key freshness (no cross-version keystream/XOR channel); keyed header HMAC; monotonic counter + local anchor | C1, C9, C10, C16 |
 | **Passive file observer** | Reads the blob at rest | Single opaque blob; zero plaintext metadata | C17, C18, C19 |
 | **Host malware / infostealer** | Same-user process; reads memory, swap, clipboard | `zeroize` + `mlock`; core-dump off; clipboard auto-clear + concealment; auto-lock; anti-ptrace* | C11–C13, C25, C33 |
-| **Evil-maid** | Physical access between uses | Keyed HMAC (KDF-downgrade detection); TPM PCR sealing* | C9, C15 |
+| **Evil-maid** | Physical access between uses | Stanza AEAD tag (KDF-downgrade detection); data-key-keyed header HMAC; TPM PCR sealing* | C2, C9, C15 |
 | **AI-orchestrated attacker** | Frontier LLM drives recon→exfil; agentic tools | Zero metadata to recon; model-blind secret delivery; no secrets on argv; sanitized output | C17, C18, C27, C28, C31 |
 | **Supply-chain attacker** | Compromises a dependency or the release pipeline | Audited-libs-only; `cargo audit`/`deny` (`vet`*); reproducible + signed releases | C3, C24, C34 |
 | **Hostile-file attacker** | Hands you a crafted vault file | Parser fuzzing; KDF parameter ceiling; bounded allocations | C2, C7–C10, C30 |

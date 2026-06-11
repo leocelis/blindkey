@@ -96,13 +96,16 @@ Re-derives the **password stanza only**. The data key does not change, so the pa
    per vault (see §7 Q1).
 5. Re-wrap: `wrapping_key' = HKDF(master_key', salt=vault_id, info="vault-pw-wrap-v1")`; seal the
    unchanged data key with a **fresh 24-byte nonce** → new 48-byte `wrapped_key`.
-6. Rebuild the header: new m/t/p, new password stanza, fresh `master_seed` (C8 requires it on every
-   save), other stanzas byte-identical. Recompute `header_hash` and `header_hmac` (keyed from
-   `master_key'`).
-7. Because `master_key` and `master_seed` changed, the **HmacBlockStream MACs are recomputed** over
-   the body (C10 keys them from both). The STREAM *ciphertext inside the blocks* is byte-identical
-   — C4's test measures exactly this: payload ciphertext unchanged, integrity envelope refreshed.
-   No decryption or re-encryption of entry data occurs.
+6. Rebuild the header: new m/t/p, new password stanza, fresh `master_seed` and `nonce_prefix`
+   (this is a body-writing save — C8/C1), other stanzas byte-identical. Recompute `header_hash`
+   and `header_hmac` (the HMAC key derives from the unchanged data key — G0.2; the value changes
+   because the header bytes changed).
+7. **G0.3 (intent v1.3.0): `upgrade-kdf` is a FULL body-writing save.** `vault_version`
+   increments (C16), the body is re-encrypted under the fresh
+   `payload_key' = HKDF(data_key, salt=new nonce_prefix)` (C1), and every HmacBlockStream MAC is
+   recomputed (data-key-keyed with the new `master_seed` salt — C10). This closes the rollback
+   blind spot: a backend serving the pre-upgrade file now fails the C16 version check (§7 Q2,
+   resolved). The data key itself never changes (C4).
 8. Atomic save (UC-03 §3.6: flock, temp, fsync, rename, `.bak`). `vault_version` does **not**
    increment — this is a header-only operation (UC-03 §3.7; consequence in §7 Q2).
 9. Confirm on stderr: `KDF upgraded: m=… t=… p=… (was m=… t=… p=…)`. The old params exist nowhere
@@ -168,10 +171,10 @@ rather than only at failure.
 |---|---|
 | C2 | floor checked on every open with warn + prompt + upgrade offer (§3.3); `upgrade-kdf` re-derives at validated params, old params absent from the new header (§3.2 step 9); tune never recommends below floor |
 | C22 | tune targets 300 ± 100 ms (§3.1) and prints m, t, p with measured ms; spinner on stderr for > 300 ms derivations (§3.4); < 500 ms gate on the §3.5 reference runner |
-| C8 | params read verbatim from the file on open; compiled defaults only ever *written* (§3.2 step 3); `argon2id_salt` immutable, `master_seed` regenerated on save, `vault_id` untouched |
-| C4 (touched) | data key unchanged through upgrade; STREAM ciphertext byte-identical; only the stanza wrap and integrity envelope change (§3.2 step 7) |
-| C9 (touched) | `header_hmac` recomputed under the new `master_key'`, so the upgraded header is downgrade-protected at the new strength |
-| C16 (touched) | header-only saves leave the counter alone by design; interaction documented (§7 Q2) |
+| C8 | params read verbatim from the file on open; compiled defaults only ever *written* (§3.2 step 3); `argon2id_salt` immutable, `master_seed` regenerated on body-writing saves (C8/G0.2), `vault_id` untouched |
+| C4 (touched) | data key unchanged through upgrade; the body IS re-encrypted under a fresh payload key (full save, G0.3) — C4's byte-identical test applies to password rotation, not `upgrade-kdf` |
+| C9 (touched) | `header_hmac` recomputed over the new header bytes; its key derives from the data key (G0.2) and is unchanged — KDF tampering is caught by the re-wrapped password stanza's tag |
+| C16 (touched) | `upgrade-kdf` increments `vault_version` (full save, G0.3) — rollback of a KDF upgrade is detected; §7 Q2 resolved |
 
 ## 6. Test plan
 
@@ -193,8 +196,9 @@ Spec-specific additions:
    params.
 4. **Hardware-stanza preservation**: vault with password + mocked FIDO2 stanza; `upgrade-kdf`;
    assert the FIDO2 stanza bytes are unchanged and still unlock (C5 OR-model intact).
-5. **Block-MAC refresh**: after upgrade, assert every block HMAC differs (new `master_key'` +
-   `master_seed`) while block ciphertext bytes are identical — the precise C4/C10 boundary.
+5. **Full-save refresh**: after upgrade, assert `vault_version` incremented, every block HMAC
+   differs (new `master_seed` salt), AND the block ciphertext differs (new `nonce_prefix` → new
+   payload key) — full-save semantics per G0.3.
 6. **Non-interactive floor**: pipe stdin from `/dev/null` against a below-floor vault; assert exit
    code 2, warning on stderr, no prompt; assert `--allow-weak-kdf` proceeds.
 7. **Estimator honesty**: corrupt the cached throughput to a wild value; assert the next open still
@@ -206,10 +210,10 @@ Spec-specific additions:
    salt per KDF re-derivation is standard hygiene elsewhere; here it is redundant (per-vault unique
    salt, single password stanza) but harmless. Keeping it immutable is the intent-compliant choice
    — if rotation is ever wanted, the intent must change first.
-2. **Rollback of a KDF upgrade is undetected**: a sync backend serving the pre-upgrade file
-   presents valid old params (above floor) and an *equal* `vault_version`, so C16 stays silent.
-   Candidate fix for the Part-2 (C35+) batch: include the KDF params (or a header generation counter) in the
-   data the local anchor tracks. Worth promoting before M5.
+2. **Rollback of a KDF upgrade is undetected** — ✅ Resolved 2026-06-10 (Gate 0 G0.3, intent
+   v1.3.0): `upgrade-kdf` is a full body-writing save that increments `vault_version`, so C16
+   detects a backend serving the pre-upgrade file. (A header-generation counter in the anchor
+   remains a Part-2 idea for header-only operations such as password rotation.)
 3. **Should `tune` also benchmark p > 4** on big desktops? Marginal: parallelism mostly trades
    latency, not attacker cost. Defer unless reference numbers say otherwise.
 4. **CI runner drift**: if the pinned runner class changes hardware, the C22 gate may flap —

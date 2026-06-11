@@ -217,7 +217,14 @@ Beyond the C16/C17 tests already in the intent (which remain authoritative):
    `vault_intent.yaml`.)
 2. Should the rollback warning also fire on *equal* version but different header bytes (same
    `vault_version`, different `master_seed`) — a split-brain signal that belongs to UC-08?
+   *Disposition 2026-06-10: deferred to the Part-2 backlog (a header-generation counter in the
+   local anchor). G0.3 already closed the KDF-upgrade case by making `upgrade-kdf` a full
+   version-bumping save; the residual window is header-only ops (password rotation) served
+   stale — and old credentials can decrypt the old blob offline regardless, which rollback
+   detection cannot change.*
 3. Anchor garbage collection: vaults deleted or re-created leave stale `.state` files; ship
    `vault doctor` cleanup or ignore (8 bytes each)?
+   *Disposition 2026-06-10: ignore for v1 (8 bytes each; a re-created vault gets a fresh
+   UUIDv4 vault_id, so stale anchors can never collide). `vault doctor` stays a Part-2 idea.*
 4. Padmé adoption criteria for v2: what adversary model justifies the 12 % ceiling — and should
    padding also quantize *save times* (batching) to blunt the mtime channel?
