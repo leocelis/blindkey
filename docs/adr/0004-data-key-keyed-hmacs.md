@@ -1,6 +1,6 @@
 # ADR-0004: Header and block HMACs keyed from the data key; master_seed bound to body writes
 
-- **Status:** Proposed (pending two-maintainer sign-off — intent v1.3.0, Gate 0 G0.2)
+- **Status:** Proposed (pending two-maintainer sign-off — intent v1.4.0, Gate 0 G0.2)
 - **Date:** 2026-06-10
 - **Constraints:** C4, C5, C8, C9, C10
 

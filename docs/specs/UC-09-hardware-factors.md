@@ -1,6 +1,6 @@
 # UC-09 — Add a hardware factor without lockout risk
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.2.0–v1.3.0, 2026-06-10) · June 2026
+> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-9 · **Constraints:** C5, C6, C14, C15
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
@@ -109,7 +109,7 @@ Requires user presence (touch); PIN/UV honored if the authenticator enforces it.
   `WARNING: yubikey stanza not refreshed (key absent); insert it and save to restore challenge rotation.`
 
 `extra = { slot: u8 (1|2), challenge: [u8; 32] }`. The graceful-staleness design was ADOPTED
-into C5 on 2026-06-10 (Gate 0 G0.7, intent v1.3.0), with `yubikey_strict` / `--strict-yubikey` opting into the abort-on-absent behavior —
+into C5 on 2026-06-10 (Gate 0 G0.7, intent v1.4.0), with `yubikey_strict` / `--strict-yubikey` opting into the abort-on-absent behavior —
 originally flagged in §7, now resolved.
 
 **TPM 2.0 (type 4 · `info="vault-tpm-wrap-v1"` · C15).** Seal a 32-byte CSPRNG `tpm_ikm` (not
@@ -226,7 +226,7 @@ to preserve.
 
 ## 7. Open questions
 
-1. **C21 amendment** — ✅ Resolved 2026-06-10 (intent v1.3.0): C21 now specifies `vault stanzas list|add|remove` (intent previously
+1. **C21 amendment** — ✅ Resolved 2026-06-10 (intent v1.4.0): C21 now specifies `vault stanzas list|add|remove` (intent previously
    names only `enroll-tpm`/`re-enroll-tpm`); keep the hyphenated forms as permanent aliases.
 2. **YubiKey graceful staleness vs. strict C5 wording** — ✅ Resolved 2026-06-10 (G0.7): the stored-challenge design
    (this spec) is C5's specified behavior; strict device-at-save is the `yubikey_strict` opt-in.

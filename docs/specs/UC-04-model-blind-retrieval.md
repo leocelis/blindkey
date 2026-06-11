@@ -1,6 +1,6 @@
 # UC-04 — Model-Blind Retrieval: Get a Secret While an AI Agent Is Watching
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.2.0–v1.3.0, 2026-06-10) · June 2026 · **the flagship use case**
+> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026 · **the flagship use case**
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-4 · **Constraints:** C27 (primary), C13, C23; touches B2 ([gaps](../../research/security_coverage_gaps.md))
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
@@ -159,7 +159,7 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
 
 | Condition | Behavior |
 |---|---|
-| No clipboard available (headless SSH, no `$DISPLAY`/`$WAYLAND_DISPLAY`, compositor lacks data-control) | **Refuse**, exit 7: `no clipboard available on this session; use --stdout (prints a security warning) if you accept plaintext on stdout`. Never silently degrade to stdout — PRD §9.4's resolution — promoted into C27 with exit code 7, 2026-06-10 (intent v1.3.0). |
+| No clipboard available (headless SSH, no `$DISPLAY`/`$WAYLAND_DISPLAY`, compositor lacks data-control) | **Refuse**, exit 7: `no clipboard available on this session; use --stdout (prints a security warning) if you accept plaintext on stdout`. Never silently degrade to stdout — PRD §9.4's resolution — promoted into C27 with exit code 7, 2026-06-10 (intent v1.4.0). |
 | Helper spawn fails | Copy is **not** performed (a copy with no timer violates C13); exit 1 with cause. |
 | Entry/field not found | exit 9 per the C21 exit-code map; message echoes the *queried* name only after A2 sanitization. |
 | Clipboard write fails mid-flight | Zeroize, exit 1; nothing partial left on the clipboard. |
@@ -217,7 +217,7 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
    hardware.)
 2. **macOS Universal Clipboard:** confirm empirically that `ConcealedType`/`TransientType`
    suppress Handoff sync to other devices, or document as residual risk alongside B2.
-3. **Promote the headless-refusal rule** — ✅ Resolved 2026-06-10 (intent v1.3.0): C27 now
+3. **Promote the headless-refusal rule** — ✅ Resolved 2026-06-10 (intent v1.4.0): C27 now
    mandates refusal with exit code 7 and the exact guidance message; never a silent stdout
    fallback.
 4. **Wayland history tools** (`cliphist` et al.) ignore suppression hints today — pursue an

@@ -42,11 +42,11 @@ All notable changes to this project are documented here. The format is based on
   model-blind delivery does and does not defend against.
 - Constraint count 27 → 34; groups 10 → 11 (new `G11` — untrusted input/output robustness);
   satisfiability conflicts grew to 8 (`SC7` argv-vs-scriptability, `SC8` ceiling-vs-file-authoritative;
-  `SC6` is the C1/C4 nonce_prefix binding from the keystream fix below). Intent version 1.2.0.
+  `SC6` is the C1/C4 nonce_prefix binding from the keystream fix below). Intent version 1.3.0.
 
 ### Added (2026-06-10 — governance & release-trust follow-ups)
 - `ADR-0003` (nonce_prefix payload-key salt) and `ADR-0004` (data-key-keyed HMACs,
-  `master_seed` bound to body writes) — the ADRs GOVERNANCE requires for the v1.1.0/v1.3.0
+  `master_seed` bound to body writes) — the ADRs GOVERNANCE requires for the v1.1.0/v1.4.0
   cryptography amendments.
 - `release.yml` is now **fail-closed** per `C34`: the GitHub Release is created as a draft and
   flipped public only after cosign signing *and* SLSA provenance both succeed (attestation
@@ -55,9 +55,9 @@ All notable changes to this project are documented here. The format is based on
   Pinned-Dependencies; Dependabot maintains the pins). Documented exemption: the SLSA generator
   must be referenced by version tag per slsa-verifier requirements.
 - All 16 tech specs bumped to Draft v0.2 (pending acceptance review) reflecting the
-  intent v1.2.0–v1.3.0 synchronization.
+  intent v1.3.0–v1.4.0 synchronization.
 
-### Security (2026-06-10 — Gate 0 close-out, intent v1.3.0)
+### Security (2026-06-10 — Gate 0 close-out, intent v1.4.0)
 - `C9`/`C10` (G0.2): header and block HMAC keys now derive from the **data key**
   (`vault-header-hmac-v2` / `vault-block-hmac-v2`) — verifiable on hardware-only unlocks and
   stable across password rotation. Corollary fix: `master_seed` rotation is bound to
@@ -72,7 +72,7 @@ All notable changes to this project are documented here. The format is based on
   outlive a one-shot CLI) with clear-iff-unchanged semantics and constant-time comparison.
 - `C5` (G0.7): YubiKey challenge stored per-stanza (`extra = {slot, challenge}`), refreshed on
   device-present body-writing saves; graceful staleness with a loud warning is the default,
-  `yubikey_strict` / `--strict-yubikey` opts into abort-on-absent (supersedes the v1.2.0
+  `yubikey_strict` / `--strict-yubikey` opts into abort-on-absent (supersedes the v1.3.0
   strict-abort wording; resolves the C5↔UC-09 contradiction).
 - `C21`/`C27` (G0.8): frozen exit-code map 0–9 (rollback keeps 2; clap usage moves to 8);
   new `vault stanzas list|add|remove` commands; headless `vault get` without `--stdout`

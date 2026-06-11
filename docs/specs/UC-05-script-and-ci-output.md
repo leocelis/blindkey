@@ -1,6 +1,6 @@
 # UC-05 — Scripts & CI: Explicit, Warned Plaintext Opt-Outs
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.2.0–v1.3.0, 2026-06-10) · June 2026
+> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-5 · **Constraints:** C27, C21, SC5 (resolution); C23; C31 (promoted from gap B1, §3.5)
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
@@ -66,7 +66,7 @@ that must be newline-free should be consumed with `$(...)` (strips it) or `--fie
 through `tr -d '\n'`. Documented in CLI.md rather than adding a `--no-newline` flag (v1 keeps
 the surface minimal; revisit on demand — §7 Q2).
 
-**Exit codes — the normative map is C21 (intent v1.3.0); this table mirrors it:**
+**Exit codes — the normative map is C21 (intent v1.4.0); this table mirrors it:**
 
 | Code | Meaning |
 |---|---|

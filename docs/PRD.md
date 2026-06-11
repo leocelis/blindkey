@@ -256,7 +256,7 @@ distribution & trust (UC-13) → M9 hardening backlog (C35+ Part-2 candidates fr
 
 ## 9. Open questions
 
-1. **Candidate constraints C28+** — ✅ resolved 2026-06-10 (intent v1.2.0): the high-severity
+1. **Candidate constraints C28+** — ✅ resolved 2026-06-10 (intent v1.3.0): the high-severity
    batch was promoted — ANSI-safe output (A2→C28), export escaping (A3→C29), parser
    robustness (A4→C30), no-secrets-on-argv (B1→C31), atomic saves (C1→C32), clipboard
    concealment (B2→C33), signed releases (D1→C34); KDF ceiling (A1) and Unicode NFC (E2)
@@ -266,5 +266,5 @@ distribution & trust (UC-13) → M9 hardening backlog (C35+ Part-2 candidates fr
    defer to M9?
 3. **Naming/positioning** — "credential vault" vs the broader "security layer for the AI
    era" as scope grows post-1.0 (files, databases, app secrets).
-4. **Clipboard on Wayland/headless** — ✅ resolved 2026-06-10 (intent v1.3.0): C27 mandates
+4. **Clipboard on Wayland/headless** — ✅ resolved 2026-06-10 (intent v1.4.0): C27 mandates
    refusal with exit code 7 and guidance toward `--stdout`; never a silent stdout fallback.

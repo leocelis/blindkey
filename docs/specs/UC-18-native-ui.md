@@ -193,7 +193,7 @@ When a user explicitly reveals (eye icon / `r` key):
    precedent); confirm it handles the secret-handle pattern without forcing owned strings.
 3. **Reveal timeout + auth policy defaults** — 10 s / always-auth? Surface in `~/.vault.toml`
    alongside `clipboard_timeout`/`auto_lock_seconds` (UC-06 §3.6).
-4. **Does the candidate presentation-layer constraint get a number now** (ratify alongside C28+) or
+4. **Does the candidate presentation-layer constraint get a number now** (ratify alongside the Part-2 C35+ batch) or
    stay as the extended C27 forward constraint only? (See §5 + the intent amendment.)
 5. **Quick-open / global hotkey** (Spotlight-style) on macOS — powerful but a system-integration and
    focus-stealing surface; defer to a P3+ design with its own threat note.

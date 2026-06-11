@@ -209,7 +209,7 @@ Tauri backend are all thin clients on a single frozen, audited core.
 - **`non_goals` GUI line** should be clarified from "GUI is a future layer" to name the architecture:
   *shared Rust `vault-core` + thin per-platform shells over a stable FFI*; UI remains post-v1.
 - **Candidate presentation-layer constraint** (for the maintainers to ratify with a number alongside
-  the other C28+ candidates): the secret-display boundary rule of §1, made testable.
+  the other Part-2 — C35+ — candidates): the secret-display boundary rule of §1, made testable.
 
 ---
 

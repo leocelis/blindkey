@@ -1,6 +1,6 @@
 # UC-03 — Store a Secret
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.2.0–v1.3.0, 2026-06-10) · June 2026
+> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-3 · **Constraints:** C18, C19, C17, C11 (touches C10, C16, C26)
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

@@ -1,6 +1,6 @@
 # UC-10 — Open a Stale or Hostile Vault File Safely
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.2.0–v1.3.0, 2026-06-10) · June 2026
+> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-10 · **Constraints:** C2, C7, C8, C9 · **C2 ceiling** (was gap A1) · **C28** ANSI sanitization (was gap A2) — both promoted 2026-06-10
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
@@ -247,16 +247,16 @@ Spec-specific additions:
 
 ## 7. Open questions
 
-1. **Promote the ceiling and sanitization into the intent** — ✅ Resolved 2026-06-10 (intent v1.2.0): ceiling folded into C2, output sanitization is C28 —
+1. **Promote the ceiling and sanitization into the intent** — ✅ Resolved 2026-06-10 (intent v1.3.0): ceiling folded into C2, output sanitization is C28 —
    this spec is written as if approved; the intent is the gate (PRD §9 Q1).
 2. **`header_hmac` on hardware-only unlock** — ✅ Resolved 2026-06-10 (Gate 0 G0.2, intent
-   v1.3.0): C9/C10 HMAC keys now derive from the *data key* (`info="vault-header-hmac-v2"` /
+   v1.4.0): C9/C10 HMAC keys now derive from the *data key* (`info="vault-header-hmac-v2"` /
    `"vault-block-hmac-v2"`), reachable on every stanza path. Verification order: header_hash →
    KDF bounds → stanza unwrap (wrong password / tampered KDF params fail here,
    indistinguishably) → header_hmac → block HMACs. As part of the same amendment,
    `master_seed` rotation is bound to body-writing saves so header-only rewrites cannot orphan
    the stored block HMACs.
-3. **Exit codes** — ✅ Resolved 2026-06-10 (intent v1.3.0): C21 freezes the map — 2 rollback,
+3. **Exit codes** — ✅ Resolved 2026-06-10 (intent v1.4.0): C21 freezes the map — 2 rollback,
    3 not-a-vault/version, 4 corrupt, 5 auth, 6 KDF range, 7 no-clipboard, 8 usage, 9 not-found.
 4. **OSC-52 nuance**: should `sanitize_for_terminal` special-case OSC-52 (clipboard write) with a
    louder warning, given C13/C27 make the clipboard our trusted delivery channel?

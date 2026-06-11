@@ -1,6 +1,6 @@
 # UC-11 — Keep KDF Cost Calibrated
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.2.0–v1.3.0, 2026-06-10) · June 2026
+> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-11 · **Constraints:** C2, C22, C8 (touches C4, C9, C16)
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
@@ -100,7 +100,7 @@ Re-derives the **password stanza only**. The data key does not change, so the pa
    (this is a body-writing save — C8/C1), other stanzas byte-identical. Recompute `header_hash`
    and `header_hmac` (the HMAC key derives from the unchanged data key — G0.2; the value changes
    because the header bytes changed).
-7. **G0.3 (intent v1.3.0): `upgrade-kdf` is a FULL body-writing save.** `vault_version`
+7. **G0.3 (intent v1.4.0): `upgrade-kdf` is a FULL body-writing save.** `vault_version`
    increments (C16), the body is re-encrypted under the fresh
    `payload_key' = HKDF(data_key, salt=new nonce_prefix)` (C1), and every HmacBlockStream MAC is
    recomputed (data-key-keyed with the new `master_seed` salt — C10). This closes the rollback
@@ -211,7 +211,7 @@ Spec-specific additions:
    salt, single password stanza) but harmless. Keeping it immutable is the intent-compliant choice
    — if rotation is ever wanted, the intent must change first.
 2. **Rollback of a KDF upgrade is undetected** — ✅ Resolved 2026-06-10 (Gate 0 G0.3, intent
-   v1.3.0): `upgrade-kdf` is a full body-writing save that increments `vault_version`, so C16
+   v1.4.0): `upgrade-kdf` is a full body-writing save that increments `vault_version`, so C16
    detects a backend serving the pre-upgrade file. (A header-generation counter in the anchor
    remains a Part-2 idea for header-only operations such as password rotation.)
 3. **Should `tune` also benchmark p > 4** on big desktops? Marginal: parallelism mostly trades
