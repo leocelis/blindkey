@@ -51,6 +51,10 @@
   NV monotonic counter is the hardened upgrade path.
 - **Clipboard managers that ignore concealment hints** (C33 limitation) — on X11 especially, any
   client can read the clipboard during the window before the timed clear.
+- **YubiKey stale-challenge replay window** (C5 graceful staleness) — if body-writing saves happen
+  while the device is absent, a previously captured challenge-response can unlock the newer file
+  until the next device-present save rotates the challenge; loudly warned, and `yubikey_strict`
+  closes it entirely.
 
 ## What leaks even in the best case
 

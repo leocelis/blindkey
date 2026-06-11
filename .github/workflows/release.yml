@@ -2,7 +2,7 @@ name: Release
 
 # Builds release binaries, signs them keylessly with Sigstore cosign, generates SLSA build
 # provenance, and publishes checksums — so users can verify exactly what they run.
-# See docs/VERIFYING_RELEASES.md. (Supply-chain trust: coverage-gap D1.)
+# See docs/VERIFYING_RELEASES.md. (Supply-chain trust: constraint C34.)
 
 on:
   push:
@@ -26,9 +26,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
+        run: rustup toolchain install
+      - run: rustup target add ${{ matrix.target }}
       - name: Build (locked, reproducible flags)
         run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Package + checksum

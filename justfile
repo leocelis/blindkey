@@ -29,7 +29,7 @@ audit:
     cargo audit
     cargo deny check
 
-# Optional deeper dependency vetting (constraint C39 candidate).
+# Optional deeper dependency vetting (Part-2 backlog, gap D2).
 vet:
     cargo vet
 
@@ -37,7 +37,7 @@ vet:
 sbom:
     cargo cyclonedx --format json
 
-# Smoke-run the fuzz targets (constraint C31 candidate). Requires `cargo install cargo-fuzz`.
+# Smoke-run the fuzz targets (constraint C30). Requires `cargo install cargo-fuzz`.
 fuzz target="header_parse":
     cargo +nightly fuzz run {{target}} -- -max_total_time=30
 

@@ -49,9 +49,9 @@ pub struct Vault {
 impl Vault {
     /// Open and unlock a vault file with the given master password.
     ///
-    /// Verifies header integrity before deriving keys, enforces the KDF floor **and** ceiling,
-    /// and never returns a plaintext byte before its authentication tag verifies
-    /// (constraints C1, C2, C8, C9, C10).
+    /// Verification order per C9: keyless header hash → KDF floor **and** ceiling → stanza
+    /// unwrap → data-key-keyed header HMAC → body; never returns a plaintext byte before its
+    /// authentication tag verifies (constraints C1, C2, C8, C9, C10).
     pub fn open(_path: &std::path::Path, _password: memory::MasterPassword) -> Result<Self> {
         unimplemented!("M5: vault open — see docs/ARCHITECTURE.md 'opening a vault'")
     }

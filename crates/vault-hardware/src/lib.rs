@@ -9,18 +9,16 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
-/// FIDO2 hmac-secret / PRF via raw CTAP2 (libfido2) — **never** the browser WebAuthn path
+/// FIDO2 hmac-secret / PRF via raw CTAP2 (libfido2) — **never** the browser WebAuthn path.
+/// Salt to authenticator = SHA-256(vault_id || b"fido2-hw-v1"); output → HKDF → wrapping key
 /// (constraints C6, C14).
 #[cfg(feature = "fido2")]
-pub mod fido2 {
-    //! Salt to authenticator = SHA-256(vault_id || b"fido2-hw-v1"); output → HKDF → wrapping key.
-}
+pub mod fido2 {}
 
-/// TPM 2.0 PCR-sealed stanza with mandatory re-enrollment flow (constraint C15).
+/// TPM 2.0 PCR-sealed stanza with mandatory re-enrollment flow; documents the bus-attack
+/// limitation and provides `enroll` / `re-enroll` (constraint C15).
 #[cfg(feature = "tpm")]
-pub mod tpm {
-    //! Documents the bus-attack limitation; provides `enroll` / `re-enroll` (constraint C15).
-}
+pub mod tpm {}
 
 /// macOS Secure Enclave (EC secp256r1, ECIES wrap/unwrap, Touch ID gating).
 #[cfg(feature = "secure-enclave")]
