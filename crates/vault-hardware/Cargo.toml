@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-vault-core = { path = "../vault-core" }
+vault-core = { path = "../vault-core", version = "0.0.0" }
 
 # Hardware integrations are feature-gated so users without a given device compile none of its code.
 [features]
