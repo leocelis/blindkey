@@ -27,6 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      # rust-toolchain.toml pins 1.82 for BUILDS, and the toolchain file outranks the rustup
+      # default — so the action's internal plain `cargo install cargo-audit` would resolve to
+      # 1.82 and fail (current cargo-audit needs rustc 1.88). cargo-audit is a dev TOOL, not a
+      # build artifact: pre-install it on the runner's stable toolchain (`+stable` bypasses the
+      # file); the action then detects it and skips its own install.
+      - name: Install cargo-audit on stable (toolchain-file exemption, like fuzz nightly)
+        run: cargo +stable install cargo-audit --locked
       - uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
