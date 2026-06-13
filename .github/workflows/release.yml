@@ -107,7 +107,7 @@ jobs:
     # SLSA requires referencing the generator by semantic version TAG, never a commit SHA —
     # slsa-verifier validates the builder identity against the tagged ref (documented
     # exemption from this repo's pin-by-SHA rule).
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: "${{ needs.hashes.outputs.hashes }}"
 
