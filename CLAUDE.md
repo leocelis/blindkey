@@ -4,7 +4,7 @@ This repo is built by two maintainers working in parallel lanes, each with an AI
 **Before doing any work, read [`cowork.yaml`](cowork.yaml)** — it defines the branch model,
 path ownership, claim protocol, and the agent conduct rules (AG1–AG10). They are binding.
 
-Order of authority: [`vault_intent.yaml`](vault_intent.yaml) (testable constraints C1–C27)
+Order of authority: [`vault_intent.yaml`](vault_intent.yaml) (testable constraints C1–C31)
 → [`docs/specs/`](docs/specs/README.md) (designs per use case) → [`ROADMAP.md`](ROADMAP.md)
 (critical path + sidequests) → [`cowork.yaml`](cowork.yaml) (process).
 

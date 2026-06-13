@@ -1,6 +1,6 @@
 # Vault File Format (`.vlt`) — v1
 
-> Authoritative spec: constraints **C1, C7–C10, C18, C19** in [vault_intent.yaml](../vault_intent.yaml).
+> Authoritative spec: constraints **C1, C7–C10, C16, C18, C19, C28** in [vault_intent.yaml](../vault_intent.yaml).
 > This document is the human-readable rendering. All multi-byte integers are **little-endian**.
 
 ## Top-level layout
@@ -17,10 +17,12 @@
 │ argon2id_salt    [32]  CSPRNG, fixed at creation          │  C8
 │ master_seed      [32]  CSPRNG, regenerated every save     │  C8/C10
 │ nonce_prefix     [16]  CSPRNG, regenerated every body write│  C1/C8  (HKDF salt for payload key)
+│ header_generation u64  +1 on EVERY save (incl. header-only)│  C8/C16 (rollback anchor)
 │ stanza_count     u8    1..=8                               │  C5
 │ stanzas          [..]  stanza_count × stanza_record       │  C5
 │ header_hash      [32]  SHA-256(all bytes above)           │  C9  (corruption, no key)
-│ header_hmac      [32]  HMAC-SHA-256(above, key=HKDF(mk))  │  C9  (tamper / KDF-downgrade)
+│ header_hmac      [32]  HMAC-SHA-256(above,                │  C9  (tamper / KDF-downgrade;
+│                        key=HKDF(data_key))                │   unlock-path-agnostic — G0.2)
 └───────────────────────────────────────────────────────────┘
 ┌──────────────────── encrypted body ──────────────────────┐
 │ HmacBlockStream of 1 MiB blocks, each:                    │  C10
@@ -54,9 +56,13 @@ version counter — lives inside the AEAD body.** (C18)
 ## Verification order on open (never skip)
 
 1. `header_hash` (fast, keyless) → reject corrupt files cheaply.
-2. **Reject KDF params outside floor *and* ceiling** before running Argon2id (coverage-gap A1).
-3. Argon2id → master key → `header_hmac` → abort on mismatch, decrypt nothing.
-4. Per-block HMAC → per-chunk AEAD tag → only then release plaintext.
+2. **Reject KDF params outside floor *and* ceiling** before running Argon2id (C2, C28).
+3. Derive the stanza secret for the chosen unlock path (Argon2id for password; hardware/OS
+   for other stanza types) → unwrap `data_key` from that stanza (Poly1305-authenticated).
+4. `header_hmac` (keyed from `data_key` — works for any unlock path) → abort on mismatch,
+   decrypt nothing. Stanza-unwrap failure and HMAC failure emit the **same** ambiguous error.
+5. Rollback anchors: `header_generation` (header) and `vault_version` (payload) vs local state (C16).
+6. Per-block HMAC → per-chunk AEAD tag → only then release plaintext.
 
 ## Hardening rules for the parser
 

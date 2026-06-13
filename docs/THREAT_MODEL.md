@@ -25,12 +25,14 @@
 | **Passive file observer** | Reads the blob at rest | Single opaque blob; zero plaintext metadata | C17, C18, C19 |
 | **Host malware / infostealer** | Same-user process; reads memory, swap, clipboard | `zeroize` + `mlock`; core-dump off; clipboard auto-clear; auto-lock; anti-ptrace* | C11–C13, C25 |
 | **Evil-maid** | Physical access between uses | Keyed HMAC (KDF-downgrade detection); TPM PCR sealing* | C9, C15 |
-| **AI-orchestrated attacker** | Frontier LLM drives recon→exfil; agentic tools | Zero metadata to recon; model-blind secret delivery; no secrets on argv* | C17, C18, C27 |
+| **AI-orchestrated attacker** | Frontier LLM drives recon→exfil; agentic tools | Zero metadata to recon; model-blind secret delivery; no secrets on argv | C17, C18, C27, C29, C31 |
 | **Supply-chain attacker** | Compromises a dependency or the release pipeline | Audited-libs-only; `cargo audit`/`deny`/`vet`; reproducible + signed releases* | C3, C24 |
 | **Hostile-file attacker** | Hands you a crafted vault file | Parser fuzzing*; KDF parameter ceiling*; bounded allocations | C7–C10 |
 
 `*` = partially covered today or proposed as a constraint in
-[research/security_coverage_gaps.md](../research/security_coverage_gaps.md) (candidate IDs C28+).
+[research/security_coverage_gaps.md](../research/security_coverage_gaps.md). The KDF ceiling,
+no-secrets-on-argv, ANSI sanitization, and the presentation-layer boundary were ratified as
+**C28–C31** in intent v1.3.0; remaining candidates start at C32.
 
 ## Explicitly out of scope (residual risk)
 

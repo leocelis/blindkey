@@ -21,6 +21,13 @@ All notable changes to this project are documented here. The format is based on
 - Quick-capture import of an unstructured secrets file with masked interactive review — `UC-17`.
 
 ### Changed
+- Intent **v1.3.0** (Gate 0 closed — 27 → **31 constraints**): header/block HMACs re-keyed from
+  `data_key` so hardware-only unlocks verify integrity (`C9`/`C10`, G0.2); new `header_generation`
+  counter closes the header-only rollback blind spot (`C8`/`C16`, G0.3); ratified **C28** KDF
+  parameter ceiling, **C29** no-secrets-on-argv, **C30** terminal-output sanitization, **C31**
+  presentation-layer secret boundary (G0.4); `C13` clear-timer may be a detached holder process
+  (G0.6); `C20`'s acceptance test no longer passes a secret on argv; entry `kind` discriminator
+  added to `C18`'s field list (UC-17).
 - Intent **v1.2.0**: extended `C27`'s forward constraint to UI surfaces (copy-not-display, no
   plaintext marshalled into an unzeroable managed-runtime heap) and clarified the GUI non-goal.
 - Intent **v1.1.0**: fixed `C1`/`C8` XChaCha20 keystream reuse across saves via a per-body-write

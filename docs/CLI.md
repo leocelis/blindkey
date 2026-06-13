@@ -1,6 +1,6 @@
 # CLI Reference
 
-> Authoritative spec: constraints **C20–C22, C26, C27** in [vault_intent.yaml](../vault_intent.yaml).
+> Authoritative spec: constraints **C20–C22, C26, C27, C29, C30** in [vault_intent.yaml](../vault_intent.yaml).
 > Commands are **not yet implemented** (pre-alpha); this documents the intended surface.
 
 ## Commands
@@ -25,14 +25,14 @@
 ## Secret-handling rules (why the CLI looks the way it does)
 
 - **No secrets on the command line.** Passwords are read via a no-echo prompt, stdin, or
-  `--password-fd N` — never an argv flag (it would leak to shell history and `ps`). *(coverage-gap B1)*
+  `--password-fd N` — never an argv flag (it would leak to shell history and `ps`). *(constraint C29)*
 - **`vault get` delivers to the clipboard by default.** Printing to stdout requires the explicit
   `--stdout` flag, which prints a warning — so an AI agent watching the process's stdout can't
   silently scrape the secret. *(constraint C27)*
 - **Clipboard auto-clears** after 30s (configurable 5–300s) and is marked transient so OS clipboard
   history / cloud-clipboard sync skip it. *(constraint C13, coverage-gap B2)*
-- **Output is sanitized**: control/ANSI escape sequences in stored fields are neutralized before
-  being written to a terminal. *(coverage-gap A2)*
+- **Output is sanitized**: control/ANSI escape sequences in stored fields are rendered as visible
+  escapes (never raw, never silently stripped) before being written to a terminal. *(constraint C30)*
 
 ## Configuration
 

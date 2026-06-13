@@ -24,20 +24,21 @@ pub const ARGON2_FLOOR_T_COST: u32 = 2;
 pub const ARGON2_FLOOR_P_COST: u32 = 1;
 
 /// Maximum acceptable Argon2id memory cost — rejects hostile/overflowing files before allocation.
-/// (Coverage-gap A1: a missing ceiling is a memory-exhaustion / integer-overflow DoS.)
+/// (Constraint C28: a missing ceiling is a memory-exhaustion / integer-overflow DoS.
+/// Also requires m_cost >= 8 * p_cost per RFC 9106.)
 pub const ARGON2_CEILING_M_COST_KIB: u32 = 4 * 1024 * 1024; // 4 GiB
 /// Maximum time cost ceiling.
 pub const ARGON2_CEILING_T_COST: u32 = 24;
 /// Maximum parallelism ceiling.
 pub const ARGON2_CEILING_P_COST: u32 = 16;
 
-/// Validate stored Argon2id parameters against the floor **and** ceiling (constraint C2 + A1).
+/// Validate stored Argon2id parameters against the floor **and** ceiling (constraints C2 + C28).
 ///
 /// Returns `Ok(within_recommended)` where `false` means "valid but below current recommended,
 /// warn and offer upgrade". Returns `Err(KdfParamsOutOfRange)` for values that are unsafe to even
 /// attempt (below floor or above ceiling), so we never allocate gigabytes for a hostile file.
 pub fn validate_kdf_params(_m_cost: u32, _t_cost: u32, _p_cost: u32) -> Result<bool> {
-    unimplemented!("M3: KDF param floor+ceiling validation (constraints C2, A1)")
+    unimplemented!("M3: KDF param floor+ceiling validation (constraints C2, C28)")
 }
 
 /// Encrypt a payload with XChaCha20-Poly1305 in STREAM mode (constraint C1).
@@ -49,5 +50,5 @@ pub mod stream {
 
 /// Argon2id key derivation (constraint C2).
 pub mod kdf {
-    //! Argon2id KDF with enforced floor/ceiling (constraints C2, A1).
+    //! Argon2id KDF with enforced floor/ceiling (constraints C2, C28).
 }

@@ -1,7 +1,7 @@
 # Cryptographic Design
 
 This is a reader's summary. The **authoritative, testable** specification is
-[vault_intent.yaml](../vault_intent.yaml) (constraints C1–C6, C9–C10, C25); the research rationale
+[vault_intent.yaml](../vault_intent.yaml) (constraints C1–C6, C9–C10, C25, C28); the research rationale
 is in [research/vault_spec.md](../research/vault_spec.md).
 
 ## Primitives (audited libraries only — constraint C3)
@@ -42,7 +42,9 @@ master password ──Argon2id(salt, m,t,p)──▶ master_key
   explicit recommendation). The **floor is enforced on every open** so a downgraded file is caught;
   a **ceiling** (coverage-gap A1) rejects hostile/overflowing params *before* allocation.
 - **KDBX-4-style integrity**: unauthenticated `SHA-256(header)` for fast corruption detection, plus
-  master-key-**keyed** `HMAC-SHA-256(header)` so an attacker can't downgrade the KDF undetected.
+  data-key-**keyed** `HMAC-SHA-256(header)` so an attacker can't downgrade the KDF undetected —
+  keyed from the data key (not the password-derived master key) so hardware-only unlocks can
+  verify the header too (G0.2, intent v1.3.0).
 
 ## What we deliberately do *not* do
 

@@ -23,11 +23,11 @@ maintainers, per [GOVERNANCE](GOVERNANCE.md) two-maintainer rule). Small, but th
 | # | Decision | Found in | Proposed resolution |
 |---|----------|----------|---------------------|
 | G0.1 | **C1 keystream reuse across re-saves** — same data key + deterministic nonces ⇒ XOR of two saved versions leaks plaintext diffs | [UC-07 §7](docs/specs/UC-07-untrusted-storage-sync.md) | ✅ Amended (intent v1.1.0): per-body-write `nonce_prefix` HKDF salt + SC6 — pending second-maintainer review |
-| G0.2 | **C9/C10 HMAC key source** — header/block HMACs keyed from Argon2id `master_key`, which a hardware-only unlock never derives | [UC-10 §7](docs/specs/UC-10-hostile-file-parsing.md) | Key HMACs from a `data_key`-derived key (HKDF, new info string) |
-| G0.3 | **`upgrade-kdf` rollback blind spot** — header-only ops don't bump `vault_version`; backend can serve the weaker-KDF file undetected | [UC-11 §7](docs/specs/UC-11-kdf-calibration.md) | Make KDF upgrade a full save (version bump) |
-| G0.4 | **Promote C28+ candidates** — KDF ceiling (A1), no-secrets-on-argv (B1, drafted in UC-05), ANSI-safe output (A2) | [gaps doc](research/security_coverage_gaps.md) | Add as C28/C29/C30 with tests |
+| G0.2 | **C9/C10 HMAC key source** — header/block HMACs keyed from Argon2id `master_key`, which a hardware-only unlock never derives | [UC-10 §7](docs/specs/UC-10-hostile-file-parsing.md) | ✅ Amended (intent v1.3.0): HMACs keyed from `data_key`; unwrap-vs-HMAC failures share one ambiguous error — pending second-maintainer review |
+| G0.3 | **`upgrade-kdf` rollback blind spot** — header-only ops don't bump `vault_version`; backend can serve the weaker-KDF file undetected | [UC-11 §7](docs/specs/UC-11-kdf-calibration.md) | ✅ Amended (intent v1.3.0): new `header_generation` u64 in the header, +1 on every save incl. header-only; anchored locally beside `vault_version` (C8/C16) — preserves C4's O(1) rotation |
+| G0.4 | **Promote C28+ candidates** — KDF ceiling (A1), no-secrets-on-argv (B1, drafted in UC-05), ANSI-safe output (A2) | [gaps doc](research/security_coverage_gaps.md) | ✅ Ratified (intent v1.3.0): **C28** KDF ceiling · **C29** no-argv · **C30** ANSI-safe · **C31** presentation-layer boundary; C20's own test de-argv'd; remaining candidates start at C32 |
 | G0.5 | **`release.yml` provenance bug** — SLSA job reads `needs.build.outputs.hashes`; build job defines no outputs | [UC-13 §3.2](docs/specs/UC-13-verifiable-releases.md) | ✅ Fixed: dedicated `hashes` job computes combined SLSA subjects |
-| G0.6 | **C13 thread → helper process** — clear-timer "thread" can't outlive a one-shot CLI | [UC-04 §7](docs/specs/UC-04-model-blind-retrieval.md) | Amend C13 wording to permit the detached holder process |
+| G0.6 | **C13 thread → helper process** — clear-timer "thread" can't outlive a one-shot CLI | [UC-04 §7](docs/specs/UC-04-model-blind-retrieval.md) | ✅ Amended (intent v1.3.0): thread *or* detached holder process; secret via pipe/fd only (C29); clear-iff-unchanged |
 
 ---
 
@@ -39,6 +39,8 @@ lane can build against from that point on.
 ### CP-1 · File format core *(M2)*
 `C7 C8 C9 C10` · specs [UC-03](docs/specs/UC-03-store-secret.md), [UC-10](docs/specs/UC-10-hostile-file-parsing.md)
 - Header parse/serialize (magic, version, KDF params, stanza records; bounded reads, length caps)
+- Includes the v1.3.0 layout additions: `header_generation` u64 (G0.3) and the `kind` entry tag
+  0x000E (UC-17); KDF **ceiling** check (C28) wired into the verification pipeline
 - Bounded **TLV entry/payload model** (tag bit 0x8000 = Protected)
 - HmacBlockStream framing; 10-step verification pipeline order
 - Fuzz targets live: `header_parse`, `stanza_parse`, `block_stream`

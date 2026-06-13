@@ -8,7 +8,7 @@ makes that bar explicit and reachable.
 
 Vault uses **Intent-Verified Development (IVD)**: the design lives as testable constraints in
 [`vault_intent.yaml`](vault_intent.yaml) *before* code is written. Every security property is a
-numbered constraint (`C1`…`C27`) with a `test:` field. When you implement or change behavior:
+numbered constraint (`C1`…`C31`) with a `test:` field. When you implement or change behavior:
 
 1. **Read the relevant constraint(s)** in `vault_intent.yaml`.
 2. **Implement to satisfy them** — for security-critical work, in the segment order in the intent.
@@ -17,7 +17,7 @@ numbered constraint (`C1`…`C27`) with a `test:` field. When you implement or c
 
 If you're proposing new behavior with no constraint yet, open a discussion first — we add the
 constraint (with a test) before the implementation. See [research/security_coverage_gaps.md](research/security_coverage_gaps.md)
-for candidate areas (C28+) we already know we want.
+for candidate areas (C32+) we already know we want.
 
 ## Ground rules for a security codebase
 
@@ -27,7 +27,7 @@ for candidate areas (C28+) we already know we want.
 - **No secrets in `Vec<u8>`/`String`.** Use the `Secret`/`Zeroizing` wrappers (constraint C11).
 - **No `==` on secret bytes.** Use constant-time comparison (`subtle`, constraint C25).
 - **Never log, print, or serialize secret material.** Not even in `Debug`.
-- **Never accept a secret as a command-line argument** (constraint C32 candidate).
+- **Never accept a secret as a command-line argument** (constraint C29).
 
 ## Development setup
 
