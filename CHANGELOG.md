@@ -19,15 +19,16 @@ All notable changes to this project are documented here. The format is based on
 - UI direction (post-v1): shared Rust `vault-core` + thin per-platform shells over a stable FFI
   (Signal/UniFFI pattern); `ratatui` → `egui` → SwiftUI; copy-not-display delivery — `UC-18`.
 - Quick-capture import of an unstructured secrets file with masked interactive review — `UC-17`.
+- **CP-1 file-format core** implemented in `vault-core`: hardened, bounded header / stanza /
+  HmacBlockStream parsers, Argon2id floor+ceiling validation, `data_key`-keyed integrity, and the
+  three fuzz targets wired to the real parsers (constraints `C2`, `C5`, `C7`–`C10`, `C30`). 30 unit
+  tests; `fmt` + `clippy -D warnings` clean on the pinned toolchain.
 
 ### Changed
-- Intent **v1.3.0** (Gate 0 closed — 27 → **31 constraints**): header/block HMACs re-keyed from
-  `data_key` so hardware-only unlocks verify integrity (`C9`/`C10`, G0.2); new `header_generation`
-  counter closes the header-only rollback blind spot (`C8`/`C16`, G0.3); ratified **C28** KDF
-  parameter ceiling, **C29** no-secrets-on-argv, **C30** terminal-output sanitization, **C31**
-  presentation-layer secret boundary (G0.4); `C13` clear-timer may be a detached holder process
-  (G0.6); `C20`'s acceptance test no longer passes a secret on argv; entry `kind` discriminator
-  added to `C18`'s field list (UC-17).
+- Intent **v1.4.0** is canonical (see the Security section). A parallel `main`-side Gate-0 pass
+  (v1.3.0, C28–C31) was **reconciled into v1.4.0** during the spec-hardening merge: KDF ceiling is
+  folded into `C2` (not a separate constraint), G0.3 is resolved as an `upgrade-kdf` full save (no
+  `header_generation` field), and the C28–C34 numbering below is authoritative.
 - Intent **v1.2.0**: extended `C27`'s forward constraint to UI surfaces (copy-not-display, no
   plaintext marshalled into an unzeroable managed-runtime heap) and clarified the GUI non-goal.
 - Intent **v1.1.0**: fixed `C1`/`C8` XChaCha20 keystream reuse across saves via a per-body-write
