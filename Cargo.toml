@@ -29,7 +29,7 @@ hkdf             = "0.12"       # C5  HKDF-SHA-256 key wrapping
 hmac             = "0.12"       # C9/C10 header + block HMAC
 sha2             = "0.10"       # C9  SHA-256 header hash
 subtle           = "2"          # C25 constant-time comparison
-getrandom        = "0.2"        # C4/C26 OS CSPRNG
+getrandom        = "0.3"        # C4/C26 OS CSPRNG
 # --- Memory hardening ---
 zeroize          = { version = "1", features = ["derive"] }   # C11
 secrecy          = "0.8"        # C11 secret wrappers
