@@ -32,7 +32,7 @@ subtle           = "2"          # C25 constant-time comparison
 getrandom        = "0.2"        # C4/C26 OS CSPRNG
 # --- Memory hardening ---
 zeroize          = { version = "1", features = ["derive"] }   # C11
-secrecy          = "0.8"        # C11 secret wrappers
+secrecy          = "0.10"        # C11 secret wrappers
 # --- CLI / support ---
 clap             = { version = "4", features = ["derive"] }   # C21 CLI
 thiserror        = "2"
