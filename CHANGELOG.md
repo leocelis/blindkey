@@ -59,6 +59,10 @@ All notable changes to this project are documented here. The format is based on
   (interactive; **Enter at the password prompt generates a strong one**), `edit NAME` (per-field,
   Enter keeps the current value, optional password rotation), `rm NAME` (confirm on a TTY). The core
   gains `Vault::entry_mut` and `Vault::remove`. You can now rotate a weak imported password in place.
+- **CLI integration test + KDF-cost flags.** [`crates/vault-cli/tests/cli.rs`](crates/vault-cli/tests/cli.rs)
+  drives the real binary end-to-end (init → import the sample → ls → get → wrong-password → rm → gen)
+  and asserts the encrypted file leaks neither secrets nor titles (C18). `init` gains hidden
+  `--kdf-m-cost/-t-cost/-p-cost` flags (advanced) so tests and slower machines can tune Argon2id.
 - **Project-scoped Rust toolchain** ([`scripts/setup-rust.sh`](scripts/setup-rust.sh),
   [`scripts/dev-env.sh`](scripts/dev-env.sh), [`.envrc`](.envrc)): the toolchain installs into
   `./.toolchain` (git-ignored) via rustup's `RUSTUP_HOME`/`CARGO_HOME` + `--no-modify-path` — never

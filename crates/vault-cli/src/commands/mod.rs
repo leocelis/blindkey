@@ -21,7 +21,11 @@ type CmdResult = Result<(), String>;
 /// Route a parsed command to its handler.
 pub fn dispatch(vault_opt: Option<PathBuf>, command: Command) -> CmdResult {
     match command {
-        Command::Init => cmd_init(&vault_path(vault_opt)?),
+        Command::Init {
+            kdf_m_cost,
+            kdf_t_cost,
+            kdf_p_cost,
+        } => cmd_init(&vault_path(vault_opt)?, kdf_m_cost, kdf_t_cost, kdf_p_cost),
         Command::Import { format, source } => cmd_import(&vault_path(vault_opt)?, &format, &source),
         Command::Ls { search } => cmd_ls(&vault_path(vault_opt)?, search.as_deref()),
         Command::Get {
@@ -45,7 +49,7 @@ pub fn dispatch(vault_opt: Option<PathBuf>, command: Command) -> CmdResult {
 
 // ─── commands ──────────────────────────────────────────────────────────────
 
-fn cmd_init(path: &Path) -> CmdResult {
+fn cmd_init(path: &Path, m_cost: u32, t_cost: u32, p_cost: u32) -> CmdResult {
     if path.exists() {
         return Err(format!(
             "a vault already exists at {} (refusing to overwrite)",
@@ -54,7 +58,8 @@ fn cmd_init(path: &Path) -> CmdResult {
     }
     let password = prompt_password(true)?;
     eprintln!("Deriving key (Argon2id)…");
-    let mut vault = Vault::create_default(password.as_bytes()).map_err(|e| e.to_string())?;
+    let mut vault =
+        Vault::create(password.as_bytes(), m_cost, t_cost, p_cost).map_err(|e| e.to_string())?;
     let bytes = vault.save().map_err(|e| e.to_string())?;
     write_vault(path, &bytes)?;
     eprintln!("Created vault at {}", path.display());

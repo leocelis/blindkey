@@ -30,7 +30,17 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Create a new vault (prompts for a master password).
-    Init,
+    Init {
+        /// Argon2id memory cost in KiB (advanced; default 64 MiB).
+        #[arg(long, hide = true, default_value_t = 65_536)]
+        kdf_m_cost: u32,
+        /// Argon2id time cost (advanced; default 3).
+        #[arg(long, hide = true, default_value_t = 3)]
+        kdf_t_cost: u32,
+        /// Argon2id parallelism (advanced; default 4).
+        #[arg(long, hide = true, default_value_t = 4)]
+        kdf_p_cost: u32,
+    },
     /// Import secrets from a file (e.g. a messy `keys.txt`) into the vault.
     Import {
         /// Import format. Currently: `raw` (lenient `keys.txt` parser).
