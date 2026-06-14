@@ -210,6 +210,23 @@ impl Vault {
             .iter()
             .find(|e| e.title.to_lowercase() == t)
     }
+
+    /// Find an entry by exact (case-insensitive) title, mutably (for `edit`).
+    pub fn entry_mut(&mut self, title: &str) -> Option<&mut Entry> {
+        let t = title.to_lowercase();
+        self.payload
+            .entries
+            .iter_mut()
+            .find(|e| e.title.to_lowercase() == t)
+    }
+
+    /// Remove an entry by exact (case-insensitive) title. Returns whether one was removed.
+    pub fn remove(&mut self, title: &str) -> bool {
+        let t = title.to_lowercase();
+        let before = self.payload.entries.len();
+        self.payload.entries.retain(|e| e.title.to_lowercase() != t);
+        self.payload.entries.len() != before
+    }
 }
 
 #[cfg(test)]
@@ -311,5 +328,21 @@ mod tests {
         assert_eq!(v.search("hub").len(), 1);
         assert!(v.get("github-work").is_some()); // case-insensitive
         assert!(v.get("nope").is_none());
+    }
+
+    #[test]
+    fn edit_and_remove_persist() {
+        let mut v = Vault::create(b"pw", M, T, P).unwrap();
+        v.add_entry(entry("svc", b"old"));
+        // edit in place
+        v.entry_mut("SVC").unwrap().password = Protected::new(b"new".to_vec());
+        // remove a missing entry → false; existing → true
+        assert!(!v.remove("nope"));
+        let bytes = v.save().unwrap();
+
+        let mut opened = Vault::open(&bytes, b"pw").unwrap();
+        assert_eq!(opened.get("svc").unwrap().password.expose(), b"new");
+        assert!(opened.remove("svc"));
+        assert!(opened.get("svc").is_none());
     }
 }

@@ -17,6 +17,7 @@ path = "src/main.rs"
 [dependencies]
 vault-core = { path = "../vault-core", version = "0.0.0" }
 clap.workspace = true
+getrandom.workspace = true
 rpassword.workspace = true
 zeroize.workspace = true
 secrecy.workspace = true

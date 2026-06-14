@@ -7,8 +7,10 @@
 use std::io::{IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use vault_core::format::entry::CustomValue;
+use vault_core::format::entry::{CustomValue, Entry, Protected};
+use vault_core::gen::{password as gen_password, Charset};
 use vault_core::Vault;
 use zeroize::Zeroizing;
 
@@ -34,11 +36,10 @@ pub fn dispatch(vault_opt: Option<PathBuf>, command: Command) -> CmdResult {
             charset,
             words,
         } => cmd_gen(length, &charset, words),
-        Command::Add { .. }
-        | Command::Edit { .. }
-        | Command::Rm { .. }
-        | Command::Lock
-        | Command::Tune => Err("that command is not implemented yet".to_string()),
+        Command::Add { name } => cmd_add(&vault_path(vault_opt)?, &name),
+        Command::Edit { name } => cmd_edit(&vault_path(vault_opt)?, &name),
+        Command::Rm { name } => cmd_rm(&vault_path(vault_opt)?, &name),
+        Command::Lock | Command::Tune => Err("that command is not implemented yet".to_string()),
     }
 }
 
@@ -193,7 +194,159 @@ fn cmd_gen(length: usize, charset: &str, words: Option<usize>) -> CmdResult {
     Ok(())
 }
 
+fn cmd_add(path: &Path, name: &str) -> CmdResult {
+    let password = prompt_password(false)?;
+    let bytes = read_vault(path)?;
+    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    if vault.get(name).is_some() {
+        return Err(format!(
+            "an entry titled {name:?} already exists; use `edit`"
+        ));
+    }
+    let username = prompt_line("Username (optional): ")?;
+    let url = prompt_line("URL (optional): ")?;
+    let entered = prompt_secret_value("Password (Enter to generate): ")?;
+    let mut generated = false;
+    let secret = if entered.is_empty() {
+        generated = true;
+        gen_password(Charset::Alnum, 20).map_err(|e| e.to_string())?
+    } else {
+        entered
+    };
+    let notes = prompt_line("Notes (optional): ")?;
+
+    let now = now_unix();
+    vault.add_entry(Entry {
+        id: random_id()?,
+        title: name.to_string(),
+        username,
+        password: Protected::new(secret.as_bytes().to_vec()),
+        url,
+        notes,
+        tags: Vec::new(),
+        otp_secret: None,
+        created_at: now,
+        modified_at: now,
+        expires_at: None,
+        custom_fields: Vec::new(),
+    });
+    let out = vault.save().map_err(|e| e.to_string())?;
+    write_vault(path, &out)?;
+    if generated {
+        eprintln!(
+            "Added {name:?} with a generated 20-char password — `vault get {name}` to copy it."
+        );
+    } else {
+        eprintln!("Added {name:?}.");
+    }
+    Ok(())
+}
+
+fn cmd_edit(path: &Path, name: &str) -> CmdResult {
+    let password = prompt_password(false)?;
+    let bytes = read_vault(path)?;
+    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let (cur_user, cur_url, cur_notes) = {
+        let e = vault
+            .get(name)
+            .ok_or_else(|| format!("no entry titled {name:?}"))?;
+        (e.username.clone(), e.url.clone(), e.notes.clone())
+    };
+    let username = prompt_line_default("Username", &cur_user)?;
+    let url = prompt_line_default("URL", &cur_url)?;
+    let new_secret = if confirm("Change the password?")? {
+        let entered = prompt_secret_value("New password (Enter to generate): ")?;
+        Some(if entered.is_empty() {
+            gen_password(Charset::Alnum, 20).map_err(|e| e.to_string())?
+        } else {
+            entered
+        })
+    } else {
+        None
+    };
+    let notes = prompt_line_default("Notes", &cur_notes)?;
+
+    let e = vault.entry_mut(name).expect("entry existed a moment ago");
+    e.username = username;
+    e.url = url;
+    e.notes = notes;
+    if let Some(s) = &new_secret {
+        e.password = Protected::new(s.as_bytes().to_vec());
+    }
+    e.modified_at = now_unix();
+    let out = vault.save().map_err(|e| e.to_string())?;
+    write_vault(path, &out)?;
+    eprintln!("Updated {name:?}.");
+    Ok(())
+}
+
+fn cmd_rm(path: &Path, name: &str) -> CmdResult {
+    let password = prompt_password(false)?;
+    let bytes = read_vault(path)?;
+    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    if vault.get(name).is_none() {
+        return Err(format!("no entry titled {name:?}"));
+    }
+    if std::io::stdin().is_terminal()
+        && !confirm(&format!("Delete {name:?}? This cannot be undone."))?
+    {
+        return Err("aborted".to_string());
+    }
+    vault.remove(name);
+    let out = vault.save().map_err(|e| e.to_string())?;
+    write_vault(path, &out)?;
+    eprintln!("Deleted {name:?}.");
+    Ok(())
+}
+
 // ─── helpers ───────────────────────────────────────────────────────────────
+
+fn now_unix() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn random_id() -> Result<[u8; 16], String> {
+    let mut id = [0u8; 16];
+    getrandom::getrandom(&mut id).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+/// Prompt for a non-secret line (echoed).
+fn prompt_line(label: &str) -> Result<String, String> {
+    eprint!("{label}");
+    std::io::stderr().flush().ok();
+    let mut s = String::new();
+    std::io::stdin()
+        .read_line(&mut s)
+        .map_err(|e| e.to_string())?;
+    Ok(s.trim().to_string())
+}
+
+/// Prompt for a non-secret line showing a default; empty input keeps the default.
+fn prompt_line_default(label: &str, default: &str) -> Result<String, String> {
+    eprint!("{label} [{default}]: ");
+    std::io::stderr().flush().ok();
+    let mut s = String::new();
+    std::io::stdin()
+        .read_line(&mut s)
+        .map_err(|e| e.to_string())?;
+    let t = s.trim();
+    Ok(if t.is_empty() {
+        default.to_string()
+    } else {
+        t.to_string()
+    })
+}
+
+/// Prompt for a secret value without echo (entry passwords). Never from argv (C29).
+fn prompt_secret_value(label: &str) -> Result<Zeroizing<String>, String> {
+    Ok(Zeroizing::new(
+        rpassword::prompt_password(label).map_err(|e| e.to_string())?,
+    ))
+}
 
 fn vault_path(opt: Option<PathBuf>) -> Result<PathBuf, String> {
     if let Some(p) = opt {

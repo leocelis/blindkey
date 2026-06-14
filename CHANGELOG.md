@@ -55,6 +55,10 @@ All notable changes to this project are documented here. The format is based on
   **rejection sampling** (no modulo bias): `--charset alnum|ascii`, `--length 8..256`, with the
   entropy in bits reported. Lets you rotate the weak passwords an import surfaces. (The diceware
   `words` mode is pending the bundled EFF wordlist.)
+- **Entry management — `vault add` / `edit` / `rm`.** Completes the daily-use manager: `add NAME`
+  (interactive; **Enter at the password prompt generates a strong one**), `edit NAME` (per-field,
+  Enter keeps the current value, optional password rotation), `rm NAME` (confirm on a TTY). The core
+  gains `Vault::entry_mut` and `Vault::remove`. You can now rotate a weak imported password in place.
 - **Project-scoped Rust toolchain** ([`scripts/setup-rust.sh`](scripts/setup-rust.sh),
   [`scripts/dev-env.sh`](scripts/dev-env.sh), [`.envrc`](.envrc)): the toolchain installs into
   `./.toolchain` (git-ignored) via rustup's `RUSTUP_HOME`/`CARGO_HOME` + `--no-modify-path` — never

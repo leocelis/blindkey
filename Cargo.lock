@@ -694,6 +694,7 @@ name = "vault-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "getrandom 0.2.17",
  "rpassword",
  "secrecy",
  "vault-core",
