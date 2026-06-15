@@ -28,6 +28,11 @@ use crate::format::{block_stream, Header, KdfParams, Payload};
 use crate::memory::DataKey;
 use crate::{Error, Result, FORMAT_VERSION};
 
+/// A YubiKey HMAC responder: given the 32-byte challenge stored in a 2FA stanza, it returns the
+/// key's HMAC-SHA1 response (the physical-tap step). Lives behind a `dyn` so `vault-core` never
+/// depends on the USB layer (the CLI/GUI supply the closure; `vault-hardware` does the I/O).
+type HwResponder<'a> = &'a mut dyn FnMut(&[u8; 32]) -> Result<Zeroizing<Vec<u8>>>;
+
 /// An opened (unlocked) vault: the plaintext header, the unwrapped data key, and the decrypted
 /// payload. Secrets live in zeroizing/`Secret` types (C11).
 #[derive(Debug)]
@@ -113,22 +118,26 @@ impl Vault {
     /// [`Error::HeaderTampered`]; body tampering fails with [`Error::BodyAuth`]. No plaintext is
     /// released before every layer's tag verifies.
     pub fn open(bytes: &[u8], password: &[u8]) -> Result<Vault> {
-        let header = Header::parse(bytes)?;
+        Self::open_inner(bytes, password, None)
+    }
 
-        let pw_stanza = header
-            .stanzas
-            .iter()
-            .find(|s| s.stanza_type == kind::PASSWORD)
-            .ok_or(Error::HeaderAuth)?;
-        let data_key = envelope::unwrap_password_stanza(
-            pw_stanza,
-            password,
-            &header.kdf.salt,
-            &header.vault_id,
-            header.kdf.m_cost,
-            header.kdf.t_cost,
-            header.kdf.p_cost,
-        )?;
+    /// Open a vault that may be protected by a YubiKey second factor (UC-09 AND model).
+    ///
+    /// If the file has a composite 2FA stanza, `respond` is called with the stored 32-byte challenge
+    /// and must return the YubiKey's HMAC-SHA1 response (the physical-tap step); both the password
+    /// and that response are required. For a password-only vault `respond` is never invoked, so this
+    /// is a safe superset of [`Vault::open`].
+    pub fn open_2fa(
+        bytes: &[u8],
+        password: &[u8],
+        mut respond: impl FnMut(&[u8; 32]) -> Result<Zeroizing<Vec<u8>>>,
+    ) -> Result<Vault> {
+        Self::open_inner(bytes, password, Some(&mut respond))
+    }
+
+    fn open_inner(bytes: &[u8], password: &[u8], hw: Option<HwResponder<'_>>) -> Result<Vault> {
+        let header = Header::parse(bytes)?;
+        let data_key = Self::unwrap_data_key(&header, password, hw)?;
 
         // C9 step 4: the factor is now proven valid, so a header HMAC mismatch is real tampering.
         header.verify_hmac(data_key.expose_secret())?;
@@ -146,6 +155,95 @@ impl Vault {
             data_key,
             payload,
         })
+    }
+
+    /// Recover the data key from the appropriate stanza: the composite 2FA stanza when a hardware
+    /// responder is available, otherwise a password stanza (a normal vault, or the recovery stanza
+    /// of a 2FA vault unlocked by its recovery code passed as `password`).
+    fn unwrap_data_key(
+        header: &Header,
+        password: &[u8],
+        hw: Option<HwResponder<'_>>,
+    ) -> Result<DataKey> {
+        let (m, t, p) = (header.kdf.m_cost, header.kdf.t_cost, header.kdf.p_cost);
+        if let Some(respond) = hw {
+            if let Some(s) = header
+                .stanzas
+                .iter()
+                .find(|s| s.stanza_type == kind::PW_YUBIKEY)
+            {
+                let challenge = envelope::yubikey_challenge(s)?;
+                let resp = respond(&challenge)?;
+                return envelope::unwrap_yubikey_2fa_stanza(
+                    s,
+                    password,
+                    &resp,
+                    &header.kdf.salt,
+                    &header.vault_id,
+                    m,
+                    t,
+                    p,
+                );
+            }
+        }
+        let s = header
+            .stanzas
+            .iter()
+            .find(|s| s.stanza_type == kind::PASSWORD)
+            .ok_or(Error::HeaderAuth)?;
+        envelope::unwrap_password_stanza(s, password, &header.kdf.salt, &header.vault_id, m, t, p)
+    }
+
+    /// Whether opening this serialized vault requires a YubiKey (it carries a composite 2FA stanza).
+    pub fn requires_yubikey(bytes: &[u8]) -> bool {
+        Header::parse(bytes)
+            .map(|h| h.stanzas.iter().any(|s| s.stanza_type == kind::PW_YUBIKEY))
+            .unwrap_or(false)
+    }
+
+    /// Whether this opened vault is protected by a YubiKey second factor.
+    pub fn is_2fa(&self) -> bool {
+        self.header
+            .stanzas
+            .iter()
+            .any(|s| s.stanza_type == kind::PW_YUBIKEY)
+    }
+
+    /// Enroll a YubiKey as a **required** second factor (UC-09 AND model). Replaces the password
+    /// stanza with a composite password+YubiKey stanza, plus a recovery-code stanza (anti-lockout).
+    ///
+    /// `password` is the current master password (re-wrapped into the composite), `hw_response` the
+    /// key's HMAC of `challenge`, and `recovery_code` a high-entropy fallback the caller shows the
+    /// user exactly once. The caller MUST `save()` afterward.
+    pub fn enroll_yubikey_2fa(
+        &mut self,
+        password: &[u8],
+        hw_response: &[u8],
+        challenge: &[u8; 32],
+        recovery_code: &[u8],
+    ) -> Result<()> {
+        let salt = self.header.kdf.salt;
+        let vid = self.header.vault_id;
+        let (m, t, p) = (
+            self.header.kdf.m_cost,
+            self.header.kdf.t_cost,
+            self.header.kdf.p_cost,
+        );
+        let dk = Zeroizing::new(*self.data_key.expose_secret());
+        let yubikey = envelope::wrap_yubikey_2fa_stanza(
+            &dk,
+            password,
+            hw_response,
+            challenge,
+            &salt,
+            &vid,
+            m,
+            t,
+            p,
+        )?;
+        let recovery = envelope::wrap_password_stanza(&dk, recovery_code, &salt, &vid, m, t, p)?;
+        self.header.stanzas = vec![yubikey, recovery];
+        Ok(())
     }
 
     /// Serialize and encrypt the vault to its on-disk bytes (a body-writing save).
@@ -464,6 +562,52 @@ mod tests {
         assert_eq!(
             &opened.get("svc0").unwrap().password.expose()[..],
             b"secret-value-xyz-1234567890"
+        );
+    }
+
+    #[test]
+    fn yubikey_2fa_enroll_open_and_recovery() {
+        let hw: &[u8] = b"mock-yubikey-hmac-response";
+        let challenge = [0x55u8; 32];
+        let recovery: &[u8] = b"RECOVERY-CODE-high-entropy-7f3a91";
+
+        let mut v = Vault::create(b"masterpw", M, T, P).unwrap();
+        v.add_entry(entry("svc", b"s3cr3t"));
+        let _ = v.save().unwrap(); // password-only so far
+        v.enroll_yubikey_2fa(b"masterpw", hw, &challenge, recovery)
+            .unwrap();
+        assert!(v.is_2fa());
+        let bytes = v.save().unwrap();
+        assert!(Vault::requires_yubikey(&bytes));
+
+        // password + the (mock) key response → opens; the responder gets the stored challenge.
+        let opened = Vault::open_2fa(&bytes, b"masterpw", |c| {
+            assert_eq!(c, &challenge);
+            Ok(Zeroizing::new(hw.to_vec()))
+        })
+        .unwrap();
+        assert_eq!(
+            opened.get("svc").unwrap().password.expose().as_slice(),
+            b"s3cr3t"
+        );
+
+        // password ALONE (no key) → fails: true 2FA.
+        assert!(matches!(
+            Vault::open(&bytes, b"masterpw"),
+            Err(Error::HeaderAuth)
+        ));
+        // wrong key response → fails.
+        assert!(matches!(
+            Vault::open_2fa(&bytes, b"masterpw", |_| Ok(Zeroizing::new(
+                b"wrong".to_vec()
+            ))),
+            Err(Error::HeaderAuth)
+        ));
+        // recovery code (via the password path) → opens, for anti-lockout.
+        let rec = Vault::open(&bytes, recovery).unwrap();
+        assert_eq!(
+            rec.get("svc").unwrap().password.expose().as_slice(),
+            b"s3cr3t"
         );
     }
 }
