@@ -15,7 +15,7 @@
 mod clip;
 
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use eframe::egui;
 use vault_core::format::entry::{CustomValue, Entry, Protected};
@@ -29,6 +29,8 @@ const CLIPBOARD_TIMEOUT_SECS: u64 = 30;
 const GENERATED_LEN: usize = 20;
 /// Word count for a generated passphrase (built-in 256-word list → 8 bits/word; 8 words ≈ 64 bits).
 const GENERATED_WORDS: usize = 8;
+/// Default idle auto-lock timeout in seconds (0 = never). Configurable in-app (UC-06 / S-10).
+const DEFAULT_AUTOLOCK_SECS: u64 = 300;
 
 fn main() -> eframe::Result<()> {
     vault_core::memory::harden_process(); // C25: disable core dumps before touching secrets
@@ -111,6 +113,7 @@ enum Action {
     CopyUsername(usize),
     Edit(usize),
     SetPadding(bool),
+    SetAutoLock(u64),
 }
 
 struct VaultApp {
@@ -138,6 +141,10 @@ struct VaultApp {
 
     status: String,
     error: Option<String>,
+
+    // auto-lock (UC-06 / S-10)
+    auto_lock_secs: u64,
+    last_activity: Instant,
 }
 
 impl VaultApp {
@@ -159,6 +166,50 @@ impl VaultApp {
             rollback_warning: None,
             status: String::new(),
             error: None,
+            auto_lock_secs: load_auto_lock_secs(),
+            last_activity: Instant::now(),
+        }
+    }
+
+    /// Lock the vault when the idle timeout elapses or the window is minimized (UC-06). Returns
+    /// `true` if it locked. Also schedules the next idle check so the timer fires while idle.
+    fn enforce_auto_lock(&mut self, ctx: &egui::Context) {
+        // Any input this frame counts as activity.
+        let active = ctx.input(|i| {
+            i.pointer.is_moving()
+                || i.pointer.any_down()
+                || !i.keys_down.is_empty()
+                || i.events.iter().any(|e| {
+                    matches!(
+                        e,
+                        egui::Event::Text(_)
+                            | egui::Event::Key { .. }
+                            | egui::Event::PointerButton { .. }
+                            | egui::Event::MouseWheel { .. }
+                    )
+                })
+        });
+        if active {
+            self.last_activity = Instant::now();
+        }
+
+        // Lock immediately if the window is minimized (secrets shouldn't sit decrypted off-screen).
+        let minimized = ctx.input(|i| i.viewport().minimized).unwrap_or(false);
+        if minimized {
+            self.lock();
+            self.status = "Locked (window minimized).".into();
+            return;
+        }
+
+        if self.auto_lock_secs > 0 {
+            let timeout = Duration::from_secs(self.auto_lock_secs);
+            if self.last_activity.elapsed() >= timeout {
+                self.lock();
+                self.status = "Locked after inactivity.".into();
+                return;
+            }
+            // Keep the update loop ticking so the timer is checked even with no input.
+            ctx.request_repaint_after(Duration::from_secs(1));
         }
     }
 
@@ -186,6 +237,7 @@ impl VaultApp {
                 self.pw_input.zeroize();
                 self.pw_confirm.zeroize();
                 self.focus_search = true;
+                self.last_activity = Instant::now();
                 self.status = if self.rollback_warning.is_some() {
                     "Unlocked — review the rollback warning.".into()
                 } else if weak {
@@ -236,6 +288,7 @@ impl VaultApp {
         advance_anchor_for(&v); // C16: seed the local anchor at the initial version
         self.vault = Some(v);
         self.vault_exists = true;
+        self.last_activity = Instant::now();
         self.pw_input.zeroize();
         self.pw_confirm.zeroize();
         self.focus_search = true;
@@ -600,9 +653,22 @@ impl VaultApp {
             ui.horizontal(|ui| {
                 ui.heading("Vault");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("Lock").clicked() {
+                    if ui.button("🔒 Lock").clicked() {
                         action = Some(Action::Lock);
                     }
+                    let mut al = self.auto_lock_secs;
+                    egui::ComboBox::from_id_salt("autolock")
+                        .selected_text(format!("Auto-lock: {}", auto_lock_label(al)))
+                        .show_ui(ui, |ui| {
+                            for secs in [60u64, 300, 900, 1800, 0] {
+                                if ui
+                                    .selectable_value(&mut al, secs, auto_lock_label(secs))
+                                    .clicked()
+                                {
+                                    action = Some(Action::SetAutoLock(secs));
+                                }
+                            }
+                        });
                     if ui
                         .checkbox(&mut pad_on, "Pad size")
                         .on_hover_text(
@@ -775,6 +841,12 @@ impl VaultApp {
                 Action::CopyUsername(i) => self.copy_username(i),
                 Action::Edit(i) => self.begin_edit(i),
                 Action::SetPadding(on) => self.set_padding(on),
+                Action::SetAutoLock(secs) => {
+                    self.auto_lock_secs = secs;
+                    self.last_activity = Instant::now();
+                    save_auto_lock_secs(secs);
+                    self.status = format!("Auto-lock set to {}.", auto_lock_label(secs));
+                }
             }
         }
     }
@@ -1044,6 +1116,9 @@ impl VaultApp {
 impl eframe::App for VaultApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.vault.is_some() {
+            self.enforce_auto_lock(ctx); // may lock → re-check below
+        }
+        if self.vault.is_some() {
             self.handle_dropped_files(ctx);
             self.unlocked_screen(ctx);
             self.editor_window(ctx);
@@ -1080,6 +1155,52 @@ fn rollback_check_and_advance(vault: &Vault) -> Option<String> {
             "⚠ Rollback warning: this vault is version {got}, but this machine last saw {expected}. \
              The storage backend may have served an older copy — verify before relying on it."
         )),
+    }
+}
+
+fn auto_lock_label(secs: u64) -> &'static str {
+    match secs {
+        0 => "Never",
+        60 => "1m",
+        300 => "5m",
+        900 => "15m",
+        1800 => "30m",
+        _ => "custom",
+    }
+}
+
+/// Path to the GUI config file (`<home>/.vault/config`), independent of the chosen vault file.
+fn config_path() -> Option<PathBuf> {
+    default_vault_path()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("config")))
+}
+
+/// Load the idle auto-lock timeout from the config file, defaulting if absent/unreadable.
+fn load_auto_lock_secs() -> u64 {
+    let Some(p) = config_path() else {
+        return DEFAULT_AUTOLOCK_SECS;
+    };
+    let Ok(text) = std::fs::read_to_string(&p) else {
+        return DEFAULT_AUTOLOCK_SECS;
+    };
+    for line in text.lines() {
+        if let Some(v) = line.trim().strip_prefix("auto_lock_secs=") {
+            if let Ok(n) = v.trim().parse::<u64>() {
+                return n;
+            }
+        }
+    }
+    DEFAULT_AUTOLOCK_SECS
+}
+
+/// Persist the idle auto-lock timeout (best-effort).
+fn save_auto_lock_secs(secs: u64) {
+    if let Some(p) = config_path() {
+        if let Some(dir) = p.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let _ = std::fs::write(&p, format!("auto_lock_secs={secs}\n"));
     }
 }
 

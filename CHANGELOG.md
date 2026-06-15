@@ -143,6 +143,12 @@ All notable changes to this project are documented here. The format is based on
   (e.g. the EFF large list, ~12.9 bits/word — plain or `dice⇥word` lines). Entropy is reported.
   `gen::passphrase()`/`passphrase_entropy_bits()` added. 4 new tests. *(The full EFF list isn't
   bundled — it can't be reproduced offline without fabricating it; download it and pass `--wordlist`.)*
+- **Auto-lock in the desktop app (UC-06 / S-10).** The GUI no longer stays unlocked forever: it
+  clears the decrypted vault from memory and returns to the unlock screen after an **idle timeout**
+  (default 5 min, chosen from a top-bar **Auto-lock** menu: 1m/5m/15m/30m/Never, persisted to
+  `~/.vault/config`) and **immediately when the window is minimized**. The idle timer keeps ticking
+  while the app is idle (`request_repaint_after`). Closes the "decrypted vault sits in RAM
+  indefinitely" gap for the long-lived shell (the one-shot CLI already exits after each command).
 - **Project-scoped Rust toolchain** ([`scripts/setup-rust.sh`](scripts/setup-rust.sh),
   [`scripts/dev-env.sh`](scripts/dev-env.sh), [`.envrc`](.envrc)): the toolchain installs into
   `./.toolchain` (git-ignored) via rustup's `RUSTUP_HOME`/`CARGO_HOME` + `--no-modify-path` — never
