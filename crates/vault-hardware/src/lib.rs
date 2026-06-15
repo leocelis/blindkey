@@ -9,6 +9,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+pub mod yubikey;
+
 /// FIDO2 hmac-secret / PRF via raw CTAP2 (libfido2) — **never** the browser WebAuthn path.
 /// Salt to authenticator = SHA-256(vault_id || b"fido2-hw-v1"); output → HKDF → wrapping key
 /// (constraints C6, C14).

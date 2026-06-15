@@ -3908,6 +3908,7 @@ name = "vault-hardware"
 version = "0.0.0"
 dependencies = [
  "vault-core",
+ "zeroize",
 ]
 
 [[package]]
