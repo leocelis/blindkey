@@ -231,6 +231,51 @@ impl Vault {
         self.payload.entries.retain(|e| e.title.to_lowercase() != t);
         self.payload.entries.len() != before
     }
+
+    /// Classify the stored Argon2id parameters against policy (constraint C2). `BelowFloor` means
+    /// the caller should warn and offer `upgrade-kdf`.
+    pub fn kdf_strength(&self) -> crate::crypto::KdfStrength {
+        crate::crypto::validate_kdf_params(
+            self.header.kdf.m_cost,
+            self.header.kdf.t_cost,
+            self.header.kdf.p_cost,
+        )
+        .unwrap_or(crate::crypto::KdfStrength::BelowFloor)
+    }
+
+    /// Re-wrap the password stanza under new Argon2id parameters (constraint C2 `upgrade-kdf`).
+    ///
+    /// The data key and salt are unchanged (so the payload need not be re-encrypted for the key to
+    /// stay valid), but the caller MUST `save()` afterward — a full body-writing save that bumps the
+    /// version counter (G0.3) so a sync backend cannot serve the old weak-KDF file undetected.
+    /// Requires the current password to re-derive the wrapping key.
+    pub fn change_kdf(
+        &mut self,
+        password: &[u8],
+        m_cost: u32,
+        t_cost: u32,
+        p_cost: u32,
+    ) -> Result<()> {
+        let new_stanza = envelope::wrap_password_stanza(
+            self.data_key.expose_secret(),
+            password,
+            &self.header.kdf.salt,
+            &self.header.vault_id,
+            m_cost,
+            t_cost,
+            p_cost,
+        )?;
+        for s in &mut self.header.stanzas {
+            if s.stanza_type == kind::PASSWORD {
+                *s = new_stanza;
+                break;
+            }
+        }
+        self.header.kdf.m_cost = m_cost;
+        self.header.kdf.t_cost = t_cost;
+        self.header.kdf.p_cost = p_cost;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -332,6 +377,25 @@ mod tests {
         assert_eq!(v.search("hub").len(), 1);
         assert!(v.get("github-work").is_some()); // case-insensitive
         assert!(v.get("nope").is_none());
+    }
+
+    #[test]
+    fn change_kdf_rewraps_and_reopens() {
+        let mut v = Vault::create(b"pw", M, T, P).unwrap();
+        v.add_entry(entry("x", b"s"));
+        let _ = v.save().unwrap();
+        v.change_kdf(b"pw", 128, 2, 1).unwrap(); // new params (m >= 8p)
+        let bytes = v.save().unwrap();
+        let opened = Vault::open(&bytes, b"pw").unwrap();
+        assert_eq!(
+            opened.kdf_strength(),
+            crate::crypto::KdfStrength::BelowFloor
+        );
+        assert_eq!(opened.get("x").unwrap().password.expose(), b"s");
+        assert!(matches!(
+            Vault::open(&bytes, b"wrong"),
+            Err(Error::HeaderAuth)
+        ));
     }
 
     #[test]

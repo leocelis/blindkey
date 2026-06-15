@@ -43,6 +43,11 @@ pub fn dispatch(vault_opt: Option<PathBuf>, command: Command) -> CmdResult {
         Command::Add { name } => cmd_add(&vault_path(vault_opt)?, &name),
         Command::Edit { name } => cmd_edit(&vault_path(vault_opt)?, &name),
         Command::Rm { name } => cmd_rm(&vault_path(vault_opt)?, &name),
+        Command::UpgradeKdf {
+            kdf_m_cost,
+            kdf_t_cost,
+            kdf_p_cost,
+        } => cmd_upgrade_kdf(&vault_path(vault_opt)?, kdf_m_cost, kdf_t_cost, kdf_p_cost),
         Command::Lock | Command::Tune => Err("that command is not implemented yet".to_string()),
     }
 }
@@ -102,8 +107,7 @@ fn cmd_import(path: &Path, format: &str, source: &Path) -> CmdResult {
     }
 
     let password = prompt_password(false)?;
-    let bytes = read_vault(path)?;
-    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let mut vault = open_vault(path, password.as_bytes())?;
     let n = result.entries.len();
     for entry in result.entries {
         vault.add_entry(entry);
@@ -116,8 +120,7 @@ fn cmd_import(path: &Path, format: &str, source: &Path) -> CmdResult {
 
 fn cmd_ls(path: &Path, search: Option<&str>) -> CmdResult {
     let password = prompt_password(false)?;
-    let bytes = read_vault(path)?;
-    let vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let vault = open_vault(path, password.as_bytes())?;
     let entries = match search {
         Some(q) => vault.search(q),
         None => vault.entries().iter().collect(),
@@ -138,8 +141,7 @@ fn cmd_get(path: &Path, name: &str, field: &str, stdout: bool, timeout: u64) -> 
         return Err("only the `password` field is supported in this version".to_string());
     }
     let password = prompt_password(false)?;
-    let bytes = read_vault(path)?;
-    let vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let vault = open_vault(path, password.as_bytes())?;
     let entry = vault
         .get(name)
         .ok_or_else(|| format!("no entry titled {name:?}"))?;
@@ -201,8 +203,7 @@ fn cmd_gen(length: usize, charset: &str, words: Option<usize>) -> CmdResult {
 
 fn cmd_add(path: &Path, name: &str) -> CmdResult {
     let password = prompt_password(false)?;
-    let bytes = read_vault(path)?;
-    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let mut vault = open_vault(path, password.as_bytes())?;
     if vault.get(name).is_some() {
         return Err(format!(
             "an entry titled {name:?} already exists; use `edit`"
@@ -249,8 +250,7 @@ fn cmd_add(path: &Path, name: &str) -> CmdResult {
 
 fn cmd_edit(path: &Path, name: &str) -> CmdResult {
     let password = prompt_password(false)?;
-    let bytes = read_vault(path)?;
-    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let mut vault = open_vault(path, password.as_bytes())?;
     let (cur_user, cur_url, cur_notes) = {
         let e = vault
             .get(name)
@@ -287,8 +287,7 @@ fn cmd_edit(path: &Path, name: &str) -> CmdResult {
 
 fn cmd_rm(path: &Path, name: &str) -> CmdResult {
     let password = prompt_password(false)?;
-    let bytes = read_vault(path)?;
-    let mut vault = Vault::open(&bytes, password.as_bytes()).map_err(|e| e.to_string())?;
+    let mut vault = open_vault(path, password.as_bytes())?;
     if vault.get(name).is_none() {
         return Err(format!("no entry titled {name:?}"));
     }
@@ -301,6 +300,19 @@ fn cmd_rm(path: &Path, name: &str) -> CmdResult {
     let out = vault.save().map_err(|e| e.to_string())?;
     write_vault(path, &out)?;
     eprintln!("Deleted {name:?}.");
+    Ok(())
+}
+
+fn cmd_upgrade_kdf(path: &Path, m: u32, t: u32, p: u32) -> CmdResult {
+    let password = prompt_password(false)?;
+    let mut vault = open_vault(path, password.as_bytes())?;
+    eprintln!("Re-deriving with Argon2id (m={m} KiB, t={t}, p={p})…");
+    vault
+        .change_kdf(password.as_bytes(), m, t, p)
+        .map_err(|e| e.to_string())?;
+    let out = vault.save().map_err(|e| e.to_string())?;
+    write_vault(path, &out)?;
+    eprintln!("Upgraded KDF parameters.");
     Ok(())
 }
 
@@ -366,6 +378,22 @@ fn vault_path(opt: Option<PathBuf>) -> Result<PathBuf, String> {
 fn read_vault(path: &Path) -> Result<Vec<u8>, String> {
     std::fs::read(path)
         .map_err(|_| format!("no vault at {} — run `vault init` first", path.display()))
+}
+
+/// Read + unlock the vault, warning if its KDF is below the recommended floor (constraint C2).
+fn open_vault(path: &Path, password: &[u8]) -> Result<Vault, String> {
+    let bytes = read_vault(path)?;
+    let vault = Vault::open(&bytes, password).map_err(|e| e.to_string())?;
+    if matches!(
+        vault.kdf_strength(),
+        vault_core::crypto::KdfStrength::BelowFloor
+    ) {
+        eprintln!(
+            "vault: warning — this vault's Argon2id cost is below the recommended floor; \
+             run `vault upgrade-kdf` to strengthen it."
+        );
+    }
+    Ok(vault)
 }
 
 /// Atomic write: temp file (0600 on Unix) in the same dir → fsync → rename over the target.

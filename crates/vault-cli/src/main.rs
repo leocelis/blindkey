@@ -83,6 +83,18 @@ enum Command {
     Rm { name: String },
     /// Clear the in-memory session. *(not yet implemented)*
     Lock,
+    /// Re-encrypt the vault with stronger Argon2id parameters (constraint C2).
+    UpgradeKdf {
+        /// Argon2id memory cost in KiB (default 64 MiB).
+        #[arg(long, default_value_t = 65_536)]
+        kdf_m_cost: u32,
+        /// Argon2id time cost (default 3).
+        #[arg(long, default_value_t = 3)]
+        kdf_t_cost: u32,
+        /// Argon2id parallelism (default 4).
+        #[arg(long, default_value_t = 4)]
+        kdf_p_cost: u32,
+    },
     /// Benchmark and recommend Argon2id parameters (constraint C22). *(not yet implemented)*
     Tune,
     /// Internal: detached clipboard auto-clear helper. Reads the secret on stdin; not for direct

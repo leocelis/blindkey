@@ -77,6 +77,11 @@ All notable changes to this project are documented here. The format is based on
   transient decrypted-payload buffer off swap during open/save (C12, graceful degradation — warns
   and continues if locking is unavailable). *(C19's in-memory inner-stream protection — keeping
   Protected fields ChaCha20-encrypted in RAM until accessed — remains a scoped follow-up.)*
+- **Weak-KDF warning + `vault upgrade-kdf` (C2).** Opening a vault whose Argon2id cost is below the
+  recommended floor now prints a warning suggesting an upgrade (centralized in a shared `open_vault`
+  helper). `vault upgrade-kdf [--kdf-m-cost/-t-cost/-p-cost]` re-wraps the password stanza under
+  stronger parameters and does a full body-writing save (version bump per G0.3); the data key and
+  salt are unchanged, so entries stay intact. Core gains `Vault::kdf_strength` and `Vault::change_kdf`.
 - **Project-scoped Rust toolchain** ([`scripts/setup-rust.sh`](scripts/setup-rust.sh),
   [`scripts/dev-env.sh`](scripts/dev-env.sh), [`.envrc`](.envrc)): the toolchain installs into
   `./.toolchain` (git-ignored) via rustup's `RUSTUP_HOME`/`CARGO_HOME` + `--no-modify-path` — never
