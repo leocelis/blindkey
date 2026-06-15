@@ -63,6 +63,12 @@ All notable changes to this project are documented here. The format is based on
   drives the real binary end-to-end (init → import the sample → ls → get → wrong-password → rm → gen)
   and asserts the encrypted file leaks neither secrets nor titles (C18). `init` gains hidden
   `--kdf-m-cost/-t-cost/-p-cost` flags (advanced) so tests and slower machines can tune Argon2id.
+- **`vault-tui` — the first app shell (UC-18).** A **ratatui** terminal UI over `vault-core`:
+  unlock → **type-to-search** → `↑/↓` select → **Enter copies the secret to the clipboard**
+  (model-blind, auto-clears via a background thread, clears-iff-unchanged), `Esc` to quit. Runs on
+  the **alternate screen** so nothing a secret touches reaches terminal scrollback, and the secret
+  is **never rendered** — only titles. Pure-Rust shell; all secret-handling stays in the core. This
+  is the first "managed via the app" surface; egui/SwiftUI follow over the same core.
 - **Project-scoped Rust toolchain** ([`scripts/setup-rust.sh`](scripts/setup-rust.sh),
   [`scripts/dev-env.sh`](scripts/dev-env.sh), [`.envrc`](.envrc)): the toolchain installs into
   `./.toolchain` (git-ignored) via rustup's `RUSTUP_HOME`/`CARGO_HOME` + `--no-modify-path` — never

@@ -6,6 +6,7 @@ resolver = "2"
 members = [
     "crates/vault-core",
     "crates/vault-cli",
+    "crates/vault-tui",
     "crates/vault-hardware",
 ]
 
@@ -37,6 +38,8 @@ secrecy          = "0.8"        # C11 secret wrappers
 # --- CLI / support ---
 clap             = { version = "4", features = ["derive"] }   # C21 CLI
 rpassword        = "7"          # C29 no-echo password prompt (no secrets on argv)
+ratatui          = "0.29"       # UC-18 TUI shell (pure-Rust, alt-screen secret hygiene)
+crossterm        = "0.28"       # TUI backend
 thiserror        = "2"
 # --- Dev / test ---
 proptest         = "1"          # property tests (e.g. parser round-trips)

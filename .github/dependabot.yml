@@ -32,6 +32,10 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "rpassword"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "ratatui"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "crossterm"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

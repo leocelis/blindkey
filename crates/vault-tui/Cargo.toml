@@ -1,0 +1,23 @@
+[package]
+name = "vault-tui"
+description = "Vault — a fast terminal UI over the vault-core security boundary (UC-18 shell)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+# Installed as `vault-tui`; a thin shell — all secret-touching logic stays in vault-core.
+[[bin]]
+name = "vault-tui"
+path = "src/main.rs"
+
+[dependencies]
+vault-core = { path = "../vault-core", version = "0.0.0" }
+ratatui.workspace = true
+crossterm.workspace = true
+clap.workspace = true
+rpassword.workspace = true
+zeroize.workspace = true
