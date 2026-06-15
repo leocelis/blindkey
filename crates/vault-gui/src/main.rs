@@ -623,6 +623,12 @@ impl VaultApp {
                     submit = true;
                 }
 
+                if creating && !self.pw_input.is_empty() {
+                    let (bits, label, color) = strength_meter(&self.pw_input);
+                    ui.add_space(4.0);
+                    ui.colored_label(color, format!("Strength: ~{bits:.0} bits ({label})"));
+                }
+
                 if creating {
                     ui.add_space(6.0);
                     let cf = ui.add(
@@ -688,6 +694,36 @@ impl VaultApp {
             vault_core::pad::PadMode::Padme
         );
 
+        // Keyboard-first navigation (when no overlay is open): ↑/↓ move the selection and Enter
+        // copies the selected password — type-to-search then Enter, like the TUI.
+        if self.editor.is_none() && self.import_review.is_none() && self.rollback_warning.is_none()
+        {
+            let (up, down, enter) = ctx.input(|i| {
+                (
+                    i.key_pressed(egui::Key::ArrowUp),
+                    i.key_pressed(egui::Key::ArrowDown),
+                    i.key_pressed(egui::Key::Enter),
+                )
+            });
+            if (up || down) && !items.is_empty() {
+                let pos = self
+                    .selected
+                    .and_then(|s| items.iter().position(|(i, _)| *i == s));
+                let new = match pos {
+                    Some(p) if down => (p + 1).min(items.len() - 1),
+                    Some(p) => p.saturating_sub(1),
+                    None => 0,
+                };
+                self.selected = Some(items[new].0);
+                self.reveal = false;
+            }
+            if enter {
+                if let Some(s) = self.selected.filter(|s| items.iter().any(|(i, _)| i == s)) {
+                    action = Some(Action::CopyPassword(s));
+                }
+            }
+        }
+
         // Top bar: search + actions + status.
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             ui.add_space(4.0);
@@ -750,7 +786,7 @@ impl VaultApp {
                 ui.label(&self.status);
             } else {
                 ui.label(format!(
-                    "{total} entries · drop a keys.txt anywhere to import"
+                    "{total} entries · ↑/↓ select · Enter copies · drop a keys.txt to import"
                 ));
             }
             ui.add_space(2.0);
@@ -1230,6 +1266,42 @@ fn rollback_check_and_advance(vault: &Vault) -> Option<String> {
              The storage backend may have served an older copy — verify before relying on it."
         )),
     }
+}
+
+/// A rough password-strength estimate: entropy from the character classes present × length. This is
+/// a heuristic (it does not catch dictionary words) — the generator and passphrase are the strong
+/// path; the meter just nudges users away from obviously weak master passwords.
+fn strength_meter(pw: &str) -> (f64, &'static str, egui::Color32) {
+    let mut pool = 0u32;
+    if pw.bytes().any(|b| b.is_ascii_lowercase()) {
+        pool += 26;
+    }
+    if pw.bytes().any(|b| b.is_ascii_uppercase()) {
+        pool += 26;
+    }
+    if pw.bytes().any(|b| b.is_ascii_digit()) {
+        pool += 10;
+    }
+    if pw
+        .bytes()
+        .any(|b| !b.is_ascii_alphanumeric() && !b.is_ascii_whitespace())
+    {
+        pool += 32;
+    }
+    if pw.bytes().any(|b| b.is_ascii_whitespace()) {
+        pool += 1;
+    }
+    let bits = (pool.max(2) as f64).log2() * pw.chars().count() as f64;
+    let (label, color) = if bits < 40.0 {
+        ("weak", egui::Color32::from_rgb(220, 80, 80))
+    } else if bits < 60.0 {
+        ("fair", egui::Color32::from_rgb(210, 160, 60))
+    } else if bits < 80.0 {
+        ("good", egui::Color32::from_rgb(120, 180, 90))
+    } else {
+        ("strong", egui::Color32::from_rgb(90, 190, 110))
+    };
+    (bits, label, color)
 }
 
 fn auto_lock_label(secs: u64) -> &'static str {

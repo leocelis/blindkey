@@ -152,6 +152,11 @@ All notable changes to this project are documented here. The format is based on
   timer) and a "2FA secret" field in the editor. Adds the audited `sha1` crate (used **only** for
   TOTP, never at rest). Also made the CLI master-password prompt read a single line so `add`/`edit`
   are scriptable. 5 new tests.
+- **Keyboard-first GUI + polish.** The desktop app is now fully drivable from the keyboard:
+  **↑/↓** move the selection and **Enter copies** the selected password (type-to-search → Enter,
+  like the TUI). The create screen shows a live **password-strength meter** (entropy estimate +
+  weak/fair/good/strong, color-coded) so users don't pick a weak master password. The status bar
+  surfaces the shortcuts.
 - **Auto-lock in the desktop app (UC-06 / S-10).** The GUI no longer stays unlocked forever: it
   clears the decrypted vault from memory and returns to the unlock screen after an **idle timeout**
   (default 5 min, chosen from a top-bar **Auto-lock** menu: 1m/5m/15m/30m/Never, persisted to
