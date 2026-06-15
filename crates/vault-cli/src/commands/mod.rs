@@ -99,7 +99,11 @@ fn cmd_import(path: &Path, format: &str, source: &Path) -> CmdResult {
         if result.blocks_skipped == 1 { "" } else { "s" },
     );
     for e in &result.entries {
-        eprintln!("  {:<28} {}", sanitize(&e.title), mask(e.password.expose()));
+        eprintln!(
+            "  {:<28} {}",
+            sanitize(&e.title),
+            mask(&e.password.expose())
+        );
     }
 
     if std::io::stdin().is_terminal() && !confirm("Import these into the vault?")? {
@@ -145,7 +149,7 @@ fn cmd_get(path: &Path, name: &str, field: &str, stdout: bool, timeout: u64) -> 
     let entry = vault
         .get(name)
         .ok_or_else(|| format!("no entry titled {name:?}"))?;
-    let secret = entry.password.expose();
+    let secret = entry.password.expose(); // owned, zeroizing (decrypt-on-access, C19)
 
     if stdout {
         // C27: explicit, warned opt-in.
@@ -154,12 +158,12 @@ fn cmd_get(path: &Path, name: &str, field: &str, stdout: bool, timeout: u64) -> 
              captures this stream."
         );
         std::io::stdout()
-            .write_all(secret)
+            .write_all(&secret)
             .and_then(|_| std::io::stdout().write_all(b"\n"))
             .map_err(|e| e.to_string())?;
     } else {
-        copy_to_clipboard(secret)?;
-        spawn_clipboard_holder(secret, timeout)?; // C13: auto-clear, clears iff unchanged
+        copy_to_clipboard(&secret)?;
+        spawn_clipboard_holder(&secret, timeout)?; // C13: auto-clear, clears iff unchanged
         if timeout == 0 {
             eprintln!("Copied {name:?} to the clipboard (model-blind).");
         } else {

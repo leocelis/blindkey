@@ -6,12 +6,12 @@
 //! Save:  regenerate `master_seed` + `nonce_prefix` (a body-writing save — C8/C1), bump
 //!        `vault_version` (C16), serialize → STREAM-encrypt → HmacBlockStream-frame → seal header.
 //!
-//! NOTE (C19): the on-disk inner-stream pass IS applied — Protected field values are ChaCha20
-//! stream-encrypted under the per-save `inner_stream_key` inside the AEAD payload (see
-//! `format::inner_stream`), so they are double-encrypted at rest. The remaining C19 clause is the
-//! *in-memory* decrypt-on-access protection (keeping Protected bytes encrypted in RAM until a field
-//! accessor runs); that is a scoped follow-up. Confidentiality at rest is anchored by the outer AEAD
-//! (C1); the inner stream is defense-in-depth there and the primary defense in memory once layered.
+//! NOTE (C19): the inner-stream layer is fully applied (see `format::inner_stream`). Protected field
+//! values are ChaCha20 stream-encrypted under the per-save `inner_stream_key` inside the AEAD payload
+//! (double-encrypted at rest), and after open they stay **encrypted in RAM** (`Protected::Sealed`),
+//! decrypted only on field access. Confidentiality at rest is anchored by the outer AEAD (C1); the
+//! inner stream is defense-in-depth there and the primary defense in memory (a swap leak or partial
+//! heap disclosure of the payload does not directly expose secret bytes).
 
 use secrecy::ExposeSecret;
 use zeroize::{Zeroize, Zeroizing};
@@ -319,7 +319,7 @@ mod tests {
         assert_eq!(opened.version(), 1);
         assert_eq!(opened.entries().len(), 2);
         let e = opened.get("github").unwrap();
-        assert_eq!(e.password.expose(), b"ghp_secret");
+        assert_eq!(&e.password.expose()[..], b"ghp_secret");
     }
 
     #[test]
@@ -394,7 +394,7 @@ mod tests {
             opened.kdf_strength(),
             crate::crypto::KdfStrength::BelowFloor
         );
-        assert_eq!(opened.get("x").unwrap().password.expose(), b"s");
+        assert_eq!(&opened.get("x").unwrap().password.expose()[..], b"s");
         assert!(matches!(
             Vault::open(&bytes, b"wrong"),
             Err(Error::HeaderAuth)
@@ -412,7 +412,7 @@ mod tests {
         let bytes = v.save().unwrap();
 
         let mut opened = Vault::open(&bytes, b"pw").unwrap();
-        assert_eq!(opened.get("svc").unwrap().password.expose(), b"new");
+        assert_eq!(&opened.get("svc").unwrap().password.expose()[..], b"new");
         assert!(opened.remove("svc"));
         assert!(opened.get("svc").is_none());
     }

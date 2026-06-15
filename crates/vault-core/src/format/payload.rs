@@ -14,9 +14,11 @@
 //! HmacBlockStream (C10) authenticates. The Protected field values inside each entry are
 //! inner-stream encrypted (C19) by the open/save flow; this module frames the structure only.
 
+use std::sync::Arc;
+
 use super::cursor::Cursor;
 use super::entry::{Entry, Protected};
-use super::inner_stream::InnerStream;
+use super::inner_stream::{InnerStream, SealKey};
 use super::tlv::{self, MAX_ENTRY_LEN};
 use crate::{Error, Result};
 
@@ -53,13 +55,13 @@ impl Payload {
     pub fn serialize(&self) -> Vec<u8> {
         let mut out = Vec::new();
         tlv::write_record(&mut out, tag::INNER_ALGO, &[INNER_STREAM_CHACHA20]);
-        tlv::write_record(&mut out, tag::INNER_KEY, self.inner_stream_key.expose());
+        tlv::write_record(&mut out, tag::INNER_KEY, &self.inner_stream_key.expose());
         tlv::write_record(
             &mut out,
             tag::VAULT_VERSION,
             &self.vault_version.to_le_bytes(),
         );
-        let mut inner = InnerStream::new(self.inner_stream_key.expose());
+        let mut inner = InnerStream::new(&self.inner_stream_key.expose());
         for e in &self.entries {
             tlv::write_record(&mut out, tag::ENTRY, &e.serialize(&mut inner));
         }
@@ -99,10 +101,13 @@ impl Payload {
         }
 
         let inner_key = inner_key.ok_or(Error::BodyMalformed)?;
-        let mut inner = InnerStream::new(inner_key.expose());
+        // Protected fields are kept encrypted in memory and decrypted on access (C19): build one
+        // shared, mlocked seal key, and seal each field at its running keystream offset.
+        let seal = Arc::new(SealKey::new(&inner_key.expose()));
+        let mut offset: u64 = 0;
         let mut entries = Vec::with_capacity(entry_blobs.len());
         for blob in entry_blobs {
-            entries.push(Entry::parse(blob, &mut inner)?);
+            entries.push(Entry::parse(blob, &seal, &mut offset)?);
         }
 
         Ok(Payload {
@@ -169,7 +174,7 @@ mod tests {
             "Protected field must be inner-stream encrypted in the serialized payload"
         );
         let parsed = Payload::parse(&bytes).unwrap();
-        assert_eq!(parsed.entries[0].password.expose(), secret);
+        assert_eq!(&parsed.entries[0].password.expose()[..], secret);
     }
 
     #[test]

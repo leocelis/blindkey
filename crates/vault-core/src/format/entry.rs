@@ -2,20 +2,21 @@
 //!
 //! An `Entry` lives ONLY inside the decrypted payload (constraint C18 — no entry field ever appears
 //! in the plaintext header). Secret-bearing fields use [`Protected`], a zeroizing, redacted wrapper
-//! (constraint C11). In memory a Protected value holds the field's **plaintext** bytes; the
-//! inner-stream ChaCha20 pass (constraint C19) is applied here during (de)serialization — Protected
-//! field values are encrypted under the payload's `inner_stream_key` as they are written and
-//! decrypted as they are read, in document order through a single advancing [`InnerStream`]. So the
-//! bytes inside the (outer-AEAD-decrypted) payload are double-encrypted at rest; C19's in-memory
-//! decrypt-on-access protection is a later segment layered over this codec.
+//! (constraint C11). The inner-stream ChaCha20 layer (constraint C19) protects Protected field
+//! values both at rest and **in memory**: on serialize they are encrypted under the payload's
+//! `inner_stream_key` in document order through a single advancing [`InnerStream`]; on parse they
+//! are kept **`Sealed` (still encrypted in RAM)** with only their keystream offset, and decrypted
+//! on access by [`Protected::expose`]. Newly created/edited values are `Plain` until the next save.
 
 use core::fmt;
+use std::sync::Arc;
 
 use secrecy::{ExposeSecret, Secret, SecretBox};
 use subtle::ConstantTimeEq;
+use zeroize::Zeroizing;
 
 use super::cursor::Cursor;
-use super::inner_stream::InnerStream;
+use super::inner_stream::{InnerStream, SealKey};
 use super::tlv::{self, MAX_FIELD_LEN, PROTECTED_BIT};
 use crate::Result;
 
@@ -39,16 +40,60 @@ mod tag {
 }
 
 /// A secret-bearing value: zeroized on drop, never logged, compared in constant time (C11, C25).
-pub struct Protected(SecretBox<[u8]>);
+///
+/// Two in-memory forms (C19):
+/// - **Plain** — a freshly created or edited value, held as zeroizing plaintext.
+/// - **Sealed** — a value loaded from an opened vault: kept **inner-stream-encrypted in RAM**,
+///   storing only its ciphertext and keystream offset (plus a shared handle to the mlocked key).
+///   The plaintext is materialized only when [`Protected::expose`] is called (decrypt-on-access),
+///   so a swap leak or partial heap disclosure of the payload does not directly expose secret bytes.
+pub struct Protected(ProtectedInner);
+
+enum ProtectedInner {
+    Plain(SecretBox<[u8]>),
+    Sealed {
+        ct: Box<[u8]>,
+        key: Arc<SealKey>,
+        offset: u64,
+    },
+}
 
 impl Protected {
-    /// Wrap secret bytes.
+    /// Wrap secret plaintext bytes (a newly created or edited value).
     pub fn new(bytes: Vec<u8>) -> Self {
-        Protected(Secret::new(bytes.into_boxed_slice()))
+        Protected(ProtectedInner::Plain(Secret::new(bytes.into_boxed_slice())))
     }
-    /// Borrow the secret bytes (for serialization or field access). Callers must not log the result.
-    pub fn expose(&self) -> &[u8] {
-        self.0.expose_secret()
+
+    /// Wrap an inner-stream-**encrypted** field loaded from an opened vault (C19 in-memory form):
+    /// the bytes stay ChaCha20-encrypted in RAM until [`Protected::expose`] decrypts them.
+    pub(crate) fn sealed(ct: Vec<u8>, key: Arc<SealKey>, offset: u64) -> Self {
+        Protected(ProtectedInner::Sealed {
+            ct: ct.into_boxed_slice(),
+            key,
+            offset,
+        })
+    }
+
+    /// Decrypt (if sealed) and return the plaintext secret bytes, zeroized on drop. For a `Sealed`
+    /// value this runs the inner-stream ChaCha20 decryption at access time (C19); the plaintext
+    /// exists only in the returned buffer. Callers must not log the result.
+    pub fn expose(&self) -> Zeroizing<Vec<u8>> {
+        match &self.0 {
+            ProtectedInner::Plain(s) => Zeroizing::new(s.expose_secret().to_vec()),
+            ProtectedInner::Sealed { ct, key, offset } => key.open_at(*offset, ct),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Protected {
+    /// Test hook (C19 test 4): the in-memory ciphertext of a `Sealed` value, or `None` if `Plain`.
+    /// Lets a test assert that a loaded field is *not* plaintext in memory before access.
+    fn sealed_ct(&self) -> Option<&[u8]> {
+        match &self.0 {
+            ProtectedInner::Sealed { ct, .. } => Some(ct),
+            ProtectedInner::Plain(_) => None,
+        }
     }
 }
 
@@ -61,7 +106,8 @@ impl fmt::Debug for Protected {
 impl PartialEq for Protected {
     fn eq(&self, other: &Self) -> bool {
         // Constant-time (C25): never branch on secret bytes.
-        self.expose().ct_eq(other.expose()).into()
+        let (a, b) = (self.expose(), other.expose());
+        a.as_slice().ct_eq(b.as_slice()).into()
     }
 }
 impl Eq for Protected {}
@@ -124,14 +170,14 @@ impl Entry {
         tlv::write_record(&mut out, tag::ID, &self.id);
         tlv::write_record(&mut out, tag::TITLE, self.title.as_bytes());
         tlv::write_record(&mut out, tag::USERNAME, self.username.as_bytes());
-        write_protected(&mut out, tag::PASSWORD, self.password.expose(), inner);
+        write_protected(&mut out, tag::PASSWORD, &self.password.expose(), inner);
         tlv::write_record(&mut out, tag::URL, self.url.as_bytes());
         tlv::write_record(&mut out, tag::NOTES, self.notes.as_bytes());
         for t in &self.tags {
             tlv::write_record(&mut out, tag::TAG, t.as_bytes());
         }
         if let Some(otp) = &self.otp_secret {
-            write_protected(&mut out, tag::OTP_SECRET, otp.expose(), inner);
+            write_protected(&mut out, tag::OTP_SECRET, &otp.expose(), inner);
         }
         tlv::write_record(&mut out, tag::CREATED_AT, &self.created_at.to_le_bytes());
         tlv::write_record(&mut out, tag::MODIFIED_AT, &self.modified_at.to_le_bytes());
@@ -145,7 +191,7 @@ impl Entry {
                     tlv::write_record(&mut out, tag::CUSTOM_VALUE, s.as_bytes())
                 }
                 CustomValue::Protected(p) => {
-                    write_protected(&mut out, tag::CUSTOM_VALUE_PROTECTED, p.expose(), inner)
+                    write_protected(&mut out, tag::CUSTOM_VALUE_PROTECTED, &p.expose(), inner)
                 }
             }
         }
@@ -154,9 +200,11 @@ impl Entry {
 
     /// Parse an entry from its field TLV stream. Unknown tags are skipped (forward compatibility).
     ///
-    /// Protected field values are inner-stream decrypted through `inner` in document order (C19) —
-    /// the same advancing stream used during serialization.
-    pub(crate) fn parse(bytes: &[u8], inner: &mut InnerStream) -> Result<Entry> {
+    /// Protected field values are kept **encrypted in memory** (C19 in-memory form): each is stored
+    /// `Sealed` with its keystream `offset` (the running byte position, shared across the whole
+    /// payload in document order) and a handle to the inner-stream `key`; it is decrypted only when
+    /// the field is exposed. `offset` MUST be the same running counter used across all entries.
+    pub(crate) fn parse(bytes: &[u8], key: &Arc<SealKey>, offset: &mut u64) -> Result<Entry> {
         let mut cur = Cursor::new(bytes);
         let mut e = Entry {
             id: [0u8; 16],
@@ -193,11 +241,11 @@ impl Entry {
                 }
                 tag::TITLE => e.title = tlv::decode_str(v)?,
                 tag::USERNAME => e.username = tlv::decode_str(v)?,
-                tag::PASSWORD => e.password = decrypt_protected(v, inner),
+                tag::PASSWORD => e.password = seal_protected(v, key, offset),
                 tag::URL => e.url = tlv::decode_str(v)?,
                 tag::NOTES => e.notes = tlv::decode_str(v)?,
                 tag::TAG => e.tags.push(tlv::decode_str(v)?),
-                tag::OTP_SECRET => e.otp_secret = Some(decrypt_protected(v, inner)),
+                tag::OTP_SECRET => e.otp_secret = Some(seal_protected(v, key, offset)),
                 tag::CREATED_AT => e.created_at = tlv::decode_i64(v)?,
                 tag::MODIFIED_AT => e.modified_at = tlv::decode_i64(v)?,
                 tag::EXPIRES_AT => e.expires_at = Some(tlv::decode_i64(v)?),
@@ -213,7 +261,7 @@ impl Entry {
                     let name = pending_name.take().unwrap_or_default();
                     e.custom_fields.push(CustomField {
                         name,
-                        value: CustomValue::Protected(decrypt_protected(v, inner)),
+                        value: CustomValue::Protected(seal_protected(v, key, offset)),
                     });
                 }
                 _ => { /* unknown tag (incl. unknown Protected) — skip for forward compat */ }
@@ -244,11 +292,13 @@ fn write_protected(out: &mut Vec<u8>, tag: u16, plaintext: &[u8], inner: &mut In
     tlv::write_record(out, tag, &buf);
 }
 
-/// Inner-stream decrypt a Protected field value into a fresh [`Protected`] (C19).
-fn decrypt_protected(ct: &[u8], inner: &mut InnerStream) -> Protected {
-    let mut buf = ct.to_vec();
-    inner.apply(&mut buf);
-    Protected::new(buf)
+/// Wrap a Protected field value as `Sealed` (kept encrypted in memory, C19) at the current keystream
+/// `offset`, then advance `offset` by the field length so the next Protected field is positioned
+/// correctly in the shared inner stream. The ciphertext is **not** decrypted here.
+fn seal_protected(ct: &[u8], key: &Arc<SealKey>, offset: &mut u64) -> Protected {
+    let p = Protected::sealed(ct.to_vec(), key.clone(), *offset);
+    *offset += ct.len() as u64;
+    p
 }
 
 #[cfg(test)]
@@ -258,10 +308,16 @@ mod tests {
 
     const INNER_KEY: [u8; INNER_STREAM_KEY_LEN] = [0x5A; INNER_STREAM_KEY_LEN];
 
-    /// Serialize then parse an entry through a fresh inner stream at a fixed key (C19 round-trip).
+    fn seal_key(k: &[u8; INNER_STREAM_KEY_LEN]) -> Arc<SealKey> {
+        Arc::new(SealKey::new(k))
+    }
+
+    /// Serialize then parse an entry through the inner stream at a fixed key (C19 round-trip). The
+    /// parsed entry's Protected fields come back `Sealed` (encrypted in memory).
     fn round_trip_through_stream(e: &Entry) -> (Vec<u8>, Entry) {
         let bytes = e.serialize(&mut InnerStream::new(&INNER_KEY));
-        let parsed = Entry::parse(&bytes, &mut InnerStream::new(&INNER_KEY)).unwrap();
+        let mut offset = 0u64;
+        let parsed = Entry::parse(&bytes, &seal_key(&INNER_KEY), &mut offset).unwrap();
         (bytes, parsed)
     }
 
@@ -345,11 +401,30 @@ mod tests {
             contains(&bytes, b"github-prod"),
             "title is not inner-stream encrypted"
         );
-        assert_eq!(parsed.password.expose(), b"supersecret123");
+        assert_eq!(&parsed.password.expose()[..], b"supersecret123");
 
-        let wrong =
-            Entry::parse(&bytes, &mut InnerStream::new(&[0x11; INNER_STREAM_KEY_LEN])).unwrap();
-        assert_ne!(wrong.password.expose(), b"supersecret123");
+        let mut o = 0u64;
+        let wrong = Entry::parse(&bytes, &seal_key(&[0x11; INNER_STREAM_KEY_LEN]), &mut o).unwrap();
+        assert_ne!(&wrong.password.expose()[..], b"supersecret123");
+    }
+
+    #[test]
+    fn opened_protected_fields_are_ciphertext_in_memory_until_exposed() {
+        // C19 test 4: after parse, the in-memory Protected holds ciphertext (not the plaintext
+        // secret); only the field accessor expose() yields the plaintext.
+        let (_, parsed) = round_trip_through_stream(&sample());
+        let ct = parsed
+            .password
+            .sealed_ct()
+            .expect("a loaded field is sealed in memory");
+        assert_ne!(ct, b"supersecret123", "in-memory bytes must be ciphertext");
+        assert_eq!(
+            &parsed.password.expose()[..],
+            b"supersecret123",
+            "accessor decrypts"
+        );
+        // A freshly created (not-yet-saved) value is Plain — no sealed ciphertext form.
+        assert!(Protected::new(b"x".to_vec()).sealed_ct().is_none());
     }
 
     #[test]
@@ -366,8 +441,9 @@ mod tests {
         // Append an unknown record (tag 0x7FFF) — must be ignored, entry still parses. It is not a
         // Protected tag, so it does not consume the inner stream.
         tlv::write_record(&mut bytes, 0x7FFF, b"future-field");
+        let mut o = 0u64;
         assert_eq!(
-            Entry::parse(&bytes, &mut InnerStream::new(&INNER_KEY)).unwrap(),
+            Entry::parse(&bytes, &seal_key(&INNER_KEY), &mut o).unwrap(),
             sample()
         );
     }
@@ -376,6 +452,7 @@ mod tests {
     fn bad_id_length_rejected() {
         let mut bytes = Vec::new();
         tlv::write_record(&mut bytes, super::tag::ID, &[0u8; 8]); // wrong width
-        assert!(Entry::parse(&bytes, &mut InnerStream::new(&INNER_KEY)).is_err());
+        let mut o = 0u64;
+        assert!(Entry::parse(&bytes, &seal_key(&INNER_KEY), &mut o).is_err());
     }
 }

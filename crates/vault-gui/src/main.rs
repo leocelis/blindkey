@@ -256,10 +256,7 @@ impl VaultApp {
             let Some(e) = self.vault.as_ref().and_then(|v| v.entries().get(idx)) else {
                 return;
             };
-            (
-                e.title.clone(),
-                Zeroizing::new(e.password.expose().to_vec()),
-            )
+            (e.title.clone(), e.password.expose())
         };
         match clip::copy(&secret) {
             Ok(()) => {
@@ -663,7 +660,7 @@ impl VaultApp {
             let url = e.url.clone();
             let notes = e.notes.clone();
             let pw_shadow: String = if self.reveal {
-                String::from_utf8_lossy(e.password.expose()).into_owned()
+                String::from_utf8_lossy(&e.password.expose()).into_owned()
             } else {
                 "•".repeat(10)
             };
@@ -896,7 +893,7 @@ impl VaultApp {
                                 .show(ui, |ui| {
                                     for e in &review.entries {
                                         ui.label(one_line(&e.title));
-                                        ui.monospace(mask(e.password.expose()));
+                                        ui.monospace(mask(&e.password.expose()));
                                         ui.end_row();
                                     }
                                 });

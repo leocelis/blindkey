@@ -270,8 +270,8 @@ fn random_id() -> [u8; 16] {
 mod tests {
     use super::*;
 
-    fn pw(e: &Entry) -> &[u8] {
-        e.password.expose()
+    fn pw(e: &Entry) -> Vec<u8> {
+        e.password.expose().to_vec()
     }
 
     #[test]
@@ -280,8 +280,8 @@ mod tests {
         assert_eq!(r.entries.len(), 1);
         assert_eq!(r.entries[0].title, "github");
         assert_eq!(
-            pw(&r.entries[0]),
-            b"ghp_FAKE0mZ9xQ2vL7nR4tW8pY1aB3cD5eF6gH7iJ"
+            pw(&r.entries[0]).as_slice(),
+            b"ghp_FAKE0mZ9xQ2vL7nR4tW8pY1aB3cD5eF6gH7iJ".as_slice()
         );
         assert_eq!(r.entries[0].tags, vec!["imported".to_string()]);
     }
@@ -292,7 +292,7 @@ mod tests {
         assert_eq!(r.entries.len(), 1);
         let e = &r.entries[0];
         assert_eq!(e.title, "AWS_SECRET");
-        assert_eq!(pw(e), b"AKIAEXAMPLE7F4QX9TZ2P");
+        assert_eq!(pw(e).as_slice(), b"AKIAEXAMPLE7F4QX9TZ2P".as_slice());
         // non-secret KV becomes a plain custom field
         assert!(e
             .custom_fields

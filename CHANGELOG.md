@@ -91,17 +91,21 @@ All notable changes to this project are documented here. The format is based on
   the CLI; secrets stay in the core; the in-memory password buffer is zeroized on drop.
   [`scripts/bundle-macos.sh`](scripts/bundle-macos.sh) wraps the release binary in a double-clickable
   `Vault.app`. Run with `cargo run -p vault-gui` (or `open target/Vault.app`).
-- **Inner-stream encryption of Protected fields — on-disk pass (C19).** New
+- **Inner-stream encryption of Protected fields — at rest AND in memory (C19, complete).** New
   [`format::inner_stream`](crates/vault-core/src/format/inner_stream.rs): every Protected field
-  value (password, `otp_secret`, protected custom values) now receives an **additional ChaCha20
+  value (password, `otp_secret`, protected custom values) receives an **additional ChaCha20
   stream-cipher pass** keyed by the payload's 64-byte `inner_stream_key`, processed in document
   order through one advancing stream (KDBX-4 precedent), so inside the outer-AEAD-decrypted payload
-  the secret bytes are **double-encrypted at rest** and the key is **regenerated every save**. The
-  importer/CLI/TUI/GUI are unaffected (the codec is internal). 5 new tests assert a Protected value
-  is not findable in plaintext in the serialized payload, that a same-key parse recovers it and a
-  wrong-key parse does not, and that the stream advances sequentially. Adds the audited `chacha20`
-  crate (C3). *(The remaining C19 clause — keeping Protected fields encrypted in process memory with
-  decrypt-on-access — is a scoped follow-up; it needs the `Protected::expose` redesign.)*
+  the secret bytes are **double-encrypted at rest** and the key is **regenerated every save**.
+  *And in memory:* after a vault is opened, Protected fields stay **ChaCha20-encrypted in RAM**
+  (`Protected` is now `Plain | Sealed{ct, Arc<SealKey>, offset}`) and are decrypted **only on access**
+  via a seekable, **mlocked** session key — so a swap leak or partial heap disclosure of the
+  decrypted payload doesn't directly expose password bytes (this is the in-memory-secrets weakness
+  flagged in the KeePassXC audit). `Protected::expose()` now returns owned zeroizing plaintext;
+  the CLI/TUI/GUI were updated accordingly. 7 new tests, including the C19 in-memory assertion (a
+  loaded field's bytes are ciphertext until the accessor runs) and seek-equals-sequential-stream.
+  Adds the audited `chacha20` crate (C3). The session still holds the key, so this does not defend
+  against a full key-inclusive memory dump (KDBX 4 has the same property — see the C19 rationale).
 - **Project-scoped Rust toolchain** ([`scripts/setup-rust.sh`](scripts/setup-rust.sh),
   [`scripts/dev-env.sh`](scripts/dev-env.sh), [`.envrc`](.envrc)): the toolchain installs into
   `./.toolchain` (git-ignored) via rustup's `RUSTUP_HOME`/`CARGO_HOME` + `--no-modify-path` — never
