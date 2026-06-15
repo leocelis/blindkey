@@ -20,10 +20,14 @@ use crate::{Error, Result};
 
 /// HKDF info label for the password stanza's wrapping key (constraint C5 — exact bytes matter).
 const PW_WRAP_INFO: &[u8] = b"vault-pw-wrap-v1";
+/// HKDF info label for the composite password+YubiKey 2FA wrapping key (UC-09 AND model).
+const TWOFA_WRAP_INFO: &[u8] = b"vault-2fa-wrap-v1";
 /// XChaCha20-Poly1305 nonce length (constraint C5 stanza layout).
 const WRAP_NONCE_LEN: usize = 24;
 /// Wrapped data-key length: 32-byte key + 16-byte Poly1305 tag (constraint C5).
 const WRAPPED_KEY_LEN: usize = 48;
+/// Length of the YubiKey challenge stored in a 2FA stanza (sent to the key on every unlock).
+const CHALLENGE_LEN: usize = 32;
 
 /// The kind of secret a stanza wraps the data key with (constraint C5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -139,6 +143,130 @@ pub fn unwrap_password_stanza(
     Ok(secret)
 }
 
+// ─── composite password + YubiKey 2FA stanza (UC-09 AND model) ──────────────────────────────────
+
+/// Derive the 2FA wrapping key from **both** factors: `HKDF(ikm = Argon2id(pw) ‖ hw_response,
+/// salt = vault_id, info = "vault-2fa-wrap-v1")`. Neither factor alone yields the key.
+fn twofa_wrapping_key(
+    password: &[u8],
+    hw_response: &[u8],
+    salt: &[u8; 32],
+    vault_id: &[u8; 16],
+    m_cost: u32,
+    t_cost: u32,
+    p_cost: u32,
+) -> Result<[u8; 32]> {
+    let pw_ikm = kdf::argon2id(password, salt, m_cost, t_cost, p_cost)?;
+    let mut ikm = Zeroizing::new(Vec::with_capacity(32 + hw_response.len()));
+    ikm.extend_from_slice(pw_ikm.expose_secret());
+    ikm.extend_from_slice(hw_response);
+    Ok(crypto::hkdf32(&ikm, vault_id, TWOFA_WRAP_INFO))
+}
+
+/// Wrap `data_key` in a composite **password + YubiKey** 2FA stanza (`kind::PW_YUBIKEY`).
+///
+/// `hw_response` is the YubiKey's HMAC-SHA1 response to `challenge`; `challenge` is stored in the
+/// stanza so unlock can re-send it to the key. Both the password and the key are required to unwrap.
+#[allow(clippy::too_many_arguments)] // mirrors `wrap_password_stanza` + the two extra 2FA inputs
+pub fn wrap_yubikey_2fa_stanza(
+    data_key: &[u8; 32],
+    password: &[u8],
+    hw_response: &[u8],
+    challenge: &[u8; CHALLENGE_LEN],
+    salt: &[u8; 32],
+    vault_id: &[u8; 16],
+    m_cost: u32,
+    t_cost: u32,
+    p_cost: u32,
+) -> Result<Stanza> {
+    let mut wrapping_key = twofa_wrapping_key(
+        password,
+        hw_response,
+        salt,
+        vault_id,
+        m_cost,
+        t_cost,
+        p_cost,
+    )?;
+    let cipher = XChaCha20Poly1305::new_from_slice(&wrapping_key).map_err(|_| Error::Crypto)?;
+    wrapping_key.zeroize();
+
+    let mut nonce = [0u8; WRAP_NONCE_LEN];
+    getrandom::getrandom(&mut nonce).map_err(|_| Error::Crypto)?;
+    let wrapped = cipher
+        .encrypt(XNonce::from_slice(&nonce), &data_key[..])
+        .map_err(|_| Error::Crypto)?;
+    debug_assert_eq!(wrapped.len(), WRAPPED_KEY_LEN);
+
+    let mut data = Vec::with_capacity(CHALLENGE_LEN + WRAP_NONCE_LEN + WRAPPED_KEY_LEN);
+    data.extend_from_slice(challenge);
+    data.extend_from_slice(&nonce);
+    data.extend_from_slice(&wrapped);
+    Ok(Stanza {
+        stanza_type: kind::PW_YUBIKEY,
+        data,
+    })
+}
+
+/// Extract the stored challenge from a `kind::PW_YUBIKEY` stanza (sent to the key on unlock).
+pub fn yubikey_challenge(stanza: &Stanza) -> Result<[u8; CHALLENGE_LEN]> {
+    if stanza.stanza_type != kind::PW_YUBIKEY || stanza.data.len() < CHALLENGE_LEN {
+        return Err(Error::HeaderAuth);
+    }
+    let mut c = [0u8; CHALLENGE_LEN];
+    c.copy_from_slice(&stanza.data[..CHALLENGE_LEN]);
+    Ok(c)
+}
+
+/// Unwrap the data key from a composite password+YubiKey 2FA stanza. A wrong password **or** a
+/// wrong/absent YubiKey response yields the ambiguous [`Error::HeaderAuth`] (no oracle).
+pub fn unwrap_yubikey_2fa_stanza(
+    stanza: &Stanza,
+    password: &[u8],
+    hw_response: &[u8],
+    salt: &[u8; 32],
+    vault_id: &[u8; 16],
+    m_cost: u32,
+    t_cost: u32,
+    p_cost: u32,
+) -> Result<DataKey> {
+    if stanza.stanza_type != kind::PW_YUBIKEY {
+        return Err(Error::Crypto);
+    }
+    if stanza.data.len() < CHALLENGE_LEN + WRAP_NONCE_LEN + WRAPPED_KEY_LEN {
+        return Err(Error::HeaderAuth);
+    }
+    let nonce = &stanza.data[CHALLENGE_LEN..CHALLENGE_LEN + WRAP_NONCE_LEN];
+    let wrapped = &stanza.data
+        [CHALLENGE_LEN + WRAP_NONCE_LEN..CHALLENGE_LEN + WRAP_NONCE_LEN + WRAPPED_KEY_LEN];
+
+    let mut wrapping_key = twofa_wrapping_key(
+        password,
+        hw_response,
+        salt,
+        vault_id,
+        m_cost,
+        t_cost,
+        p_cost,
+    )?;
+    let cipher = XChaCha20Poly1305::new_from_slice(&wrapping_key).map_err(|_| Error::Crypto)?;
+    wrapping_key.zeroize();
+
+    let plaintext = Zeroizing::new(
+        cipher
+            .decrypt(XNonce::from_slice(nonce), wrapped)
+            .map_err(|_| Error::HeaderAuth)?,
+    );
+    if plaintext.len() != 32 {
+        return Err(Error::HeaderAuth);
+    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&plaintext);
+    let secret = Secret::new(key);
+    key.zeroize();
+    Ok(secret)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,5 +328,55 @@ mod tests {
             unwrap_password_stanza(&stanza, b"pw", &SALT, &VID, M, T, P),
             Err(Error::HeaderAuth)
         ));
+    }
+
+    // ── composite 2FA (password + YubiKey) ──────────────────────────────────
+    const CHALLENGE: [u8; CHALLENGE_LEN] = [0x44; CHALLENGE_LEN];
+    const HW: &[u8] = b"yubikey-hmac-sha1-resp\x00\x01\x02\x03"; // mock 20-ish byte response
+
+    #[test]
+    fn twofa_round_trip_needs_both_factors() {
+        let dk = [0xCD; 32];
+        let s = wrap_yubikey_2fa_stanza(&dk, b"pw", HW, &CHALLENGE, &SALT, &VID, M, T, P).unwrap();
+        assert_eq!(s.stanza_type, kind::PW_YUBIKEY);
+        assert_eq!(
+            s.data.len(),
+            CHALLENGE_LEN + WRAP_NONCE_LEN + WRAPPED_KEY_LEN
+        );
+        // the challenge is recoverable for the unlock flow…
+        assert_eq!(yubikey_challenge(&s).unwrap(), CHALLENGE);
+        // …and the data key never appears in plaintext.
+        assert!(s.data.windows(32).all(|w| w != dk));
+
+        // both correct → opens
+        let out = unwrap_yubikey_2fa_stanza(&s, b"pw", HW, &SALT, &VID, M, T, P).unwrap();
+        assert_eq!(out.expose_secret(), &dk);
+    }
+
+    #[test]
+    fn twofa_fails_without_each_factor() {
+        let dk = [0x10; 32];
+        let s = wrap_yubikey_2fa_stanza(&dk, b"pw", HW, &CHALLENGE, &SALT, &VID, M, T, P).unwrap();
+        // wrong password (key correct) → fail
+        assert!(matches!(
+            unwrap_yubikey_2fa_stanza(&s, b"WRONG", HW, &SALT, &VID, M, T, P),
+            Err(Error::HeaderAuth)
+        ));
+        // wrong YubiKey response (password correct) → fail
+        assert!(matches!(
+            unwrap_yubikey_2fa_stanza(&s, b"pw", b"wrong-response", &SALT, &VID, M, T, P),
+            Err(Error::HeaderAuth)
+        ));
+        // missing the hardware factor entirely → fail
+        assert!(matches!(
+            unwrap_yubikey_2fa_stanza(&s, b"pw", b"", &SALT, &VID, M, T, P),
+            Err(Error::HeaderAuth)
+        ));
+    }
+
+    #[test]
+    fn twofa_challenge_rejects_wrong_kind() {
+        let pw = wrap_password_stanza(&[0u8; 32], b"pw", &SALT, &VID, M, T, P).unwrap();
+        assert!(yubikey_challenge(&pw).is_err());
     }
 }

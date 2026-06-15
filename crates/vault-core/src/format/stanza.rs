@@ -24,6 +24,10 @@ pub mod kind {
     pub const KEYCHAIN: u8 = 5;
     /// Windows DPAPI stanza.
     pub const DPAPI: u8 = 6;
+    /// **Composite** password **AND** YubiKey HMAC-SHA1 stanza — both factors required to unwrap
+    /// (true 2FA, unlike the single-factor OR stanzas above). `data` is
+    /// `challenge[32] || wrap_nonce[24] || wrapped_key[48]`.
+    pub const PW_YUBIKEY: u8 = 7;
 }
 
 /// One key-wrapping stanza record. `data` is opaque at this layer (interpreted by the envelope).
