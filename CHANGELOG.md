@@ -152,6 +152,13 @@ All notable changes to this project are documented here. The format is based on
   timer) and a "2FA secret" field in the editor. Adds the audited `sha1` crate (used **only** for
   TOTP, never at rest). Also made the CLI master-password prompt read a single line so `add`/`edit`
   are scriptable. 5 new tests.
+- **Cross-desktop CI (works on any desktop).** The build+test matrix now covers **Linux, macOS,
+  and Windows including the egui GUI**: the Linux jobs install the windowing/dialog system libs
+  (`libgtk-3-dev`, `libxcb-*`, `libxkbcommon-dev`), and the CLI integration tests sandbox the
+  rollback anchor on Windows too (`LOCALAPPDATA`). Repaired the jobs the 1.82→1.96 toolchain bump
+  broke: dropped the obsolete `MSRV 1.82` check (the lockfile now needs Rust-2024 deps) and scoped
+  the static-musl build to `vault-cli` (the GUI links native windowing libraries and isn't a musl
+  target).
 - **Keyboard-first GUI + polish.** The desktop app is now fully drivable from the keyboard:
   **↑/↓** move the selection and **Enter copies** the selected password (type-to-search → Enter,
   like the TUI). The create screen shows a live **password-strength meter** (entropy estimate +

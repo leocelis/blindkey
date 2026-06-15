@@ -20,6 +20,7 @@ fn run_env(home: &Path, args: &[&str], stdin: &str) -> (Option<i32>, String, Str
     let mut child = Command::new(env!("CARGO_BIN_EXE_vault"))
         .env("HOME", home)
         .env("XDG_DATA_HOME", home.join("share"))
+        .env("LOCALAPPDATA", home.join("local")) // Windows anchor dir → keep it sandboxed too
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
