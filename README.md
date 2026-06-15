@@ -10,14 +10,17 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 [![Security Audit](https://github.com/leocelis/vault/actions/workflows/audit.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/audit.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/leocelis/vault/badge)](https://securityscorecards.dev/viewer/?uri=github.com/leocelis/vault)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Status: research / pre-alpha](https://img.shields.io/badge/status-research%20%2F%20pre--alpha-orange.svg)](#-project-status)
+[![Status: functional / pre-1.0 / unaudited](https://img.shields.io/badge/status-functional%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
 </div>
 
 > [!WARNING]
-> **Pre-alpha. Do not store real secrets in Vault yet.** This repository is currently a
-> **research-and-design skeleton** — the cryptography is specified and reviewed but **not yet
-> implemented or audited**. Watch [ROADMAP.md](ROADMAP.md) for the path to a usable release.
+> **Pre-1.0 and not yet independently audited — keep your own backup of anything you store.**
+> Vault is now **functional**: the cryptographic core is implemented and tested, and there's a
+> working CLI *and* a desktop app (create/unlock, import a `keys.txt`, search, copy, edit, 2FA
+> codes, auto-lock). What it has **not** had is an independent third-party security audit, and the
+> on-disk format may still change before 1.0. Use it, kick the tyres, report issues — just don't
+> make it the *only* copy of an irreplaceable secret yet. See [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -66,17 +69,23 @@ developer who is nervous about AI exposure can actually adopt it.**
 Full rationale: [docs/CRYPTO.md](docs/CRYPTO.md) · Format: [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md)
 · Threat model: [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) · The constraints: [vault_intent.yaml](vault_intent.yaml)
 
-## Quickstart *(aspirational — not yet functional)*
+## Quickstart
 
 ```sh
-# One static binary, no runtime deps.
-cargo install vault-cli
+# Build from source (not yet published to crates.io); produces one static binary, no runtime deps.
+cargo build --release -p vault-cli
+alias vault=target/release/vault
 
 vault init                      # create a vault (prompts for a master password)
-vault gen --length 24           # generate a CSPRNG password
+vault import --format raw keys.txt   # migrate a messy keys.txt (masked review)
+vault gen --length 24           # generate a CSPRNG password…
+vault gen --words 8             # …or a diceware passphrase
 vault add github                # add an entry (no secrets on the command line)
 vault get github                # copy password to clipboard (auto-clears in 30s)
+vault otp github                # copy the current 2FA code (if the entry has a 2FA secret)
 vault ls --search git           # search after unlock (in-memory only)
+vault tune                      # benchmark Argon2id and recommend KDF params
+vault pad on                    # hide the file's exact size on untrusted storage (Padmé)
 ```
 
 ### Desktop app *(works today, locally)*
@@ -91,8 +100,8 @@ cargo run -p vault-gui          # launch the window
 ./scripts/bundle-macos.sh       # macOS: build a double-clickable target/Vault.app
 ```
 
-It shares one vault with the CLI/TUI at `~/.vault/vault.vlt`. (Still pre-alpha and unaudited — see
-the warning above.)
+It shares one vault with the CLI/TUI at `~/.vault/vault.vlt`, auto-locks when idle, and shows live
+2FA codes. (Functional but not yet independently audited — see the warning above.)
 
 Secrets are **never** passed as command-line arguments, and `vault get` delivers to the clipboard
 by default so an AI agent watching stdout can't scrape them. To be precise about the boundary:
@@ -109,8 +118,10 @@ Vault follows **Intent-Verified Development**: the design is captured as testabl
 - ✅ Research foundation — [research/](research/)
 - ✅ Intent specification — [vault_intent.yaml](vault_intent.yaml) (34 constraints, 11 groups)
 - ✅ Open-source scaffolding — this repository
-- ⏳ Implementation — by constraint segment (see [ROADMAP.md](ROADMAP.md))
-- ⏳ Independent security audit before v1.0
+- ✅ **Core implementation** — encrypted format, Argon2id, in-memory protection, rollback
+  detection, CLI **and** desktop app (CI green on Linux/macOS/Windows; see [ROADMAP.md](ROADMAP.md))
+- ⏳ Remaining features — hardware-backed unlock, sync/merge polish (see the roadmap)
+- ⏳ **Independent security audit before v1.0**
 
 ## Repository layout
 

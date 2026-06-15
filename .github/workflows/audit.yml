@@ -17,7 +17,7 @@ jobs:
     name: cargo-deny (advisories + licenses + bans + sources)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: EmbarkStudios/cargo-deny-action@8f84122a46a358a27cb0625d85ad60ab436a1b87 # v2
         with:
           command: check advisories licenses bans sources
@@ -26,7 +26,7 @@ jobs:
     name: cargo-audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       # rust-toolchain.toml pins 1.82 for BUILDS, and the toolchain file outranks the rustup
       # default — so the action's internal plain `cargo install cargo-audit` would resolve to
       # 1.82 and fail (current cargo-audit needs rustc 1.88). cargo-audit is a dev TOOL, not a

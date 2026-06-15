@@ -23,7 +23,7 @@ jobs:
       matrix:
         target: [header_parse, stanza_parse, block_stream]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       # Deliberate exemption from the rust-toolchain.toml pin: cargo-fuzz requires nightly.
       # The shipped binary is never built here (C34 reproducibility is unaffected).
       # NOTE: the toolchain FILE outranks the rustup default this action sets, so every cargo
