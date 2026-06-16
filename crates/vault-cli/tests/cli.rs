@@ -186,6 +186,47 @@ fn cli_otp_requires_a_2fa_secret() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
+/// Root-of-trust hardening: `vault init` warns on a weak master password; `--allow-weak-password`
+/// silences it. (Non-interactive init proceeds either way — the prompt is TTY-only.)
+#[test]
+fn cli_init_warns_on_weak_master_password() {
+    let home = unique_dir("weak-home");
+    let fast = [
+        "--kdf-m-cost",
+        "8192",
+        "--kdf-t-cost",
+        "1",
+        "--kdf-p-cost",
+        "1",
+    ];
+
+    let v1 = unique_vault();
+    let mut a1 = vec!["--vault", v1.to_str().unwrap(), "init"];
+    a1.extend_from_slice(&fast);
+    let (code, _, err) = run_env(&home, &a1, "abc\n");
+    assert_eq!(
+        code,
+        Some(0),
+        "weak init should proceed non-interactively: {err}"
+    );
+    assert!(err.to_lowercase().contains("weak"), "should warn: {err}");
+
+    let v2 = unique_vault();
+    let mut a2 = vec!["--vault", v2.to_str().unwrap(), "init"];
+    a2.extend_from_slice(&fast);
+    a2.push("--allow-weak-password");
+    let (code, _, err) = run_env(&home, &a2, "abc\n");
+    assert_eq!(code, Some(0), "init: {err}");
+    assert!(
+        !err.to_lowercase().contains("weak"),
+        "--allow-weak-password should silence the warning: {err}"
+    );
+
+    let _ = std::fs::remove_file(&v1);
+    let _ = std::fs::remove_file(&v2);
+    let _ = std::fs::remove_dir_all(&home);
+}
+
 /// C26 diceware: `vault gen --words N` emits an N-word passphrase from the built-in list.
 #[test]
 fn cli_gen_passphrase() {

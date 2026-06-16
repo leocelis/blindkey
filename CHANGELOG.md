@@ -152,6 +152,12 @@ All notable changes to this project are documented here. The format is based on
   timer) and a "2FA secret" field in the editor. Adds the audited `sha1` crate (used **only** for
   TOTP, never at rest). Also made the CLI master-password prompt read a single line so `add`/`edit`
   are scriptable. 5 new tests.
+- **Master-password strength gate (root-of-trust hardening).** A weak master password defeats every
+  other layer (it faces offline brute force), so `vault init` now **estimates its strength** and, if
+  it's below ~60 bits (`audit::WEAK_MASTER_BITS`), warns loudly and — on a terminal — requires
+  confirmation; `--allow-weak-password` skips it for scripted setup (non-interactive init warns but
+  proceeds). The desktop create screen already shows a live strength meter. Shared estimator
+  (`audit::password_entropy_bits`) keeps CLI and GUI consistent.
 - **Hostile-file robustness hardening (UC-10 / C30).** A malicious `.vlt` from an untrusted sync
   backend is the #1 untrusted-input path, so the guarantee that *parsing it can't be exploited* is
   now property-tested in the normal suite ([`tests/robustness.rs`](crates/vault-core/tests/robustness.rs)):

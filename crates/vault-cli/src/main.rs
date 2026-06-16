@@ -50,6 +50,9 @@ enum Command {
         /// Argon2id parallelism (advanced; default 4).
         #[arg(long, hide = true, default_value_t = 4)]
         kdf_p_cost: u32,
+        /// Skip the weak-master-password warning/confirmation (for scripted setup).
+        #[arg(long)]
+        allow_weak_password: bool,
     },
     /// Import secrets from a file (e.g. a messy `keys.txt`) into the vault.
     Import {

@@ -15,6 +15,11 @@ use crate::format::entry::Entry;
 /// Seconds in a day, for the staleness/expiry windows.
 const DAY: i64 = 86_400;
 
+/// Estimated-entropy floor (bits) below which a **master** password is considered weak. The master
+/// password is the root of trust and faces offline brute force, so this is stricter than a typical
+/// per-entry threshold. ~60 bits ≈ a strong passphrase (e.g. 5 diceware words) or ~12 random alnum.
+pub const WEAK_MASTER_BITS: f64 = 60.0;
+
 /// Thresholds for what counts as weak / stale / expiring.
 #[derive(Debug, Clone, Copy)]
 pub struct AuditConfig {

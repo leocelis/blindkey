@@ -35,7 +35,14 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
             kdf_m_cost,
             kdf_t_cost,
             kdf_p_cost,
-        } => cmd_init(&vault_path(vault_opt)?, kdf_m_cost, kdf_t_cost, kdf_p_cost),
+            allow_weak_password,
+        } => cmd_init(
+            &vault_path(vault_opt)?,
+            kdf_m_cost,
+            kdf_t_cost,
+            kdf_p_cost,
+            allow_weak_password,
+        ),
         Command::Import { format, source } => {
             cmd_import(&vault_path(vault_opt)?, &format, &source, opts)
         }
@@ -85,7 +92,13 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
 
 // ─── commands ──────────────────────────────────────────────────────────────
 
-fn cmd_init(path: &Path, m_cost: u32, t_cost: u32, p_cost: u32) -> CmdResult {
+fn cmd_init(
+    path: &Path,
+    m_cost: u32,
+    t_cost: u32,
+    p_cost: u32,
+    allow_weak_password: bool,
+) -> CmdResult {
     if path.exists() {
         return Err(format!(
             "a vault already exists at {} (refusing to overwrite)",
@@ -93,6 +106,21 @@ fn cmd_init(path: &Path, m_cost: u32, t_cost: u32, p_cost: u32) -> CmdResult {
         ));
     }
     let password = prompt_password(true)?;
+    // Root-of-trust check: a weak master password defeats every other layer (it faces offline
+    // brute force). Warn loudly; on a TTY require confirmation. `--allow-weak-password` skips it.
+    if !allow_weak_password {
+        let bits = vault_core::audit::password_entropy_bits(password.as_bytes());
+        if bits < vault_core::audit::WEAK_MASTER_BITS {
+            eprintln!(
+                "warning: that master password is weak (~{bits:.0} bits) — it protects everything \
+                 and faces offline cracking. A passphrase is far stronger (try `vault gen --words 6`)."
+            );
+            if std::io::stdin().is_terminal() && !confirm("Use this weak master password anyway?")?
+            {
+                return Err("aborted — choose a stronger master password".to_string());
+            }
+        }
+    }
     eprintln!("Deriving key (Argon2id)…");
     let mut vault =
         Vault::create(password.as_bytes(), m_cost, t_cost, p_cost).map_err(|e| e.to_string())?;
