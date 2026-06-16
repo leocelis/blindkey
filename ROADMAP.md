@@ -96,16 +96,16 @@ lane can build against from that point on.
 | S-1 | **Clipboard-holder helper process** (X11/Wayland/macOS/Windows, history-suppression hints, clear-iff-unchanged) | [UC-04](docs/specs/UC-04-model-blind-retrieval.md) | nothing | Standalone binary/crate; the flagship's engine (`C13`/`C33`) |
 | S-2 | **`vault gen`** — rejection sampling, charsets, EFF wordlist embedding, chi-square test harness | [UC-02](docs/specs/UC-02-csprng-generation.md) | nothing | Pure function + CLI glue later |
 | S-3 | **zxcvbn entropy warning** (60-bit floor, warn-don't-block) | [UC-02](docs/specs/UC-02-csprng-generation.md) | nothing | Wraps the zxcvbn crate |
-| S-4 | **`vault tune`** — RFC 9106 memory-first proportional scaling, median-of-3 | [UC-11](docs/specs/UC-11-kdf-calibration.md) | CP-2 (kdf fn) | Benchmark harness can start against raw argon2 |
+| S-4 | ✅ **`vault tune`** — Argon2id benchmark + recommend m/t/p (~300 ms) | [UC-11](docs/specs/UC-11-kdf-calibration.md) | CP-2 (kdf fn) | **DONE** (C22): probe + linear-extrapolate `m`, clamp to policy, re-measure; unlock progress line |
 | S-5 | **Import parsers** — txt, JSON, Bitwarden JSON, KeePassXC CSV (+ M9: kdbx via `keepass`, pass via gpg subprocess) | [UC-12](docs/specs/UC-12-migration-import.md) | CP-1 (Entry model) | Each format = one PR; fuzz each parser |
 | S-6 | **`vault export` + `--stdout` plumbing** — warning strings, non-TTY matrix, `--password-fd/stdin` | [UC-05](docs/specs/UC-05-script-and-ci-output.md) | CP-5 partially | Spec is final; warning text is frozen |
 | S-7 | **`vault merge`** — UUID union, `modified_at` tiebreak, masked diffs (8-bullet Protected) | [UC-08](docs/specs/UC-08-conflict-merge.md) | CP-4 | Needs read/write API |
 | S-8a | **FIDO2 stanza** (libfido2 raw CTAP2) | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 (stanza API) | Optional for v1 (M7) |
-| S-8b | **YubiKey CR stanza** (+ graceful-staleness) | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 | Optional |
+| S-8b | 🟡 **YubiKey CR stanza** | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 | **CLI DONE** (`vault enroll yubikey`): composite **AND** 2FA (password + key both required) + one-time recovery code; HMAC-SHA1 slot-2 via `ykman` subprocess (no FFI). Pending: GUI enrollment + the UC-09 AND-model intent amendment |
 | S-8c | **TPM stanza** (PCR 7, re-enroll flow) | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 | Optional |
 | S-8d | **macOS SE / Windows DPAPI stanzas** | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 | Optional |
 | S-9 | **Disclosure ops** — publish age intake key, triage runbook, severity modifier table | [UC-15](docs/specs/UC-15-vulnerability-reporting.md) | nothing | Process work, zero code |
-| S-10 | **Auto-lock & config** — `~/.vault.toml` schema, idle timer | [UC-06](docs/specs/UC-06-entry-management.md) | CP-3 | Small |
+| S-10 | 🟡 **Auto-lock & config** — `~/.vault.toml` schema, idle timer | [UC-06](docs/specs/UC-06-entry-management.md) | CP-3 | **GUI idle auto-lock + lock-on-minimize DONE** (configurable timeout in `~/.vault/config`). Pending: full `~/.vault.toml` + CLI-session auto-lock |
 | S-11 | **Fuzz corpus & CI fuzz budget** — seed corpora from real vault files, OSS-Fuzz application | [UC-10](docs/specs/UC-10-hostile-file-parsing.md) | CP-1 | Grows with every parser |
 | S-12 | **Padmé padding exploration** (PURBs) — size-leak reduction, default-off | [UC-07 §7](docs/specs/UC-07-untrusted-storage-sync.md) | CP-4 | v2 candidate, research-first |
 | S-13 | **Agent interface exploration** — handle broker, `vault_use`, OS approval gate | [UC-16](docs/specs/UC-16-agent-interface-future.md) | post-v1 | DESIGN EXPLORATION; never returns plaintext to a model (C27) |

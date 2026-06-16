@@ -44,6 +44,23 @@ attestation.
 
 ## 3. Proposed design
 
+> **Amendment (2026-06-15, shipped CLI — YubiKey path).** The first hardware factor shipped is a
+> **YubiKey** as a **required-both (AND) second factor**, not the additive OR factor §3.1 describes.
+> Rationale: an OR/additive YubiKey doesn't protect a vault whose master password leaks (the
+> password still unlocks); the user chose true 2FA. The shipped model:
+> - Enrollment **replaces** the password stanza with a composite `PW_YUBIKEY` stanza —
+>   `wrapping_key = HKDF(ikm = Argon2id(password) ‖ YubiKey-HMAC-SHA1-response, salt = vault_id,
+>   info = "vault-2fa-wrap-v1")` — so **password alone no longer unlocks**.
+> - Anti-lockout is preserved by a separate **recovery-code** stanza (a high-entropy password-path
+>   stanza), surfaced once at enrollment; `vault --recovery` unlocks without the key.
+> - Mechanism is **HMAC-SHA1 challenge-response on slot 2 via `ykman`** (subprocess, no FFI) because
+>   YubiKey 4 / NEO lack FIDO2 `hmac-secret`. A **fixed per-enrollment challenge** (stored in the
+>   stanza) means the tap is required on **unlock only**, not per save.
+>
+> This supersedes the OR/graceful-staleness default (G0.7) **for the YubiKey factor**; the OR model
+> below still governs the other (additive) factor types. The `vault_intent.yaml` C5/C6 constraint
+> reconciliation is pending second-maintainer review.
+
 ### 3.1 OR-envelope recap (C5)
 
 Every stanza independently wraps the same 32-byte `data_key`:
