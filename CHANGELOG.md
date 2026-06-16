@@ -152,6 +152,15 @@ All notable changes to this project are documented here. The format is based on
   timer) and a "2FA secret" field in the editor. Adds the audited `sha1` crate (used **only** for
   TOTP, never at rest). Also made the CLI master-password prompt read a single line so `add`/`edit`
   are scriptable. 5 new tests.
+- **Hostile-file robustness hardening (UC-10 / C30).** A malicious `.vlt` from an untrusted sync
+  backend is the #1 untrusted-input path, so the guarantee that *parsing it can't be exploited* is
+  now property-tested in the normal suite ([`tests/robustness.rs`](crates/vault-core/tests/robustness.rs)):
+  over thousands of random inputs, every public parser (`Header`/`Payload`/`stanza`/`Vault::open`)
+  is **panic-free on arbitrary bytes**, a real vault always **round-trips and leaks no plaintext**
+  (C18), a wrong password always fails, and a **single-byte flip anywhere is always detected**
+  (C9/C10/C1 — never decrypts to something else). Also extended the continuous fuzzer with a full
+  **`vault_open`** target (plus the previously-unlisted `payload_parse`) and broadened its path
+  triggers to the whole open path.
 - **Password-health audit (`vault audit` + GUI 🩺).** New offline [`audit`](crates/vault-core/src/audit.rs)
   flags **weak** (low-entropy), **reused** (same password across entries), **stale** (not changed in
   over a year), and **expiring/expired** credentials — entirely locally (no network, C23), reporting
