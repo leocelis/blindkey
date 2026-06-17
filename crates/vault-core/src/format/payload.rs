@@ -34,6 +34,7 @@ mod tag {
     pub const PAD_MODE: u16 = 0x0003; // UC-07 §3.2 padding policy (u8); absent = none
     pub const VAULT_VERSION: u16 = 0x0010;
     pub const ENTRY: u16 = 0x0020;
+    pub const USAGE: u16 = 0x0030; // UC-19 frecency store (id‖uses‖last_used × n); absent = empty
     pub const END: u16 = 0x0000;
 }
 
@@ -48,6 +49,9 @@ pub struct Payload {
     pub vault_version: u64,
     /// The entries.
     pub entries: Vec<Entry>,
+    /// Per-entry usage signal for search ranking (UC-19). Lives here so it is encrypted at rest
+    /// (constraint C36 — no plaintext index). Absent in vaults written before this feature → empty.
+    pub usage: crate::frecency::FrecencyStore,
 }
 
 impl Payload {
@@ -70,6 +74,10 @@ impl Payload {
         for e in &self.entries {
             tlv::write_record(&mut out, tag::ENTRY, &e.serialize(&mut inner));
         }
+        // UC-19 usage signal — written inside the payload so the outer AEAD encrypts it (C36).
+        if !self.usage.is_empty() {
+            tlv::write_record(&mut out, tag::USAGE, &self.usage.serialize());
+        }
         tlv::write_record(&mut out, tag::END, &[]);
         out
     }
@@ -85,6 +93,7 @@ impl Payload {
         let mut pad_mode = PadMode::None;
         let mut version: Option<u64> = None;
         let mut entry_blobs: Vec<&[u8]> = Vec::new();
+        let mut usage = crate::frecency::FrecencyStore::new();
 
         while let Some((t, v)) = tlv::read_record(&mut cur, MAX_ENTRY_LEN)? {
             match t {
@@ -107,6 +116,7 @@ impl Payload {
                 }
                 tag::VAULT_VERSION => version = Some(tlv::decode_u64(v)?),
                 tag::ENTRY => entry_blobs.push(v),
+                tag::USAGE => usage = crate::frecency::FrecencyStore::parse(v)?,
                 _ => { /* unknown record — skip for forward compatibility */ }
             }
         }
@@ -126,6 +136,7 @@ impl Payload {
             pad_mode,
             vault_version: version.ok_or(Error::BodyMalformed)?,
             entries,
+            usage,
         })
     }
 }
@@ -156,11 +167,16 @@ mod tests {
     }
 
     fn sample() -> Payload {
+        // Populate usage so round_trip exercises the UC-19 USAGE record path too.
+        let mut usage = crate::frecency::FrecencyStore::new();
+        usage.record([1u8; 16], 1_000);
+        usage.record([2u8; 16], 2_000);
         Payload {
             inner_stream_key: Protected::new(vec![0x5A; INNER_STREAM_KEY_LEN]),
             pad_mode: PadMode::None,
             vault_version: 3,
             entries: vec![entry(1, "a", b"pw-a"), entry(2, "b", b"pw-b")],
+            usage,
         }
     }
 
@@ -181,6 +197,7 @@ mod tests {
             pad_mode: PadMode::None,
             vault_version: 1,
             entries: vec![entry(1, "svc", secret)],
+            usage: crate::frecency::FrecencyStore::new(),
         };
         let bytes = p.serialize();
         assert!(
@@ -198,6 +215,7 @@ mod tests {
             pad_mode: PadMode::None,
             vault_version: 0,
             entries: vec![],
+            usage: crate::frecency::FrecencyStore::new(),
         };
         assert_eq!(Payload::parse(&p.serialize()).unwrap(), p);
     }

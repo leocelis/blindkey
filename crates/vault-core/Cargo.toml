@@ -20,6 +20,7 @@ sha1.workspace = true
 subtle.workspace = true
 getrandom.workspace = true
 unicode-normalization.workspace = true
+nucleo-matcher.workspace = true
 vault-sys = { path = "../vault-sys", version = "0.0.0" }
 zeroize.workspace = true
 secrecy.workspace = true

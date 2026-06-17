@@ -6,7 +6,7 @@
 # Reference: https://ivdframework.dev
 #
 # IVD rules applied in this artifact:
-#   Rule 1 — Intent Before Implementation: 34 constraints, HIGH density.
+#   Rule 1 — Intent Before Implementation: 39 constraints, HIGH density.
 #             Segmented implementation required (see implementation_notes).
 #   Rule 3 — Constraint Tests Are Mandatory: every constraint has a `test:` field.
 #   Rule 4 — Stress-Test Intent: constraint_satisfiability block documents all
@@ -44,7 +44,7 @@ meta:
   version: "1.4.0"   # 1.1.0: C1 nonce_prefix fix · 1.2.0: C27-UI extension + GUI non-goal (UC-18) · 1.3.0: C28–C34 promotion + C2 ceiling/NFC + contradiction fixes · 1.4.0: Gate 0 close-out (G0.2 HMAC re-keying + master_seed binding, G0.3 upgrade-kdf full save, G0.6 clipboard helper, G0.7 YubiKey staleness, exit codes, C27 no-clipboard rule)
   license: "MIT OR Apache-2.0"
   language: rust
-  ifscale_density: high         # IVD Rule 1: 34 constraints → segmented implementation
+  ifscale_density: high         # IVD Rule 1: 39 constraints → segmented implementation
   constraint_count: 34
   constraint_groups: 11
   target_platforms:
@@ -138,6 +138,7 @@ constraint_groups:
   G9: "Open source and auditability"
   G10: "AI-era threat resistance — CSPRNG credential generation and model-blind secret handling"
   G11: "Untrusted input and output robustness — hostile files, terminal output, exports"
+  G12: "Search and discovery — fuzzy omni-search over non-secret metadata (UC-19)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 constraints:
@@ -1588,13 +1589,118 @@ constraints:
       INTEGRATION: The exact verification commands documented in
         docs/VERIFYING_RELEASES.md succeed against a published artifact and signature.
 
+  # ── G12: Search and discovery (UC-19) ─────────────────────────────────────
+  - id: C35
+    group: G12
+    title: "Search corpus excludes secret values"
+    description: |
+      Fuzzy omni-search MUST match only NON-SECRET metadata: an entry's title,
+      username, url, and tags. Secret and secret-adjacent fields — password,
+      otp_secret, protected custom fields, and the free-form notes field (which
+      users paste arbitrary content, including secrets, into) — MUST NOT be added
+      to the searchable corpus and MUST NOT be passed to the matcher. The set of
+      searchable fields MUST be a closed enumeration with no secret variant.
+    rationale: |
+      A matcher cannot leak a secret it never sees. Making the corpus a closed,
+      metadata-only set turns "search never exposes a secret" into a structural
+      property rather than a runtime check. This is the security premise that lets
+      the convenience of fuzzy search add zero exposure.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.2 corpus, §3.7 security properties"
+    test: |
+      UNIT: an entry whose query substring occurs ONLY inside its secret value (or
+        notes) returns zero hits; the same query against its title/username/url/tag
+        matches. The searchable-field enum has no password/otp/notes variant.
+
+  - id: C36
+    group: G12
+    title: "No persisted search index; ranking state is ciphertext at rest"
+    description: |
+      Search MUST build no persisted on-disk index (no trigram/inverted/BK-tree
+      file, no cached results). Matching is performed in memory over the
+      already-decrypted entry set. Any usage/ranking state (frecency) MUST be
+      stored INSIDE the encrypted payload, so it is ciphertext under the outer
+      AEAD at rest — never a plaintext sidecar.
+    rationale: |
+      A persisted index is a plaintext-shaped side-channel over sensitive metadata
+      (substring/n-gram membership, lengths, composition) that survives outside the
+      encrypted store. At this scale (hundreds–low-thousands of entries) an index is
+      also unnecessary: a linear scan is sub-millisecond.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.4 frecency store, §4 alternatives (index rejected)"
+    test: |
+      UNIT: the frecency store round-trips through the encrypted payload
+        (serialize → parse) and the plaintext usage bytes are not present in the
+        outer ciphertext.
+      INTEGRATION: `find --stdout` performs no disk write; no index file is created.
+
+  - id: C37
+    group: G12
+    title: "Query buffer is wiped on lock; queries are never logged"
+    description: |
+      The live search query buffer MUST be zeroized when the search is dismissed or
+      the vault is locked (it echoes metadata fragments). Search queries, matched
+      titles, result counts, and selections MUST NOT be written to logs, telemetry,
+      crash dumps, stderr diagnostics, or error messages — including on a no-match.
+    rationale: |
+      The query and results reveal what the vault contains. Wiping the buffer on
+      lock and never logging the query keeps that exposure inside the live, unlocked
+      session only.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.7; aligns C12/C19/C25"
+    test: |
+      UNIT/INTEGRATION: the GUI query buffer is zeroized on lock; the CLI never
+        echoes the query (a no-match error does not contain the query string); no
+        log/print path on the search code carries query or result text.
+
+  - id: C38
+    group: G12
+    title: "Search latency stays under 100 ms with no debounce"
+    description: |
+      A keystroke-to-result fuzzy match over the in-memory corpus MUST complete in
+      under 100 ms for up to 2000 entries, filtered SYNCHRONOUSLY on every keystroke
+      (no debounce). The matcher instance and scratch buffers are reused across
+      keystrokes to keep per-keystroke allocation low.
+    rationale: |
+      Below Nielsen's 0.1 s "instantaneous" threshold, type-to-filter feels direct.
+      For a small in-RAM corpus a synchronous scan is microseconds–low-milliseconds,
+      so debounce would only add perceived lag.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.1, §3.6; Miller 1968 / Nielsen limits"
+    test: |
+      UNIT (bench): full-corpus fuzzy match for 1–8 char queries at N=2000 completes
+        in < 100 ms (asserted even in a debug build).
+
+  - id: C39
+    group: G12
+    title: "Selecting a result delivers model-blind"
+    description: |
+      Selecting/acting on a search result MUST deliver the secret via the existing
+      model-blind clipboard path (auto-clearing, transient/concealed — C13/C27/C33),
+      never via a default stdout write. Any stdout output of search is titles-only
+      and never includes a secret; printing a secret remains an explicit, warned
+      opt-in on the dedicated get path.
+    rationale: |
+      Search becomes the most common way to reach a secret; it must inherit, not
+      bypass, the model-blind delivery guarantee that the rest of the vault upholds.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.5, §3.7; reuses C13/C27/C33"
+    test: |
+      INTEGRATION: `find` (default) copies via the clipboard helper, not stdout;
+        `find --stdout` lists titles only and contains no secret value.
+
 # ──────────────────────────────────────────────────────────────────────────────
 constraint_satisfiability:
   # IVD Rule 6 — SATISFIABILITY CHECK
   # Required when 3 or more constraints exist. Documents every identified conflict,
   # its resolution, and binding priority ordering.
   # No constraint may be silently violated when it conflicts with another.
-  density: high  # 34 constraints, 11 groups
+  density: high  # 39 constraints, 12 groups
   conflicts_identified: 8
   conflicts:
 
@@ -1723,7 +1829,7 @@ constraint_satisfiability:
 
   all_constraints_simultaneously_satisfiable: true
   note: |
-    All 34 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
+    All 39 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
     described in vault/research/vault_spec.md. No cryptographic incompatibilities exist
     among the selected primitives (XChaCha20-Poly1305, Argon2id, HKDF-SHA-256, HMAC-SHA-256).
     The eight identified conflicts are resolved by explicit priority ordering above.
@@ -1732,11 +1838,16 @@ constraint_satisfiability:
     library or algorithm conflicts. The constraints promoted on 2026-06-10 (C28–C34, plus
     the ceiling and NFC additions to C2) are input/output-sanitization, process, and
     distribution requirements; they likewise add no cryptographic primitives.
+    The UC-19 search group (C35–C39, added 2026-06-17) adds no cryptographic primitives
+    either: C35/C37 are corpus/handling policy, C36 stores ranking state inside the existing
+    AEAD payload (no new key or index), C38 is a latency budget, and C39 reuses the C13/C27/C33
+    clipboard path. They are consistent with SC2 (search is in-memory, no plaintext index) and
+    introduce no new conflicts.
 
 # ──────────────────────────────────────────────────────────────────────────────
 implementation_notes:
   segmentation_plan: |
-    IVD Rule 1 — HIGH constraint density (34 constraints) requires segmented
+    IVD Rule 1 — HIGH constraint density (39 constraints) requires segmented
     implementation. Implement one segment, re-read its constraints from disk,
     verify they all pass, then proceed to the next segment. Never implement
     across segments without verifying the preceding segment first.
@@ -1772,7 +1883,7 @@ implementation_notes:
       sequence C27 after Segment 3. C26 depends only on OsRng (Segment 1 primitives).
 
     IVD Rule 2 — POST-IMPLEMENTATION AUDIT: Re-read this entire file from disk
-    (not from memory). For each of the 34 constraints, diff the implementation
+    (not from memory). For each of the 39 constraints, diff the implementation
     against the constraint and report: PASS / FAIL / NEEDS_REVIEW.
     Do not declare the implementation complete until every constraint is PASS
     or NEEDS_REVIEW with written justification. Undeclared FAILs are not acceptable.

@@ -92,6 +92,7 @@ impl Vault {
             pad_mode: crate::pad::PadMode::None,
             vault_version: 0,
             entries: Vec::new(),
+            usage: crate::frecency::FrecencyStore::new(),
         };
         inner.zeroize();
         Ok(Vault {
@@ -390,6 +391,23 @@ impl Vault {
             .collect()
     }
 
+    /// UC-19 fuzzy omni-search: rank entries by fuzzy match over **non-secret metadata only**
+    /// (title/username/url/tags — constraint C35), nudged by per-entry usage (frecency, P6). `now`
+    /// is unix seconds, used for recency. Returns hits best-first; an empty query lists all entries
+    /// (recent/frequent first). In-memory only — no index is read or written (C36).
+    pub fn find(&self, query: &str, now: u64) -> Vec<crate::search::Hit<'_>> {
+        let mut engine = crate::search::Engine::new();
+        let hits = engine.search(&self.payload.entries, query);
+        crate::search::blend_frecency(hits, |id| self.payload.usage.score(id, now))
+    }
+
+    /// Record that the entry `id` was used (selected/copied) at `now` (unix seconds): bumps its
+    /// frecency so it ranks higher next time. Persisted on the next [`Vault::save`], inside the
+    /// encrypted payload (C36). No-op effect on disk until saved.
+    pub fn record_use(&mut self, id: [u8; 16], now: u64) {
+        self.payload.usage.record(id, now);
+    }
+
     /// Find an entry by exact (case-insensitive) title.
     pub fn get(&self, title: &str) -> Option<&Entry> {
         let t = title.to_lowercase();
@@ -408,11 +426,22 @@ impl Vault {
             .find(|e| e.title.to_lowercase() == t)
     }
 
-    /// Remove an entry by exact (case-insensitive) title. Returns whether one was removed.
+    /// Remove an entry by exact (case-insensitive) title. Returns whether one was removed. Also
+    /// drops the removed entry's usage record so the frecency store stays bounded (UC-19).
     pub fn remove(&mut self, title: &str) -> bool {
         let t = title.to_lowercase();
         let before = self.payload.entries.len();
-        self.payload.entries.retain(|e| e.title.to_lowercase() != t);
+        let mut removed_ids = Vec::new();
+        self.payload.entries.retain(|e| {
+            let keep = e.title.to_lowercase() != t;
+            if !keep {
+                removed_ids.push(e.id);
+            }
+            keep
+        });
+        for id in &removed_ids {
+            self.payload.usage.forget(id);
+        }
         self.payload.entries.len() != before
     }
 
@@ -501,6 +530,42 @@ mod tests {
         assert_eq!(opened.entries().len(), 2);
         let e = opened.get("github").unwrap();
         assert_eq!(&e.password.expose()[..], b"ghp_secret");
+    }
+
+    #[test]
+    fn find_ranks_fuzzy_then_frecency_and_persists() {
+        // Distinct ids so frecency keys don't collide (the shared `entry()` helper uses [0;16]).
+        fn e(id: u8, title: &str) -> Entry {
+            let mut x = entry(title, b"pw");
+            x.id = [id; 16];
+            x.tags = vec![]; // keep "git" from matching the default "work" tag
+            x
+        }
+        let mut v = Vault::create(b"pw", M, T, P).unwrap();
+        v.add_entry(e(1, "github"));
+        v.add_entry(e(2, "gitlab"));
+        v.add_entry(e(3, "aws-prod"));
+
+        // Fuzzy filters to the two git* entries; equal-quality prefix → deterministic alpha order.
+        let hits = v.find("git", 10_000);
+        assert_eq!(hits.len(), 2);
+        assert_eq!(hits[0].entry.title, "github");
+
+        // Use gitlab repeatedly → its frecency nudge lifts it above the equal-fuzzy github (P6).
+        for _ in 0..3 {
+            v.record_use([2u8; 16], 10_000);
+        }
+        assert_eq!(v.find("git", 10_050)[0].entry.title, "gitlab");
+
+        // Usage is persisted inside the encrypted payload and survives save/open (C36).
+        let bytes = v.save().unwrap();
+        let opened = Vault::open(&bytes, b"pw").unwrap();
+        assert_eq!(opened.find("git", 10_050)[0].entry.title, "gitlab");
+
+        // Empty query = browse mode: every entry, most-used first.
+        let all = opened.find("", 10_050);
+        assert_eq!(all.len(), 3);
+        assert_eq!(all[0].entry.title, "gitlab");
     }
 
     #[test]

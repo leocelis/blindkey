@@ -7,6 +7,21 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Fuzzy keyboard-first omni-search (UC-19, CLI + GUI).** Type a few characters — `gh`, `awsprod`,
+  a typo like `githb` — and the right entry rises to the top instantly; Enter copies the password to
+  the (auto-clearing, model-blind) clipboard. fzf-quality scoring via `nucleo-matcher` (offline,
+  Unicode-correct, returns highlight indices) behind a small swappable `vault_core::search`
+  trait. **Searches metadata only — title, username, url, tags, never secret values (C35)** — so the
+  matcher can't leak a secret it never sees; the GUI tints the matched characters. Usage history
+  (**frecency**, zoxide tiers) nudges the entries you reach for to the top without overpowering match
+  quality; it is stored as **ciphertext inside the encrypted payload, never a plaintext index on
+  disk (C36)**. The query buffer is wiped on lock and never logged (**C37**); matching is synchronous
+  with no debounce and stays well under 100 ms at 2000 entries (**C38**); selection delivers through
+  the existing model-blind clipboard path (**C39**). New `vault find [QUERY]` (`--stdout` lists ranked
+  titles, scriptable); GUI omni-bar with ⌘K/Ctrl-K focus and Ctrl-N/Ctrl-P navigation. New
+  `vault_core::search` + `vault_core::frecency`; `Vault::find` / `record_use`. New intent group **G12**
+  (constraints **C35–C39**). Built via the research→extract→spec→PRD→implement→validate cycle
+  ([docs/specs/UC-19](docs/specs/UC-19-omni-search.md)). +18 tests (core 126, CLI 9).
 - Open-source project scaffolding: governance, security policy, CI/security automation,
   documentation skeleton, and the `vault-core` / `vault-cli` / `vault-hardware` workspace.
 - Intent specification with 34 constraints across 11 groups ([vault_intent.yaml](vault_intent.yaml)),

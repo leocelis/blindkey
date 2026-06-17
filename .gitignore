@@ -30,3 +30,6 @@ Cargo.lock.bak
 *.key
 *.pem
 secrets/
+# Private development methodology + per-feature research/patterns ("secret sauce").
+# The shippable outputs (specs in docs/, PRD, code) are public; the process is not.
+/.sdlc/

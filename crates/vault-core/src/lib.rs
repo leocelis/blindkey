@@ -27,11 +27,13 @@ pub mod audit; // health    weak / reused / stale / expiring report (offline)
 pub mod crypto; // C1–C3   cipher, KDF, primitives
 pub mod envelope; // C4–C6   data key + multi-stanza envelope
 pub mod format; // C7–C10  on-disk format + integrity
+pub mod frecency; // UC-19   per-entry usage signal (frequency × recency), ciphertext at rest (C36)
 pub mod gen; // C26     CSPRNG password generation
 pub mod import; // UC-17   lenient keys.txt parser
 pub mod memory; // C11–C13, C25  secret types, mlock, constant-time
 pub mod pad; // UC-07 §3.2  optional Padmé payload padding
 pub mod rollback; // C16     monotonic counter + local anchor
+pub mod search; // UC-19   fuzzy keyboard-first omni-search (metadata only — C35)
 pub mod totp; // 2FA      RFC 6238 TOTP codes from an entry's otp_secret
               // open/save orchestration (the v0 vault-core API)
 mod vault;

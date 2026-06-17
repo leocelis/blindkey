@@ -79,6 +79,19 @@ enum Command {
         #[arg(long)]
         stdout: bool,
     },
+    /// Fuzzy omni-search (UC-19): type a few characters, copy the best match's password to the
+    /// clipboard. `--stdout` lists the ranked matches (titles only) instead. Searches titles,
+    /// usernames, urls, and tags — never secret values.
+    Find {
+        /// Fuzzy query (omit to browse all entries, most-used first).
+        query: Option<String>,
+        /// List ranked matches (titles only) to stdout instead of copying — scriptable, no secret.
+        #[arg(long)]
+        stdout: bool,
+        /// Seconds before the clipboard auto-clears (0 = never). Constraint C13.
+        #[arg(long, default_value_t = 30)]
+        timeout: u64,
+    },
     /// Get a field — to the clipboard by default. `--stdout` prints it (with a warning).
     Get {
         name: String,

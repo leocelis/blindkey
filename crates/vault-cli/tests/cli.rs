@@ -186,6 +186,63 @@ fn cli_otp_requires_a_2fa_secret() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
+/// UC-19 fuzzy omni-search: `vault find QUERY --stdout` ranks by fuzzy match over metadata (typo-
+/// tolerant), lists titles only (never a secret), and never echoes the query on a miss (C37). The
+/// clipboard copy path is exercised at the unit level (no clipboard in CI).
+#[test]
+fn cli_find_fuzzy_lists_titles_and_never_leaks() {
+    let home = unique_dir("find-home");
+    let vault = unique_vault();
+    let vs = vault.to_str().unwrap();
+    let sample = sample_path();
+    let sp = sample.to_str().unwrap();
+    let pw = "find-pass\n";
+    let fast = [
+        "--kdf-m-cost",
+        "8192",
+        "--kdf-t-cost",
+        "1",
+        "--kdf-p-cost",
+        "1",
+    ];
+
+    let mut init = vec!["--vault", vs, "init"];
+    init.extend_from_slice(&fast);
+    assert_eq!(run_env(&home, &init, pw).0, Some(0), "init");
+    assert_eq!(
+        run_env(&home, &["--vault", vs, "import", "--format", "raw", sp], pw).0,
+        Some(0),
+        "import"
+    );
+
+    // Fuzzy + typo-tolerant: "githb" still finds "github". Titles only, no secret in the output.
+    let (code, out, _) = run_env(&home, &["--vault", vs, "find", "githb", "--stdout"], pw);
+    assert_eq!(code, Some(0), "find --stdout should succeed");
+    assert!(
+        out.to_lowercase().contains("github"),
+        "fuzzy query should match github: {out}"
+    );
+    assert!(
+        !out.contains("ghp_FAKE0mZ9"),
+        "find output must never contain a secret value: {out}"
+    );
+
+    // No match → non-zero exit, and the query is NOT echoed back anywhere (C37 — never log queries).
+    let (code, _o, err) = run_env(
+        &home,
+        &["--vault", vs, "find", "zzgibberishzz", "--stdout"],
+        pw,
+    );
+    assert!(code != Some(0), "a no-match search should fail");
+    assert!(
+        !err.contains("zzgibberishzz"),
+        "the query must never be echoed/logged (C37): {err}"
+    );
+
+    let _ = std::fs::remove_file(&vault);
+    let _ = std::fs::remove_dir_all(&home);
+}
+
 /// Root-of-trust hardening: `vault init` warns on a weak master password; `--allow-weak-password`
 /// silences it. (Non-interactive init proceeds either way — the prompt is TTY-only.)
 #[test]

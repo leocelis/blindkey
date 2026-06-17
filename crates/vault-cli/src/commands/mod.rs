@@ -63,6 +63,17 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
             timeout,
             opts,
         ),
+        Command::Find {
+            query,
+            stdout,
+            timeout,
+        } => cmd_find(
+            &vault_path(vault_opt)?,
+            query.as_deref().unwrap_or(""),
+            stdout,
+            timeout,
+            opts,
+        ),
         Command::Otp { name, stdout } => cmd_otp(&vault_path(vault_opt)?, &name, stdout, opts),
         Command::HoldClipboard { secs } => run_clipboard_holder(secs),
         Command::Gen {
@@ -297,6 +308,68 @@ fn cmd_get(
     if !extras.is_empty() {
         eprintln!("(entry also has protected fields: {})", extras.join(", "));
     }
+    Ok(())
+}
+
+/// UC-19 fuzzy omni-search. Default: copy the best match's password to the clipboard (model-blind,
+/// C39) and record the use so it ranks higher next time. `--stdout`: print the ranked match titles
+/// only (no secret, no clipboard, no state change) — scriptable. The query is never echoed back or
+/// logged (C37); it searches non-secret metadata only (titles/usernames/urls/tags — C35).
+fn cmd_find(path: &Path, query: &str, stdout: bool, timeout: u64, opts: &OpenOpts) -> CmdResult {
+    let password = prompt_password(false)?;
+    let mut vault = open_vault(path, password.as_bytes(), opts)?;
+    let now = now_unix().max(0) as u64;
+
+    // Results borrow the vault immutably; extract everything needed, then drop the borrow before
+    // recording the use (which mutates the vault).
+    let (id, title, secret, others) = {
+        let hits = vault.find(query, now);
+        if hits.is_empty() {
+            // Deliberately do NOT echo the query (C37 — queries are never logged).
+            return Err("no entry matches that search".to_string());
+        }
+        if stdout {
+            for h in &hits {
+                // Titles are user/import-controlled → sanitize before the terminal (C30).
+                println!("{}", sanitize(&h.entry.title));
+            }
+            return Ok(());
+        }
+        let top = &hits[0];
+        let others: Vec<String> = hits
+            .iter()
+            .skip(1)
+            .take(5)
+            .map(|h| sanitize(&h.entry.title))
+            .collect();
+        (
+            top.entry.id,
+            sanitize(&top.entry.title),
+            top.entry.password.expose(), // owned, zeroizing (decrypt-on-access, C19)
+            others,
+        )
+    };
+
+    copy_to_clipboard(&secret)?;
+    spawn_clipboard_holder(&secret, timeout)?; // C13: auto-clear, clears iff unchanged
+    if timeout == 0 {
+        eprintln!("Copied {title:?} to the clipboard (model-blind).");
+    } else {
+        eprintln!("Copied {title:?} to the clipboard (model-blind). Clears in {timeout}s.");
+    }
+    if !others.is_empty() {
+        eprintln!(
+            "(best of {} matches — others: {})",
+            others.len() + 1,
+            others.join(", ")
+        );
+    }
+
+    // Learn: bump the chosen entry's frecency and persist it (inside the encrypted payload — C36).
+    vault.record_use(id, now);
+    let out = vault.save().map_err(|e| e.to_string())?;
+    write_vault(path, &out)?;
+    note_saved(&vault);
     Ok(())
 }
 

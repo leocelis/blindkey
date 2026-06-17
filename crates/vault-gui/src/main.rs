@@ -322,7 +322,8 @@ impl VaultApp {
         self.vault = None;
         self.selected = None;
         self.reveal = false;
-        self.query.clear();
+        self.query.zeroize(); // C37: the query echoes metadata fragments — wipe it, don't just clear
+
         self.editor = None;
         self.import_review = None;
         self.rollback_warning = None;
@@ -346,11 +347,11 @@ impl VaultApp {
     // ─── entry actions ──────────────────────────────────────────────────────
 
     fn copy_password(&mut self, idx: usize) {
-        let (title, secret) = {
+        let (id, title, secret) = {
             let Some(e) = self.vault.as_ref().and_then(|v| v.entries().get(idx)) else {
                 return;
             };
-            (e.title.clone(), e.password.expose())
+            (e.id, e.title.clone(), e.password.expose())
         };
         match clip::copy(&secret) {
             Ok(()) => {
@@ -359,6 +360,14 @@ impl VaultApp {
                     "Copied {}'s password — clipboard clears in {CLIPBOARD_TIMEOUT_SECS}s.",
                     one_line(&title)
                 );
+                // UC-19: learn the usage so this entry ranks higher next time; persist the bump
+                // inside the encrypted vault (C36). Best-effort — a copy already succeeded.
+                if let Some(v) = self.vault.as_mut() {
+                    v.record_use(id, now_unix().max(0) as u64);
+                }
+                if let Err(e) = self.persist() {
+                    self.error = Some(e);
+                }
             }
             Err(e) => self.error = Some(e),
         }
@@ -698,22 +707,32 @@ impl VaultApp {
     fn unlocked_screen(&mut self, ctx: &egui::Context) {
         let mut action: Option<Action> = None;
 
-        // Precompute the filtered list (owned) so the list closure doesn't borrow the vault.
-        let (items, total): (Vec<(usize, String)>, usize) = {
+        // Precompute the fuzzy-ranked, frecency-nudged list (owned) so the list closure doesn't
+        // borrow the vault (UC-19). Matching is over non-secret metadata only (C35) and runs
+        // synchronously every repaint — no debounce — which stays well under the frame budget at
+        // this scale (C38). Each item carries the title's matched char positions for highlighting.
+        let (items, total): (Vec<(usize, String, Vec<u32>)>, usize) = {
             let vault = self.vault.as_ref().expect("unlocked");
-            let q = self.query.to_lowercase();
-            let items = vault
-                .entries()
+            let entries = vault.entries();
+            let hits = vault.find(&self.query, now_unix().max(0) as u64);
+            let items = hits
                 .iter()
-                .enumerate()
-                .filter(|(_, e)| {
-                    q.is_empty()
-                        || e.title.to_lowercase().contains(&q)
-                        || e.tags.iter().any(|t| t.to_lowercase().contains(&q))
+                .map(|h| {
+                    // `h.entry` borrows into `entries`; recover its index for the selection state.
+                    let idx = entries
+                        .iter()
+                        .position(|e| std::ptr::eq(e, h.entry))
+                        .unwrap_or(0);
+                    let positions = h
+                        .matches
+                        .iter()
+                        .find(|m| matches!(m.field, vault_core::search::Field::Title))
+                        .map(|m| m.positions.clone())
+                        .unwrap_or_default();
+                    (idx, h.entry.title.clone(), positions)
                 })
-                .map(|(i, e)| (i, one_line(&e.title)))
                 .collect();
-            (items, vault.entries().len())
+            (items, entries.len())
         };
         let mut pad_on = matches!(
             self.vault.as_ref().expect("unlocked").padding(),
@@ -724,17 +743,23 @@ impl VaultApp {
         // copies the selected password — type-to-search then Enter, like the TUI.
         if self.editor.is_none() && self.import_review.is_none() && self.rollback_warning.is_none()
         {
-            let (up, down, enter) = ctx.input(|i| {
+            let (up, down, enter, focus) = ctx.input(|i| {
+                let ctrl = i.modifiers.ctrl; // emacs-style Ctrl-N/Ctrl-P, any platform
                 (
-                    i.key_pressed(egui::Key::ArrowUp),
-                    i.key_pressed(egui::Key::ArrowDown),
+                    i.key_pressed(egui::Key::ArrowUp) || (ctrl && i.key_pressed(egui::Key::P)),
+                    i.key_pressed(egui::Key::ArrowDown) || (ctrl && i.key_pressed(egui::Key::N)),
                     i.key_pressed(egui::Key::Enter),
+                    // Cmd-K (mac) / Ctrl-K (else) jumps focus to the omni-search box.
+                    i.modifiers.command && i.key_pressed(egui::Key::K),
                 )
             });
+            if focus {
+                self.focus_search = true;
+            }
             if (up || down) && !items.is_empty() {
                 let pos = self
                     .selected
-                    .and_then(|s| items.iter().position(|(i, _)| *i == s));
+                    .and_then(|s| items.iter().position(|(i, _, _)| *i == s));
                 let new = match pos {
                     Some(p) if down => (p + 1).min(items.len() - 1),
                     Some(p) => p.saturating_sub(1),
@@ -744,7 +769,10 @@ impl VaultApp {
                 self.reveal = false;
             }
             if enter {
-                if let Some(s) = self.selected.filter(|s| items.iter().any(|(i, _)| i == s)) {
+                if let Some(s) = self
+                    .selected
+                    .filter(|s| items.iter().any(|(i, _, _)| i == s))
+                {
                     action = Some(Action::CopyPassword(s));
                 }
             }
@@ -796,7 +824,7 @@ impl VaultApp {
             ui.add_space(2.0);
             let search = ui.add(
                 egui::TextEdit::singleline(&mut self.query)
-                    .hint_text("🔎  Type to search by title or tag…")
+                    .hint_text("🔎  Fuzzy search (⌘K) — title, user, url, tag…")
                     .desired_width(f32::INFINITY),
             );
             if self.focus_search {
@@ -835,9 +863,10 @@ impl VaultApp {
                         if items.is_empty() {
                             ui.weak("No matching entries.");
                         }
-                        for (idx, title) in &items {
+                        for (idx, title, positions) in &items {
                             let selected = self.selected == Some(*idx);
-                            if ui.selectable_label(selected, title).clicked() {
+                            let job = highlight_title(title, positions, ui);
+                            if ui.selectable_label(selected, job).clicked() {
                                 self.selected = Some(*idx);
                                 self.reveal = false;
                             }
@@ -1518,6 +1547,37 @@ fn one_line(s: &str) -> String {
     s.chars()
         .map(|c| if c.is_control() { ' ' } else { c })
         .collect()
+}
+
+/// A single-line list label with the fuzzy-matched characters tinted (UC-19 P10). Control chars are
+/// flattened to spaces (like [`one_line`]) so the row stays on one line and the matcher's char
+/// positions stay aligned with what is drawn. `positions` is ascending and deduplicated.
+fn highlight_title(title: &str, positions: &[u32], ui: &egui::Ui) -> egui::text::LayoutJob {
+    use egui::text::{LayoutJob, TextFormat};
+    let base = ui.visuals().text_color();
+    let accent = ui.visuals().hyperlink_color; // a distinct, theme-aware accent
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let mut job = LayoutJob::default();
+    let mut hits = positions.iter().copied().peekable();
+    for (i, ch) in title.chars().enumerate() {
+        let i = i as u32;
+        while hits.peek().is_some_and(|&p| p < i) {
+            hits.next();
+        }
+        let matched = hits.peek() == Some(&i);
+        let display = if ch.is_control() { ' ' } else { ch };
+        let mut buf = [0u8; 4];
+        job.append(
+            display.encode_utf8(&mut buf),
+            0.0,
+            TextFormat {
+                font_id: font.clone(),
+                color: if matched { accent } else { base },
+                ..Default::default()
+            },
+        );
+    }
+    job
 }
 
 /// Mask a secret for review: first/last 4 chars + length, never the middle.

@@ -228,6 +228,21 @@ The only piece that lands in v1: making the CP-4 `vault-core` API UI-agnostic an
 shell is a thin client. See [research/ui_architecture.md](research/ui_architecture.md) and
 [spec UC-18](specs/UC-18-native-ui.md).
 
+### UC-19 · Find any secret in one keystroke-fast pass (fuzzy omni-search)
+**Persona:** P1, P3 · **Constraints:** C35–C39; touches C12, C13, C19, C25, C27, C33
+
+A user with hundreds of imported keys opens search, types a few characters — `gh`, `awsprod`,
+`strp` — and the right entry rises to the top instantly; Enter copies the password to the clipboard
+(auto-clearing), Tab copies the username. Matching is **fuzzy** (typo- and abbreviation-tolerant,
+fzf-quality scoring) and **keyboard-only**, over the entries already decrypted into RAM. It searches
+**metadata only** — title, username, url, tags — and **never** the secret values, so the convenience
+adds no exposure: the matcher can't leak a secret it never sees (C35). Results highlight the matched
+characters; usage history (frecency) nudges the entries you reach for to the top without overpowering
+match quality. No search index is ever written to disk (C36), the query buffer is zeroizing and never
+logged (C37), and every keystroke repaints in under 100 ms (C38). Surfaces as `vault find` (CLI/TUI)
+and a GUI omni-bar. This is the friendly half of the `keys.txt` story, built so the secure half is
+free. See [spec UC-19](specs/UC-19-omni-search.md).
+
 ## 6. Out of scope for v1 (non-goals)
 
 From the intent's `non_goals:` — hosted sync service, browser extension, GUI, team vaults,
