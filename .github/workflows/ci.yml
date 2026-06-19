@@ -88,9 +88,8 @@ jobs:
       - run: cargo build --release -p vault-cli --target x86_64-unknown-linux-musl
       - name: Assert the binary is statically linked
         run: |
-          file target/x86_64-unknown-linux-musl/release/vault || true
-          ldd  target/x86_64-unknown-linux-musl/release/vault 2>&1 | grep -q "not a dynamic executable" \
-            && echo "OK: static binary" || echo "NOTE: enable once the binary exists"
+          file target/x86_64-unknown-linux-musl/release/vault
+          ldd target/x86_64-unknown-linux-musl/release/vault 2>&1 | grep -q "not a dynamic executable"
 
   # Build the CLI binary twice with deterministic flags and assert byte-for-byte identity, so a
   # published release can be verified against source (constraints C24/C34).
@@ -102,3 +101,13 @@ jobs:
       - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
         run: rustup toolchain install
       - run: ./scripts/reproducible-build.sh
+
+  quality-gate:
+    name: release quality gate (C55)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+      - run: ./scripts/audit-readiness.sh

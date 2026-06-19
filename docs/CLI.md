@@ -20,7 +20,7 @@ Default vault path: `$HOME/.vault/vault.vlt` (override with `--vault PATH`).
 | `vault rm NAME` | Delete an entry (confirmation on TTY). |
 | `vault gen [--length N] [--charset …] [--words N]` | CSPRNG password / diceware generator. |
 | `vault otp NAME [--stdout]` | Current TOTP code for an entry with a 2FA secret. |
-| `vault audit` | Offline health report (weak/reused/stale passwords). |
+| `vault audit` | Offline **password health** report (weak/reused/stale) — not the CI dependency audit |
 | `vault upgrade-kdf` | Re-encrypt with stronger Argon2id parameters. |
 | `vault tune` | Benchmark and recommend Argon2id params (~300 ms target). |
 | `vault pad on\|off` | Toggle Padmé payload size-padding (UC-07). |

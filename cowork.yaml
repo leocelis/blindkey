@@ -68,7 +68,7 @@ ownership:
   "docs/":                         lane_B_default
   "research/":                     shared_read_only
   ".github/workflows/":            lane_A
-  "tests/constraint_coverage.rs":  "whoever implements the constraint flips its test"
+  "docs/CONSTRAINT_INDEX.md":  "update when adding constraint tests"
 
 locked_files:
   # Changes here REQUIRE a PR approved by BOTH maintainers (GOVERNANCE two-maintainer tier).
@@ -141,7 +141,7 @@ agent_rules:
 pr_checklist:
   - "References its ROADMAP item / issue (CP-x, S-x, G0.x)"
   - "Constraint table (AG2) present if any constraint is touched"
-  - "Tests added or constraint_coverage.rs placeholder flipped where applicable"
+  - "Tests added; docs/CONSTRAINT_INDEX.md updated where applicable"
   - "`just ci` green; no new clippy allows without justification"
   - "CHANGELOG.md line added"
   - "Review tier respected: lazy consensus (docs/tests) · code-owner (vault-core,

@@ -9,7 +9,7 @@
 From a clone of this repo:
 
 ```sh
-git clone git@github.com:leocelis/vault.git   # private — use your access
+git clone https://github.com/leocelis/vault.git
 cd vault
 ./scripts/setup-rust.sh    # once: project-scoped toolchain in ./.toolchain
 ./scripts/install.sh       # builds release binary → ~/.local/bin/vault

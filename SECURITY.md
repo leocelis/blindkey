@@ -5,9 +5,10 @@ coordinated disclosure. Thank you for helping keep Vault and its users safe.
 
 ## Supported versions
 
-Vault is **pre-alpha**; there is no released, supported version yet. Once we ship releases,
-this section will list the version ranges that receive security fixes. Until then, `main` is
-the only branch and all reports are welcome against it.
+Vault is **functional pre-1.0** — the CLI and desktop app work today, but the on-disk format may
+still change before `1.0.0` and there is no crates.io release yet. Once we ship versioned releases,
+this section will list supported version ranges. Until then, `main` is the development branch and
+bug reports are welcome against it.
 
 ## Reporting a vulnerability
 
@@ -62,9 +63,9 @@ the attacker to already have the unlocked master key, and social-engineering of 
 
 - **Memory-safe Rust**, `#![forbid(unsafe_code)]` outside a vetted crypto-FFI boundary.
 - **Audited libraries only** — no custom cryptographic primitives.
-- **`cargo audit` / `cargo deny` / `cargo vet`** in CI; builds fail on High/Critical advisories.
+- **`cargo audit` / `cargo deny`** in CI; builds fail on High/Critical advisories.
 - **Fuzzed parsers** for all untrusted input.
 - **Reproducible builds + signed releases** (Sigstore/cosign + SLSA provenance) so you can verify
   what you run — see [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
-- **An independent third-party audit before v1.0.** Audit intake scope and maintainer
-  readiness checks: [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md) (`just audit-ready`).
+- **Release quality gate** before `1.0.0` — see [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md)
+  (`just audit-ready`).

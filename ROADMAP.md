@@ -82,10 +82,9 @@ lane can build against from that point on.
 - Reproducible builds (`--locked`, remap-path-prefix) · cosign keyless · SLSA provenance (fixed per G0.5)
 - `cargo auditable` embedded SBOM + CycloneDX sidecar · crates.io Trusted Publishing
 
-### CP-7 · Full IVD audit → external audit → v1.0 *(M10)*
-- IVD Rule 2 sweep: all 34 constraints, PASS/FAIL/NEEDS_REVIEW, `tests/constraint_coverage.rs` all green
-- Independent third-party audit (format/parser, KDF, memory, hardware FFI, AI-era delivery) is a
-  **hard release gate** — no v1.0 without it → **1.0.0**
+### CP-7 · Full IVD sweep → release quality gate → v1.0 *(M10)*
+- IVD Rule 2 sweep: all 60 constraints, PASS/FAIL/NEEDS_REVIEW; [`docs/CONSTRAINT_INDEX.md`](docs/CONSTRAINT_INDEX.md) complete
+- `just audit-ready` green; format freeze → **1.0.0**
 
 ---
 
@@ -134,7 +133,7 @@ below keeps review load natural. Lanes are a default, not a law — swap via the
 
 ---
 
-## Hardening backlog (Part 2 — candidate constraints C35+) *(M9)*
+## Hardening backlog (post-C60 — candidate constraints) *(M9)*
 
 Remaining findings from [research/security_coverage_gaps.md](research/security_coverage_gaps.md),
 each to land via its own ADR per [GOVERNANCE.md](GOVERNANCE.md) (they change the unlock/deletion
@@ -148,13 +147,13 @@ model or add process machinery, so they get the two-maintainer + ADR treatment):
 
 ## Out of scope for v1
 
-Hosted cloud sync · browser extension · team/org vaults · GUI · any LLM/AI agent inside the trust
-boundary (see [vault_intent.yaml](vault_intent.yaml) `non_goals` and `C27`).
+Hosted cloud sync · browser extension · team/org vaults · **native SwiftUI shell** · any LLM/AI agent inside the trust
+boundary (see [vault_intent.yaml](vault_intent.yaml) `non_goals` and `C27`). Pure-Rust TUI/GUI shells are **shipped** (pre-1.0 beta).
 
 ## Bigger vision (post-1.0, under discussion)
 
 Vault's audience protects more than passwords — files, `.env`s, code, database URLs, and the
 secrets their AI tools touch. Expanding from "credential vault" to "developer secret vault"
 (file/blob encryption, secret injection into running apps without exposing plaintext to an agent)
-is the north star, scoped deliberately *after* the credential core is audited and solid.
+is the north star, scoped deliberately *after* the credential core is solid at 1.0.
 S-13 is the first concrete step in that direction.

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# CP-7 audit readiness gate — release search benches + lint + supply-chain.
+# CP-7 release quality gate — release search benches + lint + supply-chain.
 # Usage: ./scripts/audit-readiness.sh   (from repo root; activate toolchain first)
 set -eu
 
@@ -29,4 +29,4 @@ else
   echo "WARN: cargo-deny not installed — skip"
 fi
 
-echo "OK: audit readiness checks passed"
+echo "OK: release quality gate passed"

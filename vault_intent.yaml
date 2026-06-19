@@ -77,11 +77,11 @@ intent:
 
   non_goals:
     - Hosted cloud sync service (untrusted-storage sync is supported; no hosted service)
-    - Browser extension (v1: CLI only)
+    - Browser extension (v1: CLI + TUI + desktop GUI)
     - Team / organisational vaults (v1: single-user)
-    - "GUI (v1: CLI). A future GUI/TUI is a thin shell over the same Rust vault-core via a stable FFI
-       (shared-core / per-platform-shell architecture — Signal libsignal / Mozilla UniFFI pattern;
-       see UC-18). It never reimplements crypto and is bound by C27's model-blind UI rule. UI is post-v1."
+    - "Native macOS SwiftUI shell (post-v1). Pure-Rust TUI (`vault-tui`) and desktop GUI (`vault-gui`)
+       shipped as pre-1.0 beta thin shells over vault-core — Signal libsignal / Mozilla UniFFI pattern;
+       see UC-18. They never reimplement crypto and are bound by C27's model-blind UI rule."
     - Custom KDF or cipher implementation (all crypto from audited libraries)
     - "LLM / AI agent inside the vault trust boundary (v1 ships none; any future agentic
        interface is bound by C27's model-blind delivery rule)"

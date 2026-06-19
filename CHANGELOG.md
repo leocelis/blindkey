@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **OSS readiness sweep:** aligned docs to functional pre-1.0 status, 60 constraints (v1.7.0),
+  distributed test index (`docs/CONSTRAINT_INDEX.md`), architecture diagram includes TUI/GUI,
+  release builds scope to `vault-cli`, quality-gate terminology, root `LICENSE` pointer.
 - **UC-22 enterprise readiness (C55–C60):** `scripts/audit-readiness.sh` + `just audit-ready`,
   `docs/AUDIT_READINESS.md`, `docs/ENTERPRISE_POSTURE.md`, `docs/guides/enterprise-deployment.md`,
   GUI env vars (`VAULT_VAULT_PATH`, `VAULT_CONFIG_DIR`, `VAULT_LOCK_ON_BLUR`), C38 release-only
@@ -355,6 +358,6 @@ All notable changes to this project are documented here. The format is based on
 - `cowork.yaml` + `CLAUDE.md`: two-maintainer/two-agent collaboration protocol (AG1–AG10).
 
 ### Notes
-- This project is **pre-alpha**. No functional release exists yet; do not store real secrets.
+- Vault is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
 [Unreleased]: https://github.com/leocelis/vault/commits/main

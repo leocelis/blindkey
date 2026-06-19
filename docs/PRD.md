@@ -1,7 +1,7 @@
 # Vault — Product Requirements Document (PRD)
 
-> **Status:** Draft v0.1 · June 2026 · pre-alpha (no functional release yet)
-> **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (34 testable constraints),
+> **Status:** Draft v0.2 · June 2026 · **functional pre-1.0** (CLI + desktop app; format may change before 1.0)
+> **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (60 testable constraints, v1.7.0),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),
 > [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md).
@@ -213,19 +213,13 @@ the model-blind "easier than 1Password" on-ramp. The lenient sibling of UC-12; t
 optional `kind` (login/apikey/note) lets `get` surface the key directly. See
 [spec UC-17](specs/UC-17-quick-capture-raw-import.md).
 
-### UC-18 · (Future, post-v1) Use the vault through a fast, native UI
-**Persona:** all (P1/P3 first) · **Constraints:** C20, C11, C12, C25, C27, C5 · **Status:** UI is post-v1; the core-API decision it needs is v1
+### UC-18 · Native UI shells over the shared Rust core
+**Persona:** all (P1/P3 first) · **Constraints:** C20, C11, C12, C25, C27, C5, C40–C54 · **Status:** ✅ TUI + egui GUI shipped (pre-1.0 beta); SwiftUI shell post-v1
 
-A graphical or terminal front-end that is fast, simple, secure, and integrates nicely with the
-host OS — **without forking the Rust security core**. Every UI is a thin client over `vault-core`
-(the Signal `libsignal` / Mozilla UniFFI pattern): pure-Rust shells (`ratatui` TUI, then an `egui`
-window) keep C20's single-binary/no-Node property and keep secrets inside the Rust boundary; a
-native **SwiftUI** shell (linked via uniffi) delivers best-in-class macOS integration — Touch ID
-and Secure Enclave unlock, which map directly to the **C5** keychain stanza. The cross-cutting
-rule: **copy-not-display by default** (C27), on-screen reveal is opt-in, auth-gated, and time-boxed.
-Electron is rejected (violates C20, ~10× the memory, unzeroable JS heap — the 1Password-8 lesson).
-The only piece that lands in v1: making the CP-4 `vault-core` API UI-agnostic and FFI-ready so every
-shell is a thin client. See [research/ui_architecture.md](research/ui_architecture.md) and
+Pure-Rust **TUI** (`vault-tui`) and **desktop window** (`vault-gui`) are thin clients over `vault-core`
+— no crypto in the shell, copy-not-display by default (C27). A native **SwiftUI** shell via uniffi
+(Touch ID, Secure Enclave) remains post-v1. Electron is rejected (violates C20, unzeroable JS heap).
+See [research/ui_architecture.md](../research/ui_architecture.md) and
 [spec UC-18](specs/UC-18-native-ui.md).
 
 ### UC-19 · Find any secret in one keystroke-fast pass (fuzzy omni-search)
@@ -273,8 +267,9 @@ See [spec UC-22](specs/UC-22-enterprise-readiness.md).
 
 ## 6. Out of scope for v1 (non-goals)
 
-From the intent's `non_goals:` — hosted sync service, browser extension, GUI, team vaults,
-custom crypto, and any LLM/agent inside the trust boundary. Residual risks accepted and
+From the intent's `non_goals:` — hosted sync service, browser extension, team vaults,
+custom crypto, and any LLM/agent inside the trust boundary. **Native macOS SwiftUI shell** is
+post-v1; **egui TUI/GUI shells are shipped** as pre-1.0 beta. Residual risks accepted and
 documented in [THREAT_MODEL](THREAT_MODEL.md): kernel-level compromise with root, TPM bus
 attacks, social engineering of the user.
 
@@ -286,16 +281,16 @@ attacks, social engineering of the user.
 | Unlock latency (default KDF) | < 500 ms on 4-core/8 GiB | C22 benchmark in CI |
 | Plaintext leakage from file | zero bytes of entry content | C18 `strings`/`xxd` tests |
 | Secrets on LLM-readable default channels | zero | C27 integration tests |
-| Constraint coverage | 27/27 PASS or justified NEEDS_REVIEW | IVD Rule 2 audit, [`tests/constraint_coverage.rs`](../tests/constraint_coverage.rs) |
+| Constraint coverage | Distributed tests; index in [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) | `just check` + IVD Rule 2 sweep before 1.0 |
 | Parser robustness | no panics/OOM across fuzz corpus | `fuzz/` targets in CI |
-| Independent audit | completed before v1.0 tag | M10 |
+| v1.0 release | format freeze + expanded test coverage | ROADMAP CP-7 |
 
 ## 8. Release plan
 
 Mapped to [ROADMAP](../ROADMAP.md): M2 file format → M3 crypto core → M4 memory hardening
 → M5 read/write + rollback → M6 CLI (UC-1…8, 10–12) → M7 hardware stanzas (UC-9) → M8
-distribution & trust (UC-13) → M9 hardening backlog (C35+ Part-2 candidates from
-[security_coverage_gaps](../research/security_coverage_gaps.md)) → M10 audit → v1.0.
+distribution & trust (UC-13) → M9 hardening backlog (post-C60 candidates from
+[security_coverage_gaps](../research/security_coverage_gaps.md)) → M10 quality gate → v1.0.
 
 ## 9. Open questions
 

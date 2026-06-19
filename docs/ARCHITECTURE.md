@@ -10,13 +10,23 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
 └───────────────┬─────────────────────────────────────────────┘
                 │ depends on
 ┌───────────────▼─────────────────────────────────────────────┐
+│  vault-tui / vault-gui  (thin UI shells — no crypto here)    │  C40–C54, C27
+│  ratatui TUI · egui desktop window · search/deliver loop     │
+└───────────────┬─────────────────────────────────────────────┘
+                │ depends on
+┌───────────────▼─────────────────────────────────────────────┐
 │  vault-core  (library — the security boundary)               │
 │                                                              │
 │  crypto/     XChaCha20-Poly1305 STREAM · Argon2id · HKDF     │  C1–C3
 │  envelope/   data key · multi-stanza OR wrapping            │  C4–C6
 │  format/     header · KDF params · integrity · block stream  │  C7–C10, C30
 │  memory/     Secret/Zeroizing types · mlock · constant-time  │  C11–C13, C25, C33
+│  search/     fuzzy metadata search (in-memory only)          │  C35–C39
 │  rollback/   monotonic counter · local anchor · atomic save  │  C16, C32
+└───────────────┬─────────────────────────────────────────────┘
+                │ uses
+┌───────────────▼─────────────────────────────────────────────┐
+│  vault-sys  (OS calls: mlock, setrlimit — only `unsafe`)     │
 └───────────────┬─────────────────────────────────────────────┘
                 │ optional
 ┌───────────────▼─────────────────────────────────────────────┐

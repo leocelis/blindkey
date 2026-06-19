@@ -7,9 +7,9 @@
 //! constraint group; see `docs/ARCHITECTURE.md`.
 //!
 //! ## Status
-//! **Pre-alpha scaffold.** The module structure and public surface are laid out; the
-//! implementations land by milestone (see `ROADMAP.md`). Functions marked `unimplemented!` are
-//! intentionally not done yet.
+//! **Implemented.** The cryptographic core, CLI integration, search, and rollback paths are
+//! functional. Optional hardware stanzas and some constraint-specific integration tests remain
+//! in progress — see `ROADMAP.md` and `docs/CONSTRAINT_INDEX.md`.
 //!
 //! ## Safety posture
 //! - `#![forbid(unsafe_code)]` — the only `unsafe` permitted in the project is an isolated,

@@ -218,6 +218,6 @@ update()
 | S2 Search cache | `vault-gui/src/main.rs`, `vault-gui/src/search_cache.rs` (if split) | VG-P5, VG-A3 |
 | S3 List virtualization | `vault-gui/src/main.rs` | VG-P6 |
 | S4 Security + tests | `vault-gui/src/main.rs`, `vault-gui/tests/`, `docs/INSTALL.md` | VG-S6, C44–C45, VG-R2 |
-| S5 Validate | `tests/constraint_coverage.rs` placeholders C40–C45 | IVD Rule 2 table |
+| S5 Validate | `crates/vault-gui/tests/uc20_constraints.rs` | IVD Rule 2 table |
 
 Each segment: re-read constraints from disk → implement → verify → next.

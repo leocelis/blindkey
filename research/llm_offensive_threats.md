@@ -269,7 +269,7 @@ Both were promoted from findings to formal constraints only after explicit maint
 approval (design-before-implementation discipline). They add the new constraint group
 **G10 (AI-era threat resistance)**, bringing the intent — at the time of that promotion — to
 **27 constraints across 10 groups**. (A later hardening pass on 2026-06-10 promoted further
-gaps, bringing the intent to 34 constraints across 11 groups; see
+gaps, bringing the intent to **60 constraints across 15 groups** (v1.7.0); see
 `security_coverage_gaps.md`, Promotion ledger.)
 
 ---

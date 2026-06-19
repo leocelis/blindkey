@@ -324,4 +324,4 @@ surface across untrusted-input handling, secret-exposure side channels, data int
 supply-chain trust, crypto longevity, and project governance. CVE/standard precedents fetched and
 quoted; spec-internal analysis marked `~ inferred`. All items are findings — no constraints are
 added to `vault_intent.yaml` without explicit approval. The high-severity subset was approved and
-promoted on 2026-06-10 (see the Promotion ledger above); the spec now has 34 constraints.*
+promoted on 2026-06-10 (see the Promotion ledger above); the intent now has **60 constraints** (v1.7.0).*

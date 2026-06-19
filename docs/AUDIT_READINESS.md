@@ -1,10 +1,9 @@
-# Audit Readiness (CP-7)
+# Release Quality Gate (CP-7)
 
-Vault is **pre-1.0**. Independent third-party review is a **hard gate** before the `1.0.0` tag
-([ROADMAP](../ROADMAP.md) CP-7). This document is the **auditor intake package** — not a substitute
-for an audit.
+Vault is **functional pre-1.0**. This document describes the **automated quality gate** before the
+`1.0.0` tag ([ROADMAP](../ROADMAP.md) CP-7) — not a substitute for careful review.
 
-## Scope for external review
+## What the gate checks
 
 | Area | Artifacts | Constraints |
 |------|-----------|-------------|
@@ -16,28 +15,34 @@ for an audit.
 | Desktop shell boundary | `docs/specs/UC-18-native-ui.md`, `crates/vault-gui/` | C40–C54, C45 |
 | Supply chain | `docs/VERIFYING_RELEASES.md`, SBOM, `cargo auditable` | C3, C34 |
 
-Out of scope for v1 audit: team vaults, cloud sync service, browser extension (intent `non_goals`).
+Out of scope for v1: team vaults, cloud sync service, browser extension (intent `non_goals`).
 
-## Automated readiness check
+## Run the gate
 
 From repo root (project toolchain active):
 
 ```sh
-./scripts/audit-readiness.sh
+just audit-ready
+# or: ./scripts/audit-readiness.sh
 ```
 
-Runs release search benchmarks (C38/C59), clippy, and supply-chain checks.
+Runs release search benchmarks (C38/C59), clippy, and supply-chain checks when tools are installed.
 
 ## IVD constraint index
 
-Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) (60 constraints as of v1.7.0).
+Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) (60 constraints, v1.7.0).
 
-Integration index: [`tests/constraint_coverage.rs`](../tests/constraint_coverage.rs).
+Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed across crate suites.
 
 ## Threat model
 
-[`docs/THREAT_MODEL.md`](THREAT_MODEL.md) — residual risks auditors should not expect mitigated.
+[`docs/THREAT_MODEL.md`](THREAT_MODEL.md) — residual risks contributors should not expect mitigated.
 
 ## Disclosure
 
 [`SECURITY.md`](../SECURITY.md) · [`docs/specs/UC-15-vulnerability-reporting.md`](specs/UC-15-vulnerability-reporting.md)
+
+## Terminology
+
+- **`vault audit`** — password-health report command (weak/reused passwords), not this gate
+- **Dependency audit** — `cargo audit` / `cargo deny` in CI (`.github/workflows/audit.yml`)

@@ -33,8 +33,8 @@ jobs:
       - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
         run: rustup toolchain install
       - run: rustup target add ${{ matrix.target }}
-      - name: Build (locked, reproducible flags)
-        run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Build CLI (locked, reproducible flags)
+        run: cargo build --release --locked --target ${{ matrix.target }} -p vault-cli
       - name: Package + checksum
         shell: bash
         run: |
