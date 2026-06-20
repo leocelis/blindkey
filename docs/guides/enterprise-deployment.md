@@ -11,8 +11,9 @@ utility** — not a cloud password manager.
 | `VAULT_CONFIG_DIR` | `vault-gui` | Directory for GUI config (`config` file inside) |
 | `VAULT_LOCK_ON_BLUR` | `vault-gui` | Set to `1` to force lock when the window loses focus |
 
-Secrets **must not** be passed via environment variables. Use `VAULT_PASSWORD_FILE` for CLI unlock
-paths only ([UC-05](specs/UC-05-script-and-ci-output.md)).
+Secrets **must not** be passed via environment variables. For headless CLI unlock, use
+`--password-fd` / `--password-stdin` / `VAULT_PASSWORD_FILE` per
+[UC-05](specs/UC-05-script-and-ci-output.md). The password file must be mode `0600` on Unix.
 
 ## MDM / fleet policy example
 

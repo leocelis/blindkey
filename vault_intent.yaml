@@ -1921,7 +1921,8 @@ constraints:
       Every password `TextEdit` in unlock/enroll/editor flows MUST have a preceding
       `ui.label(...)` for screen-reader discoverability (complements C44).
     test: |
-      INTEGRATION: `c54_password_labels`; manual a11y spot-check NEEDS_REVIEW.
+      INTEGRATION: `c54_password_labels`, `c54_password_fields_preceded_by_labels`; manual checklist
+      in docs/guides/accessibility.md.
 
   # ── G15: Enterprise readiness (UC-22) ─────────────────────────────────────
   - id: C55

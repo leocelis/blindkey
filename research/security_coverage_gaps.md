@@ -1,9 +1,9 @@
 # Security Coverage Gaps — Areas the Vault Should Cover (and Currently Doesn't)
 
-> **Status:** Coverage-gap research (June 2026). Third companion to `vault_spec.md` and
-> `llm_offensive_threats.md`. This document audited the **27 constraints** then in
-> `vault_intent.yaml` against the full attack surface of a real-world, locally-installed,
-> sync-exposed credential vault and identified where coverage was **missing** or **partial**.
+> **Historical research (June 2026).** This document audited the intent at **27 constraints**
+> (later **34**, now **60** in intent v1.7.0). The Promotion ledger and matrix table reflect
+> what was promoted on 2026-06-10; many gaps are now **ADDRESSED** in code. Read
+> [`docs/CONSTRAINT_INDEX.md`](../docs/CONSTRAINT_INDEX.md) for current verification status.
 >
 > **Method:** each gap is stated as a concrete attacker capability, mapped to the existing
 > constraint(s) that touch it, given a coverage verdict, grounded in precedent (CVE / CWE /
@@ -59,7 +59,7 @@ data-integrity, distribution trust, and project governance* — exactly the cate
 | E2 | Unicode normalization of the master password | C2 (KDF) | **PROMOTED → C2 (NFC)** | Med |
 | F1 | Coordinated vulnerability disclosure policy (SECURITY.md) | C24 (OSS) | **ADDRESSED** (SECURITY.md shipped) | High (governance) |
 | F2 | Formal threat model document (STRIDE / attack trees) | research taxonomy | **ADDRESSED** (docs/THREAT_MODEL.md) | Med |
-| F3 | Independent security audit before v1.0 | spec checklist | **RELEASE GATE** (ROADMAP M10) | High |
+| F3 | Independent security audit before v1.0 | spec checklist | **OPTIONAL** ([THIRD_PARTY_AUDIT.md](../docs/THIRD_PARTY_AUDIT.md)) | High |
 
 ### Promotion ledger (2026-06-10)
 
@@ -80,7 +80,7 @@ The vault parses **attacker-influenceable bytes** (a synced/exfiltrated-then-res
 file) and prints **attacker-influenceable content** (entry fields an attacker may have seeded,
 e.g. a shared login, a phished entry, an imported list). Both directions are classic CVE soil.
 
-### A1 — KDF parameter ceiling (memory-exhaustion / overflow DoS) — **GAP, High**
+### A1 — KDF parameter ceiling (memory-exhaustion / overflow DoS) — **ADDRESSED (C2 ceiling)**
 - **Attack:** C8 mandates reading KDF params *verbatim from the file*; C2 enforces only a
   **minimum** floor. A malicious or corrupted vault file can therefore declare
   `argon2id_m_cost = 0xFFFFFFFF` KiB (~4 TiB) or a value that **integer-overflows** when KiB→bytes
@@ -98,7 +98,7 @@ e.g. a shared login, a phished entry, an imported list). Both directions are cla
   the KiB→bytes computation with checked/saturating arithmetic and reject overflow *before*
   allocating; print "KDF parameters exceed safe limits — possible hostile or corrupt file."
 
-### A2 — Terminal / ANSI escape injection on display — **GAP, High**
+### A2 — Terminal / ANSI escape injection on display — **ADDRESSED (C28)**
 - **Attack:** entry titles/usernames/notes are arbitrary user bytes. When `vault ls` or
   `vault get` prints them to a TTY, embedded ANSI/OSC escape sequences can rewrite the terminal,
   spoof output, or (on some terminals) **inject into the clipboard** or trigger actions.
@@ -110,7 +110,7 @@ e.g. a shared login, a phished entry, an imported list). Both directions are cla
   newline/tab). Apply to `ls`, `get --stdout`, `edit` previews, and error messages that echo
   field content.
 
-### A3 — Export injection (CSV / formula) — **GAP, High**
+### A3 — Export injection (CSV / formula) — **ADDRESSED (C29; CSV export not offered in v1)**
 - **Attack:** `vault export` (C21) emits decrypted entries. If a CSV export is added (or a JSON
   field is later opened in a spreadsheet), a field beginning with `=`, `+`, `-`, or `@` becomes a
   **live formula** when the file is opened in Excel/Sheets — data exfiltration to RCE.
@@ -121,7 +121,7 @@ e.g. a shared login, a phished entry, an imported list). Both directions are cla
   metacharacters (e.g. prepend `'`), quote per RFC 4180, and strip control chars; for JSON, ensure
   strict escaping. Document that exports are plaintext and warn (C21 already requires the warning).
 
-### A4 — Parser fuzzing & memory-safety on hostile files — **GAP, High**
+### A4 — Parser fuzzing & memory-safety on hostile files — **ADDRESSED (C30 + fuzz CI)**
 - **Attack:** the header/stanza/HmacBlockStream parsers (C7–C10) consume untrusted bytes. A
   malformed `stanza_data_len`, truncated block, or absurd `stanza_count` must never panic, hang,
   over-read, or over-allocate — a crash on open is a sync-delivered DoS, and any FFI mishandling
@@ -139,7 +139,7 @@ e.g. a shared login, a phished entry, an imported list). Both directions are cla
 
 The crypto can be flawless while the secret leaks out the side.
 
-### B1 — Secrets on argv / shell history / process list — **GAP, High (and self-contradicted)**
+### B1 — Secrets on argv / shell history / process list — **ADDRESSED (C31)**
 - **Attack:** passing a secret as a command-line flag exposes it to (a) shell history files,
   (b) `ps aux` / `/proc/<pid>/cmdline` readable by other processes, (c) shoulder-surfing.
 - **The spec contradicts itself here:** ✓ verified — C20's own acceptance test runs
@@ -149,7 +149,7 @@ The crypto can be flawless while the secret leaks out the side.
   via a CLI argument. Read only via (a) no-echo TTY prompt, (b) stdin pipe, or (c) an explicit
   `--password-fd N` / file descriptor. Update the C20/C21 examples to use prompts. Mirrors gopass.
 
-### B2 — Clipboard capture beyond timed clear — **PARTIAL, Med-High**
+### B2 — Clipboard capture beyond timed clear — **ADDRESSED (C33)**
 - **Attack:** C13 clears the clipboard after 30 s, but during that window (and sometimes after)
   the secret is captured by **clipboard-history managers** and **OS cloud-clipboard sync**
   (Windows Cloud Clipboard, macOS Universal Clipboard) — exfiltrating the password to another
@@ -160,7 +160,7 @@ The crypto can be flawless while the secret leaks out the side.
   `ExcludeClipboardContentFromMonitorProcessing` + `CanIncludeInClipboardHistory=false`; Linux
   best-effort (prefer primary selection / direct injection). Keep the timed clear (C13) as backstop.
 
-### B3 — Live process-memory read via ptrace/debugger — **PARTIAL, Med**
+### B3 — Live process-memory read via ptrace/debugger — **PARTIAL (Linux `PR_SET_DUMPABLE`; macOS deferred)**
 - **Attack:** C25 disables **core dumps**, but a same-uid process can still `ptrace`-attach (or
   read `/proc/<pid>/mem`) to scrape unlocked keys from the running vault.
 - **Proposed direction (C34):** on Linux call `prctl(PR_SET_DUMPABLE, 0)` (also blocks non-root
@@ -175,7 +175,7 @@ The crypto can be flawless while the secret leaks out the side.
 A single opaque blob (C17) maximizes confidentiality but concentrates **availability risk**:
 one bad write loses *everything*.
 
-### C1 — Atomic writes + file locking — **GAP, High**
+### C1 — Atomic writes + file locking — **ADDRESSED (C32)**
 - **Attack/Failure:** a crash, full disk, or two concurrent `vault` processes writing mid-save can
   truncate or interleave the single blob and **destroy the entire vault**. C16's version counter
   detects rollback but not a half-written file.
@@ -209,7 +209,7 @@ one bad write loses *everything*.
 For a *security* tool, "how do I trust the binary I downloaded" is a first-class security
 property — and the current intent stops at `cargo audit`/`cargo deny`.
 
-### D1 — Reproducible builds + signed releases — **GAP, High**
+### D1 — Reproducible builds + signed releases — **ADDRESSED (C34 + cargo auditable SBOM)**
 - **Gap:** C20 produces a static binary and C24 audits dependencies, but nothing lets a user
   **verify the release artifact** they download matches the audited source. A compromised CI or
   release account could ship a backdoored binary undetectably.
@@ -222,7 +222,7 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
   `cosign verify` / checksum steps in the README. This is the distribution analogue of C9's
   header HMAC: integrity the user can check without trusting the channel.
 
-### D2 — Dependency vetting depth — **PARTIAL, Med**
+### D2 — Dependency vetting depth — **PARTIAL (SBOM embedded; cargo-vet tracked M9)**
 - **Gap:** `cargo audit` catches *known* advisories; it does not vet *unreviewed* code or shrink
   the trusted surface.
 - **Proposed direction (C39):** add `cargo-vet` (trusted-review gating of dependency updates),
@@ -243,7 +243,7 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
   versioned format + algorithm IDs already provide crypto-agility, and reserve a future
   **hybrid-PQ wrap** option (e.g. ML-KEM alongside the classical wrap) for a later format_version.
 
-### E2 — Unicode normalization of the master password — **GAP, Med**
+### E2 — Unicode normalization of the master password — **ADDRESSED (C2 NFC)**
 - **Attack/Failure:** a password containing non-ASCII (accents, emoji, CJK) can be encoded as
   different byte sequences (NFC vs NFD) by different OSes/keyboards, so the **same typed password
   fails to unlock** on another platform — or, worse, a normalization mismatch silently weakens the
@@ -256,13 +256,11 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
 
 ## 7 — Theme F: Governance (it's an *open-source security* project)
 
-### F1 — Coordinated vulnerability disclosure policy — **GAP, High (governance)**
-- **Gap:** no `SECURITY.md`, no security contact, no embargo/disclosure process. For a credential
-  vault this is table stakes — researchers need a private channel and users need advisories.
-- **Proposed direction:** ship `SECURITY.md` (contact, PGP/age key, response SLA, safe-harbor),
-  use GitHub Security Advisories + CVE issuance, and a documented embargo window.
+### F1 — Coordinated vulnerability disclosure policy — **ADDRESSED**
+- **Status:** [`SECURITY.md`](../SECURITY.md) ships with GHSA intake, SLA table, and safe harbor.
+  Optional age intake key publication is tracked in ROADMAP S-9 / UC-15.
 
-### F2 — Formal threat model document — **PARTIAL, Med**
+### F2 — Formal threat model document — **ADDRESSED (`docs/THREAT_MODEL.md`)**
 - **Gap:** the research has a threat *taxonomy*; a maintained `THREAT_MODEL.md` (STRIDE or attack
   trees, explicit **in-scope / out-of-scope** adversaries, and the residual-risk list) makes the
   guarantees auditable and sets expectations (e.g. "evil-maid with hardware TPM bus access is
@@ -270,10 +268,9 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
 - **Proposed direction:** promote the taxonomy into a versioned threat-model doc, cross-linked to
   the constraints that mitigate each entry.
 
-### F3 — Independent audit before v1.0 — **NOTED, High**
-- The `vault_spec.md` checklist already calls for an audit; elevate it to a release gate (mirroring
-  the KeePassXC Molotnikov / ANSSI precedent) covering: format/parser, KDF integration, memory
-  handling, hardware-token FFI, and the new AI-era delivery path (C27).
+### F3 — Independent audit before v1.0 — **OPTIONAL (not a code gate)**
+- v1.0 is gated on the **CP-7 release quality gate** (`just audit-ready` + IVD Rule 2 sweep), not
+  on commissioning a third-party audit. External review remains valuable but optional.
 
 ---
 

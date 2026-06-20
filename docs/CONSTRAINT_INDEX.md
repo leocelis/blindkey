@@ -33,6 +33,14 @@ just audit-ready    # release search benches + clippy (C55)
 
 ## Manual review
 
-- **C54** — wiring tests pass; screen-reader spot-check is NEEDS_REVIEW per intent
+- **C54** — automated label wiring in `uc21_constraints.rs`; optional VoiceOver/NVDA checklist in
+  [`guides/accessibility.md`](guides/accessibility.md)
+
+## Test methodology notes
+
+- **C27–C31** — exercised primarily via `cli.rs` integration tests and code review; C28/C29/C31 do
+  not yet have dedicated `cNN_*` named tests.
+- **C40–C54** — `uc20`/`uc21` tests are **static wiring** checks (source grep), not live GUI oracles.
+- **C34** — reproducible build verified in CI `reproducible` job; release signing in `release.yml`.
 
 Contributors: when you satisfy a constraint, add or point to the test in your PR and update this table.

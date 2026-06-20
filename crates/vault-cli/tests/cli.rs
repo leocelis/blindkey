@@ -16,12 +16,21 @@ fn shared_home() -> PathBuf {
 }
 
 /// Run the `vault` binary under an isolated `home`, feeding `stdin`. Returns (exit code, out, err).
+/// When `stdin` is non-empty and no explicit password channel is set, prepends `--password-stdin`.
 fn run_env(home: &Path, args: &[&str], stdin: &str) -> (Option<i32>, String, String) {
+    let mut argv: Vec<&str> = Vec::new();
+    let has_pw_channel = args.iter().any(|a| {
+        *a == "--password-stdin" || *a == "--password-fd" || a.starts_with("--password-fd=")
+    });
+    if !has_pw_channel && !stdin.is_empty() {
+        argv.push("--password-stdin");
+    }
+    argv.extend_from_slice(args);
     let mut child = Command::new(env!("CARGO_BIN_EXE_vault"))
         .env("HOME", home)
         .env("XDG_DATA_HOME", home.join("share"))
         .env("LOCALAPPDATA", home.join("local")) // Windows anchor dir → keep it sandboxed too
-        .args(args)
+        .args(&argv)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -672,4 +681,63 @@ fn cli_keyfile_2fa_enroll_open_and_recovery() {
     let _ = std::fs::remove_file(&keyfile);
     let _ = std::fs::remove_file(&wrong);
     let _ = std::fs::remove_dir_all(&home);
+}
+
+#[test]
+fn non_interactive_without_password_channel_exits_5() {
+    let vault = unique_vault();
+    let vs = vault.to_str().unwrap();
+    let home = shared_home();
+    let pw = "pw-5\n";
+    let fast = &["--kdf-m-cost", "8192", "--kdf-t-cost", "1", "--kdf-p-cost", "1"];
+    let mut init_args = vec!["--vault", vs, "init", "--allow-weak-password"];
+    init_args.extend_from_slice(fast);
+    assert_eq!(run_env(&home, &init_args, pw).0, Some(0));
+
+    let (code, _, err) = run_env(&home, &["--vault", vs, "ls"], "");
+    assert_eq!(code, Some(5), "stderr: {err}");
+    assert!(err.contains("non-interactive"), "stderr: {err}");
+
+    let _ = std::fs::remove_file(&vault);
+}
+
+#[cfg(unix)]
+#[test]
+fn vault_password_file_env_unlocks() {
+    use std::os::unix::fs::OpenOptionsExt;
+
+    let vault = unique_vault();
+    let vs = vault.to_str().unwrap();
+    let home = shared_home();
+    let pw_file = home.join("master.pw");
+    {
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&pw_file)
+            .unwrap();
+        f.write_all(b"file-pass\n").unwrap();
+    }
+    let fast = &["--kdf-m-cost", "8192", "--kdf-t-cost", "1", "--kdf-p-cost", "1"];
+    let mut init_args = vec!["--vault", vs, "init", "--allow-weak-password"];
+    init_args.extend_from_slice(fast);
+    let (code, _, err) = run_env(&home, &init_args, "file-pass\n");
+    assert_eq!(code, Some(0), "init: {err}");
+
+    let child = Command::new(env!("CARGO_BIN_EXE_vault"))
+        .env("HOME", &home)
+        .env("XDG_DATA_HOME", home.join("share"))
+        .env("VAULT_PASSWORD_FILE", &pw_file)
+        .args(["--vault", vs, "ls"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+
+    let _ = std::fs::remove_file(&vault);
 }

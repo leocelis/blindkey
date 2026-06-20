@@ -88,7 +88,7 @@ None — consent given via "implement all gaps" instruction.
 | ID | Gap | Why deferred |
 |----|-----|--------------|
 | DG-1 | Native SwiftUI | UC-18 P3; months of work |
-| DG-2 | External audit | CP-7 human process |
+| DG-2 | Third-party security review | Optional human process; not required for v1.0 (CP-7 = automated gate) |
 | DG-3 | eframe 0.34 | Needs benchmark sidequest |
 | DG-4 | Search index 10k+ | C38 sufficient for v1 |
 | DG-5 | No clipboard | Contradicts C27 UX |

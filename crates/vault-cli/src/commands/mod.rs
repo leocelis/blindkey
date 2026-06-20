@@ -14,6 +14,7 @@ use vault_core::gen::{password as gen_password, Charset};
 use vault_core::Vault;
 use zeroize::Zeroizing;
 
+use crate::unlock_secret::{self, UnlockSecretOpts};
 use crate::Command;
 
 type CmdResult = Result<(), String>;
@@ -60,6 +61,8 @@ pub struct OpenOpts {
     pub recovery: bool,
     /// Keyfile path supplied as the second factor for a keyfile-2FA vault.
     pub keyfile: Option<PathBuf>,
+    /// Non-interactive master-password channels (UC-05 §3.2).
+    pub unlock: UnlockSecretOpts,
 }
 
 /// Route a parsed command to its handler.
@@ -76,6 +79,7 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
             kdf_t_cost,
             kdf_p_cost,
             allow_weak_password,
+            &opts.unlock,
         ),
         Command::Import {
             format,
@@ -147,6 +151,7 @@ fn cmd_init(
     t_cost: u32,
     p_cost: u32,
     allow_weak_password: bool,
+    unlock: &UnlockSecretOpts,
 ) -> CmdResult {
     if path.exists() {
         return Err(format!(
@@ -154,7 +159,7 @@ fn cmd_init(
             path.display()
         ));
     }
-    let password = prompt_password(true)?;
+    let password = unlock_secret::read_master_password(true, unlock)?;
     // Root-of-trust check: a weak master password defeats every other layer (it faces offline
     // brute force). Warn loudly; on a TTY require confirmation. `--allow-weak-password` skips it.
     if !allow_weak_password {
@@ -235,7 +240,7 @@ fn cmd_import(path: &Path, format: &str, source: &Path, yes: bool, opts: &OpenOp
         }
     }
 
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     let n = result.entries.len();
     for entry in result.entries {
@@ -250,7 +255,7 @@ fn cmd_import(path: &Path, format: &str, source: &Path, yes: bool, opts: &OpenOp
 }
 
 fn cmd_ls(path: &Path, search: Option<&str>, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let vault = open_vault(path, password.as_bytes(), opts)?;
     let entries = match search {
         Some(q) => vault.search(q),
@@ -269,7 +274,7 @@ fn cmd_ls(path: &Path, search: Option<&str>, opts: &OpenOpts) -> CmdResult {
 
 fn cmd_audit(path: &Path, opts: &OpenOpts) -> CmdResult {
     use vault_core::audit::{analyze, AuditConfig};
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let vault = open_vault(path, password.as_bytes(), opts)?;
     let report = analyze(vault.entries(), now_unix(), &AuditConfig::default());
 
@@ -322,7 +327,7 @@ fn cmd_get(
     if field != "password" {
         return Err("only the `password` field is supported in this version".to_string());
     }
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let vault = open_vault(path, password.as_bytes(), opts)?;
     let entry = vault
         .get(name)
@@ -367,7 +372,7 @@ fn cmd_get(
 /// only (no secret, no clipboard, no state change) — scriptable. The query is never echoed back or
 /// logged (C37); it searches non-secret metadata only (titles/usernames/urls/tags — C35).
 fn cmd_find(path: &Path, query: &str, stdout: bool, timeout: u64, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     let now = now_unix().max(0) as u64;
 
@@ -429,7 +434,7 @@ fn cmd_find(path: &Path, query: &str, stdout: bool, timeout: u64, opts: &OpenOpt
 }
 
 fn cmd_otp(path: &Path, name: &str, stdout: bool, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let vault = open_vault(path, password.as_bytes(), opts)?;
     let entry = vault
         .get(name)
@@ -537,7 +542,7 @@ fn cmd_gen_passphrase(n: usize, wordlist: Option<&Path>) -> CmdResult {
 }
 
 fn cmd_add(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     if vault.get(name).is_some() {
         return Err(format!(
@@ -591,7 +596,7 @@ fn cmd_add(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
 }
 
 fn cmd_edit(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     let (cur_user, cur_url, cur_notes) = {
         let e = vault
@@ -644,7 +649,7 @@ fn cmd_edit(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
 }
 
 fn cmd_rm(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     if vault.get(name).is_none() {
         return Err(format!("no entry titled {name:?}"));
@@ -663,7 +668,7 @@ fn cmd_rm(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
 }
 
 fn cmd_upgrade_kdf(path: &Path, m: u32, t: u32, p: u32, opts: &OpenOpts) -> CmdResult {
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     eprintln!("Re-deriving with Argon2id (m={m} KiB, t={t}, p={p})…");
     vault
@@ -720,7 +725,7 @@ fn cmd_enroll_keyfile(path: &Path, keyfile_path: Option<&Path>, opts: &OpenOpts)
         return Err("keyfile is empty".to_string());
     }
 
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     if vault.is_2fa() {
         return Err("this vault already has a second factor enrolled".to_string());
@@ -782,7 +787,7 @@ fn cmd_enroll_yubikey(path: &Path, opts: &OpenOpts) -> CmdResult {
         );
     }
     // Unlock first: the data key must be in memory to re-wrap it under the new 2FA stanza.
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     if vault.is_2fa() {
         return Err("this vault already has a YubiKey enrolled".to_string());
@@ -843,7 +848,7 @@ fn cmd_pad(path: &Path, state: &str, opts: &OpenOpts) -> CmdResult {
         "off" | "none" | "false" => PadMode::None,
         other => return Err(format!("unknown pad state {other:?} (use `on` or `off`)")),
     };
-    let password = prompt_password(false)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     vault.set_padding(mode);
     let out = vault.save().map_err(|e| e.to_string())?;
@@ -912,6 +917,11 @@ fn prompt_secret_value(label: &str) -> Result<Zeroizing<String>, String> {
 fn vault_path(opt: Option<PathBuf>) -> Result<PathBuf, String> {
     if let Some(p) = opt {
         return Ok(p);
+    }
+    if let Ok(p) = std::env::var("VAULT_VAULT_PATH") {
+        if !p.is_empty() {
+            return Ok(PathBuf::from(p));
+        }
     }
     let home = std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
@@ -1037,30 +1047,6 @@ fn write_vault(path: &Path, bytes: &[u8]) -> CmdResult {
     Ok(())
 }
 
-/// Read the master password without echo (TTY) or from stdin (non-interactive). Never from argv.
-fn prompt_password(confirm_match: bool) -> Result<Zeroizing<String>, String> {
-    if !std::io::stdin().is_terminal() {
-        // Read exactly one line so the remaining stdin is available to later prompts (scriptable
-        // `add`/`edit`); strip the trailing newline.
-        let mut s = Zeroizing::new(String::new());
-        std::io::stdin()
-            .read_line(&mut s)
-            .map_err(|e| e.to_string())?;
-        let line = s.trim_end_matches(['\n', '\r']).to_string();
-        return Ok(Zeroizing::new(line));
-    }
-    let p =
-        Zeroizing::new(rpassword::prompt_password("Master password: ").map_err(|e| e.to_string())?);
-    if confirm_match {
-        let again = Zeroizing::new(
-            rpassword::prompt_password("Confirm password: ").map_err(|e| e.to_string())?,
-        );
-        if *p != *again {
-            return Err("passwords do not match".to_string());
-        }
-    }
-    Ok(p)
-}
 
 fn confirm(question: &str) -> Result<bool, String> {
     eprint!("{question} [y/N] ");

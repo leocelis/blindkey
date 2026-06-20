@@ -40,4 +40,3 @@ jobs:
         run: cargo +nightly install cargo-fuzz --locked
       - name: Smoke-run ${{ matrix.target }} (60s)
         run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=60
-        continue-on-error: true   # remove once fuzz targets are implemented (M2)

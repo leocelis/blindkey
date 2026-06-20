@@ -70,6 +70,36 @@ fn c53_search_scope_hint() {
 #[test]
 fn c54_password_labels() {
     let src = read_gui_main();
-    assert!(src.contains("ui.label(\"Master password\")"));
-    assert!(src.contains("ui.label(\"Recovery code\")"));
+    for label in [
+        "ui.label(\"Master password\")",
+        "ui.label(\"Recovery code\")",
+        "ui.label(\"Confirm password\")",
+        "ui.label(\"Password\")",
+        "ui.label(\"2FA secret\")",
+    ] {
+        assert!(src.contains(label), "missing label: {label}");
+    }
+}
+
+/// Every `.password(` field must have a `ui.label` within the prior 8 lines (C54).
+#[test]
+fn c54_password_fields_preceded_by_labels() {
+    let src = read_gui_main();
+    let lines: Vec<&str> = src.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
+        if !line.contains(".password(") {
+            continue;
+        }
+        let window = lines
+            .iter()
+            .skip(i.saturating_sub(8))
+            .take(8)
+            .any(|l| l.contains("ui.label("));
+        assert!(
+            window,
+            "password field at line {} lacks a preceding ui.label:\n{}",
+            i + 1,
+            line.trim()
+        );
+    }
 }

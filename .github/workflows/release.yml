@@ -33,8 +33,10 @@ jobs:
       - name: Install pinned toolchain (rust-toolchain.toml — C34 reproducibility)
         run: rustup toolchain install
       - run: rustup target add ${{ matrix.target }}
-      - name: Build CLI (locked, reproducible flags)
-        run: cargo build --release --locked --target ${{ matrix.target }} -p vault-cli
+      - name: Install cargo-auditable (embedded SBOM — UC-13 §3.4)
+        run: cargo install cargo-auditable auditable2cdx --locked
+      - name: Build CLI (auditable, locked, reproducible flags)
+        run: cargo auditable build --release --locked --target ${{ matrix.target }} -p vault-cli
       - name: Package + checksum
         shell: bash
         run: |
@@ -44,6 +46,13 @@ jobs:
           cp "target/${{ matrix.target }}/release/${bin}" "dist/vault-${{ matrix.target }}-${bin##*.}" 2>/dev/null || \
             cp "target/${{ matrix.target }}/release/${bin}" "dist/vault-${{ matrix.target }}"
           cd dist && shasum -a 256 * > "SHA256SUMS-${{ matrix.target }}.txt"
+      - name: CycloneDX SBOM (canonical musl binary)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        shell: bash
+        run: |
+          bin=$(ls dist/vault-x86_64-unknown-linux-musl* | head -1)
+          auditable2cdx "$bin" > "dist/vault-${{ github.ref_name }}.cdx.json"
+          cd dist && shasum -a 256 vault-${{ github.ref_name }}.cdx.json >> SHA256SUMS-x86_64-unknown-linux-musl.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist-${{ matrix.target }}

@@ -134,11 +134,10 @@ vault/
 │   ├── vault-gui/       # egui desktop window (thin shell)
 │   ├── vault-sys/       # OS calls (mlock, setrlimit) — the only `unsafe` boundary
 │   └── vault-hardware/  # optional FIDO2 / TPM / OS-keystore stanzas
-├── docs/                # architecture, threat model, file format, crypto rationale, ADRs
+├── docs/                # architecture, threat model, CONSTRAINT_INDEX.md, ADRs
 ├── research/            # the security research this design is built on
 ├── fuzz/                # cargo-fuzz harnesses for the untrusted-input parsers
 ├── benches/             # benchmark notes (C22 via `vault tune`)
-├── tests/               # (reserved — integration tests live in crate `tests/` dirs)
 └── vault_intent.yaml    # the constraint specification — the source of truth
 ```
 

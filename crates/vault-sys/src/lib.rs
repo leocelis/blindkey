@@ -114,6 +114,32 @@ pub fn flock_unlock(fd: i32) {
     }
 }
 
+/// Read one line (without trailing newline) from an open file descriptor (UC-05 `--password-fd`).
+///
+/// Does **not** close `fd` on return.
+#[cfg(unix)]
+pub fn read_line_from_fd(fd: i32) -> std::io::Result<String> {
+    use std::io::{BufRead, BufReader};
+    use std::mem::ManuallyDrop;
+    use std::os::fd::{FromRawFd, RawFd};
+
+    // SAFETY: `fd` is open for read; we wrap it without closing on drop via `ManuallyDrop`.
+    let file = unsafe { std::fs::File::from_raw_fd(fd as RawFd) };
+    let mut file = ManuallyDrop::new(file);
+    let mut reader = BufReader::new(&mut *file);
+    let mut line = String::new();
+    reader.read_line(&mut line)?;
+    Ok(line.trim_end_matches(['\n', '\r']).to_string())
+}
+
+#[cfg(not(unix))]
+pub fn read_line_from_fd(_fd: i32) -> std::io::Result<String> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "this platform does not support --password-fd",
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

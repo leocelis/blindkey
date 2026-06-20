@@ -97,7 +97,7 @@ lane can build against from that point on.
 | S-3 | **zxcvbn entropy warning** (60-bit floor, warn-don't-block) | [UC-02](docs/specs/UC-02-csprng-generation.md) | nothing | Wraps the zxcvbn crate |
 | S-4 | ✅ **`vault tune`** — Argon2id benchmark + recommend m/t/p (~300 ms) | [UC-11](docs/specs/UC-11-kdf-calibration.md) | CP-2 (kdf fn) | **DONE** (C22): probe + linear-extrapolate `m`, clamp to policy, re-measure; unlock progress line |
 | S-5 | **Import parsers** — txt, JSON, Bitwarden JSON, KeePassXC CSV (+ M9: kdbx via `keepass`, pass via gpg subprocess) | [UC-12](docs/specs/UC-12-migration-import.md) | CP-1 (Entry model) | Each format = one PR; fuzz each parser |
-| S-6 | **`vault export` + `--stdout` plumbing** — warning strings, non-TTY matrix, `--password-fd/stdin` | [UC-05](docs/specs/UC-05-script-and-ci-output.md) | CP-5 partially | Spec is final; warning text is frozen |
+| S-6 | **`vault export` + `--stdout` plumbing** — warning strings, non-TTY matrix; unlock via `--password-fd`/`--password-stdin`/`VAULT_PASSWORD_FILE` ✅ | [UC-05](docs/specs/UC-05-script-and-ci-output.md) | CP-5 partially | `export` still pending |
 | S-7 | **`vault merge`** — UUID union, `modified_at` tiebreak, masked diffs (8-bullet Protected) | [UC-08](docs/specs/UC-08-conflict-merge.md) | CP-4 | Needs read/write API |
 | S-8a | **FIDO2 stanza** (libfido2 raw CTAP2) | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 (stanza API) | Optional for v1 (M7) |
 | S-8b | 🟡 **YubiKey CR stanza** | [UC-09](docs/specs/UC-09-hardware-factors.md) | CP-2 | **CLI DONE** (`vault enroll yubikey`): composite **AND** 2FA (password + key both required) + one-time recovery code; HMAC-SHA1 slot-2 via `ykman` subprocess (no FFI). Pending: GUI enrollment + the UC-09 AND-model intent amendment |
@@ -129,7 +129,7 @@ below keeps review load natural. Lanes are a default, not a law — swap via the
 - **Lane B:** S-1, S-2, S-3, S-9 immediately (zero dependencies); then S-4/S-5 as CP-1/CP-2 freeze
   interfaces; then CP-5 CLI against the frozen core API; S-6/S-7/S-10 behind it.
 - **Sync points:** ① Gate 0 sign-off (both) · ② CP-1 format freeze · ③ CP-4 core API freeze ·
-  ④ CP-7 audit (both).
+  ④ CP-7 release quality gate (both).
 
 ---
 

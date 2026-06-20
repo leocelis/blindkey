@@ -15,6 +15,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod commands;
+mod unlock_secret;
 
 /// Vault — a security layer for the AI era.
 #[derive(Debug, Parser)]
@@ -36,6 +37,12 @@ struct Cli {
     /// Keyfile to supply as the second factor when unlocking a keyfile-2FA vault.
     #[arg(long, global = true, value_name = "PATH")]
     keyfile: Option<PathBuf>,
+    /// Read the master password from file descriptor N (gopass-style; UC-05 §3.2).
+    #[arg(long, global = true, value_name = "FD")]
+    password_fd: Option<u32>,
+    /// Read the master password from stdin (one line; required for piped non-TTY unlock).
+    #[arg(long, global = true)]
+    password_stdin: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -169,6 +176,10 @@ fn main() -> std::process::ExitCode {
         expect_min_version: cli.expect_min_version,
         recovery: cli.recovery,
         keyfile: cli.keyfile,
+        unlock: unlock_secret::UnlockSecretOpts {
+            password_fd: cli.password_fd,
+            password_stdin: cli.password_stdin,
+        },
     };
     // A rollback abort exits with code 2 from inside the open path (constraint C16); a normal
     // failure returns Err and maps to 1.
@@ -177,6 +188,8 @@ fn main() -> std::process::ExitCode {
         Err(e) => {
             let code = if e.starts_with(commands::USAGE_ERROR_PREFIX) {
                 8
+            } else if e.starts_with(unlock_secret::AUTH_ERROR_PREFIX) {
+                5
             } else {
                 1
             };

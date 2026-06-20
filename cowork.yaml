@@ -155,4 +155,4 @@ sync_points:
   - "SP2: CP-1 format freeze — byte layout + format API stable; Lane B may build
      importers/CLI against it"
   - "SP3: CP-4 core API freeze — full vault-core public API stable; CLI integration"
-  - "SP4: CP-7 joint IVD Rule 2 audit before the external audit"
+  - "SP4: CP-7 release quality gate — IVD Rule 2 sweep + `just audit-ready` green before v1.0.0"

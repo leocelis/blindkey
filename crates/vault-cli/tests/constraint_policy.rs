@@ -75,3 +75,25 @@ fn c24_open_source_license_and_supply_chain_policy() {
         "CI must run cargo-deny / cargo-audit (C24)"
     );
 }
+
+#[test]
+fn c57_cli_honors_vault_vault_path_env() {
+    let src = std::fs::read_to_string(
+        repo_root().join("crates/vault-cli/src/commands/mod.rs"),
+    )
+    .unwrap();
+    assert!(src.contains("VAULT_VAULT_PATH"));
+}
+
+#[test]
+fn c31_unlock_secret_channels_wired() {
+    let main_rs = std::fs::read_to_string(repo_root().join("crates/vault-cli/src/main.rs")).unwrap();
+    let unlock = std::fs::read_to_string(
+        repo_root().join("crates/vault-cli/src/unlock_secret.rs"),
+    )
+    .unwrap();
+    assert!(main_rs.contains("password_fd"));
+    assert!(main_rs.contains("password_stdin"));
+    assert!(unlock.contains("VAULT_PASSWORD_FILE"));
+    assert!(unlock.contains("0600"));
+}

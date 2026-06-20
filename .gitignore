@@ -8,6 +8,7 @@ Cargo.lock.bak
 /.toolchain/
 # direnv (optional local activation of the project-scoped toolchain)
 /.direnv/
+.env
 .envrc.local
 # Fuzzing
 /fuzz/target

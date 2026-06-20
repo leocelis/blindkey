@@ -1,12 +1,18 @@
 # Changelog
 
 All notable changes to this project are documented here. The format is based on
-[Keep a Changelog](https://keepablechangelog.com/en/1.1.0/), and the project aims to adhere to
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to adhere to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
+- **Audit gap closure:** `VAULT_PASSWORD_FILE`, `--password-fd`/`--password-stdin`, `cargo auditable`
+  + CycloneDX in `release.yml`, C54 a11y label tests + accessibility guide, third-party audit
+  doc, research gap headers synced to ADDRESSED status.
+- **OSS readiness audit fixes:** fuzz CI gates PRs, VERIFYING_RELEASES/SECURITY/cowork aligned to
+  CP-7 quality gate, research doc historical banners, CLI `VAULT_VAULT_PATH` parity, workspace
+  `readme`, CONSTRAINT_INDEX methodology notes.
 - **Constraint coverage gaps closed (C3, C4, C6, C14, C15, C17, C23, C24):** dedicated tests in
   `constraint_gaps.rs`, `constraint_policy.rs`, `constraint_hardware.rs`; FIDO2 salt/HKDF helpers
   and TPM policy strings in `vault-hardware`.
@@ -50,7 +56,8 @@ All notable changes to this project are documented here. The format is based on
   ([docs/specs/UC-19](docs/specs/UC-19-omni-search.md)). +18 tests (core 126, CLI 9).
 - Open-source project scaffolding: governance, security policy, CI/security automation,
   documentation skeleton, and the `vault-core` / `vault-cli` / `vault-hardware` workspace.
-- Intent specification with 34 constraints across 11 groups ([vault_intent.yaml](vault_intent.yaml)),
+- Intent specification with 34 constraints across 11 groups ([vault_intent.yaml](vault_intent.yaml))
+  *(historical — now **60 constraints / 15 groups**, intent v1.7.0)*,
   including AI-era hardening (CSPRNG generation `C26`, model-blind delivery `C27`).
 - Research foundation: security spec, AI-era offensive-LLM threat landscape, a security
   coverage-gap analysis, and a UI-architecture study ([research/](research/)).

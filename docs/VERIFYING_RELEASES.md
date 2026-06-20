@@ -4,8 +4,9 @@ A security tool you can't verify is a security tool you have to *trust*. Vault r
 **reproducible**, **keylessly signed with Sigstore cosign**, and accompanied by **SLSA build
 provenance** and SHA-256 checksums. Here's how to check what you downloaded. *(constraint C34)*
 
-> Applies to tagged releases once the build/release pipeline (`.github/workflows/release.yml`) runs.
-> Pre-alpha has no releases yet.
+> Applies to tagged releases from `.github/workflows/release.yml`. Vault is **functional
+> pre-1.0** — publish your first tag (`v0.1.0` or similar) to exercise this flow; until then,
+> build from source per [INSTALL.md](INSTALL.md).
 
 ## 1. Verify the checksum
 
@@ -50,6 +51,17 @@ git checkout vX.Y.Z
 cargo build --release --locked --target x86_64-unknown-linux-musl
 shasum -a 256 target/x86_64-unknown-linux-musl/release/vault
 # Compare against the published checksum.
+```
+
+## 5. Verify embedded SBOM (`cargo auditable`)
+
+Release binaries are built with `cargo auditable` — the dependency inventory is embedded in the
+artifact. On Linux, each release also ships `vault-<tag>.cdx.json` (CycloneDX derived via
+`auditable2cdx`).
+
+```sh
+cargo install cargo-audit auditable2cdx --locked   # once
+cargo audit bin vault-x86_64-unknown-linux-musl    # advisory scan of embedded deps
 ```
 
 If any step fails, **do not run the binary** — open a security report (see [SECURITY.md](../SECURITY.md)).

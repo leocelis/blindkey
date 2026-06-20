@@ -13,7 +13,7 @@ Vault is **functional pre-1.0**. This document describes the **automated quality
 | Envelope & 2FA | `docs/specs/UC-09-hardware-factors.md` | C5, C14–C15 |
 | AI-era delivery | `docs/specs/UC-04-model-blind-retrieval.md` | C26–C27 |
 | Desktop shell boundary | `docs/specs/UC-18-native-ui.md`, `crates/vault-gui/` | C40–C54, C45 |
-| Supply chain | `docs/VERIFYING_RELEASES.md`, SBOM, `cargo auditable` | C3, C34 |
+| Supply chain | `docs/VERIFYING_RELEASES.md`, cosign/SLSA + `cargo auditable` SBOM in `release.yml` | C3, C34 |
 
 Out of scope for v1: team vaults, cloud sync service, browser extension (intent `non_goals`).
 
@@ -41,6 +41,10 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 ## Disclosure
 
 [`SECURITY.md`](../SECURITY.md) · [`docs/specs/UC-15-vulnerability-reporting.md`](specs/UC-15-vulnerability-reporting.md)
+
+## Optional third-party audit
+
+[`docs/THIRD_PARTY_AUDIT.md`](THIRD_PARTY_AUDIT.md) — scope and checklist if commissioning external review.
 
 ## Terminology
 
