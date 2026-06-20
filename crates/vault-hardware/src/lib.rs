@@ -4,21 +4,22 @@
 //! password stanza is always present, so losing a hardware factor never locks the user out
 //! (constraint C5). Each backend is behind a Cargo feature so unused device code is not compiled.
 //!
-//! **Pre-alpha scaffold.** Implementations land in M7 (`ROADMAP.md`).
+//! **Implemented helpers:** YubiKey CR (subprocess), FIDO2 salt/HKDF recipe (C6/C14), TPM policy
+//! strings (C15). Full libfido2 / TPM FFI lands behind features in M7.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+pub mod fido2_salt;
+pub mod tpm_policy;
 pub mod yubikey;
 
 /// FIDO2 hmac-secret / PRF via raw CTAP2 (libfido2) — **never** the browser WebAuthn path.
-/// Salt to authenticator = SHA-256(vault_id || b"fido2-hw-v1"); output → HKDF → wrapping key
-/// (constraints C6, C14).
+/// Salt/HKDF math: [`fido2_salt`] (constraints C6, C14).
 #[cfg(feature = "fido2")]
 pub mod fido2 {}
 
-/// TPM 2.0 PCR-sealed stanza with mandatory re-enrollment flow; documents the bus-attack
-/// limitation and provides `enroll` / `re-enroll` (constraint C15).
+/// TPM 2.0 PCR-sealed stanza — policy strings in [`tpm_policy`] (constraint C15).
 #[cfg(feature = "tpm")]
 pub mod tpm {}
 

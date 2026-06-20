@@ -3658,6 +3658,7 @@ dependencies = [
 name = "vault-hardware"
 version = "0.0.0"
 dependencies = [
+ "sha2",
  "vault-core",
  "zeroize",
 ]

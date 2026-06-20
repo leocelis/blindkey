@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Constraint coverage gaps closed (C3, C4, C6, C14, C15, C17, C23, C24):** dedicated tests in
+  `constraint_gaps.rs`, `constraint_policy.rs`, `constraint_hardware.rs`; FIDO2 salt/HKDF helpers
+  and TPM policy strings in `vault-hardware`.
 - **OSS readiness sweep:** aligned docs to functional pre-1.0 status, 60 constraints (v1.7.0),
   distributed test index (`docs/CONSTRAINT_INDEX.md`), architecture diagram includes TUI/GUI,
   release builds scope to `vault-cli`, quality-gate terminology, root `LICENSE` pointer.

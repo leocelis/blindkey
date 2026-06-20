@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 vault-core = { path = "../vault-core", version = "0.0.0" }
+sha2 = { workspace = true }
 zeroize = { workspace = true }
 
 # Most hardware integrations are feature-gated so users without a given device compile none of its
