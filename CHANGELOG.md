@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-06-22
+
+First **pre-alpha** tagged release — functional CLI + desktop app; on-disk format and API may
+still change before `1.0.0`. Not independently audited.
+
+### Known gaps (pre-1.0)
+- `vault stanzas list|add|remove` not yet implemented (C21).
+- Headless clipboard refusal exit 7 not yet wired (C27).
+- Live libfido2/TPM device integration deferred (optional M7).
+
 ### Changed
 - **ROADMAP:** v1.0 release status cross-check (2026-06-22); CP-1–CP-4/CP-7 marked complete;
   CP-5 🟡 (stanzas + exit 7); CP-6 coded but untagged.

@@ -10,12 +10,12 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 [![Dependency audit](https://github.com/vault/actions/workflows/audit.yml/badge.svg)](https://github.com/vault/actions/workflows/audit.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/vault/badge)](https://securityscorecards.dev/viewer/?uri=github.com/leocelis/vault)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Status: functional / pre-1.0 / unaudited](https://img.shields.io/badge/status-functional%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
+[![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
 </div>
 
 > [!WARNING]
-> **Pre-1.0 and not yet independently audited — keep your own backup of anything you store.**
+> **Pre-alpha (`0.1.0-alpha.1`) — not independently audited — keep your own backup of anything you store.**
 > Vault is now **functional**: the cryptographic core is implemented and tested, and there's a
 > working CLI *and* a desktop app (create/unlock, import a `keys.txt`, search, copy, edit, 2FA
 > codes, auto-lock). What it has **not** had is an independent third-party security audit, and the

@@ -3,7 +3,7 @@
 ## Before tagging
 
 1. `just check` and `just audit-ready` green on `main`
-2. Bump `[workspace.package] version` in root `Cargo.toml` (e.g. `0.1.0`)
+2. Bump `[workspace.package] version` in root `Cargo.toml` (e.g. `0.1.0-alpha.1` or `0.1.0`)
 3. Update `CHANGELOG.md` under `[Unreleased]` → new version section
 4. `./scripts/check-release-version.sh v0.1.0` (dry-run the tag you will push)
 5. First crates.io release only: complete [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md) manual setup

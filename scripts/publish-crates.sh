@@ -9,7 +9,7 @@ if [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then
   exit 1
 fi
 
-PACKAGES=(vault-sys vault-core vault-hardware vault-cli)
+PACKAGES=(vault-sys vault-core vault-hardware vault-clip vault-cli)
 
 publish_one() {
   local pkg=$1

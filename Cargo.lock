@@ -3670,7 +3670,7 @@ dependencies = [
 
 [[package]]
 name = "vault-cli"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
  "getrandom 0.2.17",
@@ -3687,14 +3687,14 @@ dependencies = [
 
 [[package]]
 name = "vault-clip"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "arboard",
 ]
 
 [[package]]
 name = "vault-core"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "argon2",
  "chacha20",
@@ -3716,7 +3716,7 @@ dependencies = [
 
 [[package]]
 name = "vault-gui"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "eframe",
  "getrandom 0.2.17",
@@ -3728,7 +3728,7 @@ dependencies = [
 
 [[package]]
 name = "vault-hardware"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "getrandom 0.2.17",
  "hmac",
@@ -3739,14 +3739,14 @@ dependencies = [
 
 [[package]]
 name = "vault-sys"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "vault-tui"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
  "crossterm",
