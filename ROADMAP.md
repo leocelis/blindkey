@@ -19,6 +19,33 @@ staleness, exit codes) ✅ *(all v1.1.0–v1.4.0 amendments pending second-maint
 
 ---
 
+## v1.0 release status *(cross-check 2026-06-22)*
+
+**Is Vault v1 ready?** **Not yet tagged** — the product is **functional pre-1.0** and the
+**automated quality gate is green** (CP-7: 60/60 constraints PASS). What remains is **release
+ceremony** plus a **small C21/C27 surface gap**, not greenfield implementation.
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| CP-1 · format core | ✅ | Parser/fuzz/TLV model shipped |
+| CP-2 · crypto core | ✅ | STREAM, KDF, envelope |
+| CP-3 · memory hardening | ✅ | mlock, zeroize, RLIMIT_CORE |
+| CP-4 · read/write API | ✅ | Atomic save, rollback anchor, GUI/TUI on core |
+| CP-5 · CLI core loop | 🟡 | `init/import/ls/get/add/edit/rm/lock/find/export/tune/enroll` shipped; **missing:** `vault stanzas list\|add\|remove` (G0.8/C21), headless **exit 7** when clipboard unavailable (C27) |
+| CP-6 · distribution | ✅ *coded* | Pipeline in `release.yml`; **no tag published yet**; crates.io Trusted Publishing needs [one-time manual setup](docs/CRATES_IO_TRUSTED_PUBLISHING.md) |
+| CP-7 · quality gate | ✅ | `just audit-ready` green; [CONSTRAINT_INDEX](docs/CONSTRAINT_INDEX.md) 60 PASS |
+
+**To ship `1.0.0` (per [RELEASE.md](docs/RELEASE.md)):**
+
+1. Close CP-5 gaps above (or amend intent if deferring `stanzas` to post-1.0 — currently in C21).
+2. Run first signed release (recommend `v0.1.0` rc if you want a dry run, then `v1.0.0`).
+3. **Format freeze** — declare `format_version` stable; update README/SECURITY pre-1.0 language.
+4. Gate 0 intent amendments — second-maintainer sign-off (process, not code).
+
+**Explicitly not required for v1.0:** third-party audit ([THIRD_PARTY_AUDIT.md](docs/THIRD_PARTY_AUDIT.md)), live libfido2/TPM FFI (S-8a/S-8c, optional), SwiftUI shell (post-v1).
+
+---
+
 ## Gate 0 — Intent decisions before any crypto/format code
 
 Spec-writing surfaced issues that must be resolved as **intent amendments first** (both
@@ -42,7 +69,7 @@ maintainers, per [GOVERNANCE](GOVERNANCE.md) two-maintainer rule). Small, but th
 Each node lists its constraints, spec, and **the interface it freezes** — the contract the other
 lane can build against from that point on.
 
-### CP-1 · File format core *(M2)*
+### CP-1 · File format core *(M2)* ✅
 `C7 C8 C9 C10 C30` · specs [UC-03](docs/specs/UC-03-store-secret.md), [UC-10](docs/specs/UC-10-hostile-file-parsing.md)
 - Header parse/serialize (magic, version, KDF params, stanza records; bounded reads, length caps)
 - Bounded **TLV entry/payload model** (tag bit 0x8000 = Protected)
@@ -50,19 +77,19 @@ lane can build against from that point on.
 - Fuzz targets live: `header_parse`, `stanza_parse`, `block_stream`
 - **Freezes:** on-disk byte layout · `Header`/`Entry`/`Stanza` types · `vault-core::format` API
 
-### CP-2 · Cryptographic core *(M3)*
+### CP-2 · Cryptographic core *(M3)* ✅
 `C1 C2 C3 C4 C5 C6` (as amended by Gate 0) · specs [UC-01](docs/specs/UC-01-install-and-init.md), [UC-11](docs/specs/UC-11-kdf-calibration.md)
 - Argon2id (floor **and** ceiling) → HKDF; XChaCha20-Poly1305 STREAM (64 KiB chunks)
 - Data-key generation; password-stanza wrap/unwrap; envelope open (any-of-N)
 - **Freezes:** `vault-core::crypto` API · `Vault::open`/`Vault::save` signatures
 
-### CP-3 · Memory & runtime hardening *(M4)*
+### CP-3 · Memory & runtime hardening *(M4)* ✅
 `C11 C12 C25` · spec [UC-14](docs/specs/UC-14-runtime-hardening.md)
 - Type layer (zeroize/secrecy, Debug redaction) · page layer (mlock, `memfd_secret` probe)
 - Process layer (RLIMIT_CORE=0, dumpable-off) · constant-time comparisons table
 - **Freezes:** `vault-core::memory` secret types used by every later component
 
-### CP-4 · Vault read/write, rollback, atomic saves *(M5)*
+### CP-4 · Vault read/write, rollback, atomic saves *(M5)* ✅
 `C4 C16 C17 C32` · specs [UC-07](docs/specs/UC-07-untrusted-storage-sync.md), [UC-01 §atomic](docs/specs/UC-01-install-and-init.md)
 - Open pipeline wired end-to-end; atomic temp+rename+fsync saves; file locking
 - Rollback anchor (per-`vault_id` u64, LocalAppData/XDG, flock + re-read) · `--allow-rollback` · exit 2
@@ -71,22 +98,23 @@ lane can build against from that point on.
   UI-related work that lands in v1 — it unblocks every future shell (TUI/egui/SwiftUI) on one core.
 - **Freezes:** the full `vault-core` public API (v0 API freeze — the big sync point)
 
-### CP-5 · CLI core loop *(M6)*
+### CP-5 · CLI core loop *(M6)* 🟡
 `C20 C21 C22 C27ᵈᵉᶠᵃᵘˡᵗ C28 C29 C31` · specs [UC-01](docs/specs/UC-01-install-and-init.md), [UC-04](docs/specs/UC-04-model-blind-retrieval.md), [UC-06](docs/specs/UC-06-entry-management.md)
-- `init` (≤5 prompts) · `add` · `get` (clipboard default) · `ls --search` · `edit` (field-by-field) · `rm` · `lock` ✅
-- Non-TTY behavior matrix; no secrets on argv; musl static build verified
-- **Freezes:** CLI surface & exit codes (scripts can rely on them)
+- Shipped: `init` · `import` · `ls`/`find` · `get` · `add` · `edit` · `rm` · `lock` · `export` · `tune` · `enroll` (yubikey/keyfile) · `otp` · `audit` · unlock channels
+- **Remaining for CP-5 close:** `vault stanzas list|add|remove` (C21/G0.8); headless clipboard refusal **exit 7** (C27); stale clap doc comments on implemented commands
+- Non-TTY matrix largely wired; no secrets on argv; musl static build in release CI
+- **Freezes:** CLI surface & exit codes (scripts can rely on them) — *pending stanzas + exit 7*
 
-### CP-6 · Distribution & trust *(M8)* ✅
+### CP-6 · Distribution & trust *(M8)* ✅ *(pipeline coded; first tag pending)*
 `C3 C23 C24 C34` · spec [UC-13](docs/specs/UC-13-verifiable-releases.md)
 - Reproducible builds (`SOURCE_DATE_EPOCH`, `--remap-path-prefix`, `--locked`) · cosign keyless · SLSA provenance
 - `cargo auditable` embedded SBOM + CycloneDX sidecar · vendor tarball · in-pipeline cosign verify
 - crates.io Trusted Publishing ([docs/CRATES_IO_TRUSTED_PUBLISHING.md](docs/CRATES_IO_TRUSTED_PUBLISHING.md))
 
 ### CP-7 · Full IVD sweep → release quality gate ✅ *(M10)*
-- **Sweep complete 2026-06-18:** 60 PASS · 0 NEEDS_REVIEW — [`docs/CONSTRAINT_INDEX.md`](docs/CONSTRAINT_INDEX.md)
+- **Sweep complete 2026-06-22:** 60 PASS · 0 NEEDS_REVIEW — [`docs/CONSTRAINT_INDEX.md`](docs/CONSTRAINT_INDEX.md)
 - `just audit-ready` green (workspace tests + fmt + release benches + clippy)
-- **1.0.0** when NEEDS_REVIEW closed or accepted + first tagged release via CP-6 pipeline
+- **`1.0.0` tag:** CP-5 gaps closed + format freeze declared + first CP-6 release run ([RELEASE.md](docs/RELEASE.md))
 
 ---
 
@@ -94,7 +122,7 @@ lane can build against from that point on.
 
 | ID | Sidequest | Spec | Unblocked by | Notes |
 |----|-----------|------|--------------|-------|
-| S-1 | **Clipboard-holder helper process** (X11/Wayland/macOS/Windows, history-suppression hints, clear-iff-unchanged) | [UC-04](docs/specs/UC-04-model-blind-retrieval.md) | nothing | Standalone binary/crate; the flagship's engine (`C13`/`C33`) |
+| S-1 | 🟡 **Clipboard delivery crate** (`vault-clip`: C13/C33 concealment + fallback) | [UC-04](docs/specs/UC-04-model-blind-retrieval.md) | nothing | Core shipped; UC-04 detached X11 selection-owner helper still optional polish |
 | S-2 | **`vault gen`** — rejection sampling, charsets, EFF wordlist embedding, chi-square test harness | [UC-02](docs/specs/UC-02-csprng-generation.md) | nothing | Pure function + CLI glue later |
 | S-3 | **zxcvbn entropy warning** (60-bit floor, warn-don't-block) | [UC-02](docs/specs/UC-02-csprng-generation.md) | nothing | Wraps the zxcvbn crate |
 | S-4 | ✅ **`vault tune`** — Argon2id benchmark + recommend m/t/p (~300 ms) | [UC-11](docs/specs/UC-11-kdf-calibration.md) | CP-2 (kdf fn) | **DONE** (C22): probe + linear-extrapolate `m`, clamp to policy, re-measure; unlock progress line |
@@ -111,7 +139,7 @@ lane can build against from that point on.
 | S-12 | **Padmé padding exploration** (PURBs) — size-leak reduction, default-off | [UC-07 §7](docs/specs/UC-07-untrusted-storage-sync.md) | CP-4 | v2 candidate, research-first |
 | S-13 | **Agent interface exploration** — handle broker, `vault_use`, OS approval gate | [UC-16](docs/specs/UC-16-agent-interface-future.md) | post-v1 | DESIGN EXPLORATION; never returns plaintext to a model (C27) |
 | S-14 | **User guide & website docs** | all specs | CP-5 | Quickstart, sync guide, threat-model-for-humans |
-| S-15 | **Quick-capture `import --format raw`** — lenient parser, entropy/prefix classifier, masked interactive review | [UC-17](docs/specs/UC-17-quick-capture-raw-import.md) | CP-1 (Entry model) | The messy-`keys.txt` on-ramp; optional `kind` tag wants to land *in* CP-1 |
+| S-15 | ✅ **Quick-capture `import --format raw`** — lenient parser, entropy/prefix classifier, masked interactive review | [UC-17](docs/specs/UC-17-quick-capture-raw-import.md) | CP-1 (Entry model) | Shipped |
 | S-16 | ✅ **`ratatui` TUI** — search → deliver loop, alt-screen reveal hygiene | [UC-18](docs/specs/UC-18-native-ui.md) | CP-4 API | **DONE** (`vault-tui`); first UI, pure Rust, C20-exact |
 | S-17 | ✅ **`egui` window** — pure-Rust GUI shell | [UC-18](docs/specs/UC-18-native-ui.md) | CP-4 API | **DONE** (`vault-gui`): create/unlock, drop-a-`keys.txt` import, search, shadowed copy, edit/change/delete; `scripts/bundle-macos.sh` → `Vault.app`. Needed the 1.82→1.96 toolchain bump |
 | S-19 | ✅ **Desktop GUI hardening** — glow pin, search cache, list virtualization, C40–C45 | [UC-20](docs/specs/UC-20-desktop-gui-hardening.md) | S-17 | Perf + presentation security on weak hardware |
@@ -130,8 +158,7 @@ below keeps review load natural. Lanes are a default, not a law — swap via the
 - **Lane A (code owner):** Gate 0 amendments → CP-1 → CP-2 → CP-3 → CP-4 (the security boundary).
 - **Lane B:** S-1, S-2, S-3, S-9 immediately (zero dependencies); then S-4/S-5 as CP-1/CP-2 freeze
   interfaces; then CP-5 CLI against the frozen core API; S-6/S-7/S-10 behind it.
-- **Sync points:** ① Gate 0 sign-off (both) · ② CP-1 format freeze · ③ CP-4 core API freeze ·
-  ④ CP-7 release quality gate (both).
+- **Sync points:** ① Gate 0 sign-off (both) · ② CP-1 format freeze *(code done; declaration at 1.0)* · ③ CP-4 core API freeze ✅ · ④ CP-7 gate ✅ · ⑤ **First signed tag** (CP-6 run).
 
 ---
 

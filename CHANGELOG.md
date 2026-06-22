@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- **ROADMAP:** v1.0 release status cross-check (2026-06-22); CP-1–CP-4/CP-7 marked complete;
+  CP-5 🟡 (stanzas + exit 7); CP-6 coded but untagged.
+
 ### Added
 - **C14/C15/C33 close-out:** `vault-clip` arboard concealment (C33); FIDO2 mock enroll/unlock
   (C14); TPM CLI `--help` + PCR mock (C15); sweep now 60/60 PASS.
