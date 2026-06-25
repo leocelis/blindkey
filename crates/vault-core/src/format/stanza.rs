@@ -74,6 +74,7 @@ pub struct Stanza {
 }
 
 impl Stanza {
+    /// Serialized size of this stanza record on disk (`type` + `len` + `data`).
     pub fn on_disk_len(&self) -> usize {
         1 + 4 + self.data.len()
     }

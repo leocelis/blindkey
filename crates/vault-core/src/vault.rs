@@ -503,9 +503,7 @@ impl Vault {
             ));
         }
         let before = self.header.stanzas.len();
-        self.header
-            .stanzas
-            .retain(|s| s.stanza_type != stanza_type);
+        self.header.stanzas.retain(|s| s.stanza_type != stanza_type);
         if self.header.stanzas.len() == before {
             return Err(Error::Hardware(format!(
                 "no {:?} stanza enrolled",

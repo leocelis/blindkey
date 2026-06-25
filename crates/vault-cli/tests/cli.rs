@@ -1025,25 +1025,32 @@ fn c27_headless_get_exits_7_without_stdout() {
         .env("XDG_DATA_HOME", home.join("share"))
         .env_remove("DISPLAY")
         .env_remove("WAYLAND_DISPLAY")
-        .args([
-            "--vault",
-            vs,
-            "--password-stdin",
-            "get",
-            "github",
-        ])
+        .args(["--vault", vs, "--password-stdin", "get", "github"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = cmd.spawn().expect("spawn");
-    child.stdin.take().unwrap().write_all(pw.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(pw.as_bytes())
+        .unwrap();
     let out = child.wait_with_output().unwrap();
-    assert_eq!(out.status.code(), Some(7), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(
+        out.status.code(),
+        Some(7),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert!(
         String::from_utf8_lossy(&out.stderr).contains("no clipboard available"),
         "stderr"
     );
-    assert!(!out.stdout.iter().any(|&b| b.is_ascii_graphic() && b != b'\n'));
+    assert!(!out
+        .stdout
+        .iter()
+        .any(|&b| b.is_ascii_graphic() && b != b'\n'));
     let _ = std::fs::remove_file(&vault);
     let _ = std::fs::remove_dir_all(&home);
 }

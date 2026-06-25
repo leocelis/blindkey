@@ -496,7 +496,11 @@ fn cmd_otp(path: &Path, name: &str, stdout: bool, opts: &OpenOpts) -> CmdResult 
         println!("{}", code.code);
         eprintln!("(valid for {}s)", code.valid_for_secs);
     } else {
-        copy_secret_to_clipboard(code.code.as_bytes(), code.valid_for_secs.max(1), &format!("2FA code for {name:?}"))?;
+        copy_secret_to_clipboard(
+            code.code.as_bytes(),
+            code.valid_for_secs.max(1),
+            &format!("2FA code for {name:?}"),
+        )?;
         eprintln!("(valid {}s)", code.valid_for_secs);
     }
     Ok(())
@@ -623,21 +627,24 @@ fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> Cm
                 Some(kind::PW_KEYFILE) => {
                     "use `vault enroll keyfile <PATH>` to add keyfile 2FA".to_string()
                 }
-                Some(kind::TPM) => "use `vault enroll-tpm` (when enabled in your build)".to_string(),
-                Some(kind::FIDO2) => "FIDO2 enrollment is not yet exposed on the CLI (M7)".to_string(),
+                Some(kind::TPM) => {
+                    "use `vault enroll-tpm` (when enabled in your build)".to_string()
+                }
+                Some(kind::FIDO2) => {
+                    "FIDO2 enrollment is not yet exposed on the CLI (M7)".to_string()
+                }
                 Some(kind::PASSWORD) => {
                     "password stanza is always present at init (C5)".to_string()
                 }
                 Some(kind::KEYCHAIN) | Some(kind::DPAPI) => {
                     "OS keystore stanzas are planned (M7); not yet on the CLI".to_string()
                 }
-                Some(t) => format!(
-                    "no enrollment path for `{}` yet",
-                    kind_name(t)
-                ),
+                Some(t) => format!("no enrollment path for `{}` yet", kind_name(t)),
                 None => return Err(usage_err(format!("unknown stanza type {stanza_type:?}"))),
             };
-            Err(usage_err(format!("{msg}; `vault stanzas add` does not enroll directly")))
+            Err(usage_err(format!(
+                "{msg}; `vault stanzas add` does not enroll directly"
+            )))
         }
         crate::StanzasAction::Remove { stanza_type } => {
             let t = parse_kind_name(&stanza_type)
