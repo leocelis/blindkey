@@ -68,7 +68,7 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 - **`vault audit`** — password-health report command (weak/reused passwords), not this gate
 - **Dependency audit** — `cargo audit` / `cargo deny` via `just audit` or `just audit-ready`
 
-## Public repository readiness *(2026-06-25)*
+## Public launch checklist *(2026-06-25)*
 
 | Step | Status |
 |------|--------|
@@ -76,16 +76,15 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 | No secrets in tree or history | ✅ |
 | `github.com/leocelis/vault` URLs consistent | ✅ |
 | SECURITY contact (GHSA + email) | ✅ |
-| CP-7 constraint sweep (60/60 PASS) | ✅ | re-sweep 2026-06-25 |
-| Minimal CI (public repo, free tier) | ✅ | `.github/workflows/ci.yml` |
-| GitHub Release with checksums | ✅ | `v0.1.0-alpha.3` |
+| CP-7 constraint sweep (60/60 PASS) | ✅ |
+| GHA CI (`.github/workflows/ci.yml`) | ✅ |
+| GitHub Release with checksums | ✅ `v0.1.0-alpha.3` |
 | README / INSTALL / SUPPORT / Discussions | ✅ |
-| crates.io publish | ⬜ optional post-launch — `cargo login` + [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md) |
-| **Flip repo to public** | ⬜ **you** — one step below |
+| **Public repository** | ✅ flipped 2026-06-25 |
+| crates.io publish | ⬜ optional — [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md) |
 
-### Flip to public (one step)
+### Optional post-launch
 
-GitHub → **Settings** → **General** → **Danger zone** → **Change repository visibility** → **Public**.
-
-After flipping: enable **Security advisories** tab if prompted; post an announcement in
-[Discussions](https://github.com/leocelis/vault/discussions).
+- Post an announcement in [Discussions](https://github.com/leocelis/vault/discussions)
+- Confirm CI badge is green after the first public-repo workflow run
+- `cargo login` + publish to crates.io when ready

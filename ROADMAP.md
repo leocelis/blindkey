@@ -31,7 +31,7 @@ Remaining: format freeze, `1.0.0` release ceremony, Gate 0 second-maintainer sig
 | CP-3 · memory hardening | ✅ | mlock, zeroize, RLIMIT_CORE |
 | CP-4 · read/write API | ✅ | Atomic save, rollback anchor, GUI/TUI on core |
 | CP-5 · CLI core loop | ✅ | stanzas + exit 7 (C21/C27) |
-| CP-6 · distribution | ✅ | **`v0.1.0-alpha.3`** + GitHub Release + checksums |
+| CP-6 · distribution | ✅ | **`v0.1.0-alpha.3`** + GitHub Release + **public OSS repo** |
 | CP-7 · quality gate | ✅ | `just audit-ready` + CI on push |
 
 **To ship `1.0.0` (per [RELEASE.md](docs/RELEASE.md)):**

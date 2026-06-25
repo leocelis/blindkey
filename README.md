@@ -6,6 +6,7 @@
 
 Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The credentials your AI tools can see.
 
+[![CI](https://github.com/leocelis/vault/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
@@ -112,7 +113,7 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 
 - ✅ Research + 60 constraint intent (v1.7.0) + CP-7 sweep (60/60 PASS)
 - ✅ CLI, TUI, desktop GUI on shared `vault-core`
-- ✅ Quality gate: local `just check` / `just audit-ready`; minimal [GHA CI](.github/workflows/ci.yml) on push (free tier when public)
+- ✅ Quality gate: local `just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml) on push
 - ⏳ Hardware FFI polish, sync/merge, format freeze for 1.0 — [ROADMAP.md](ROADMAP.md)
 
 ## Repository layout

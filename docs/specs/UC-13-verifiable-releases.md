@@ -67,7 +67,7 @@ integrity the user checks without trusting the channel.
 
 > **Implementation note (2026-06-25):** Shipping today: maintainer-local builds
 > (`scripts/reproducible-build.sh`), SHA-256 checksums, signed git tags, manual `cargo publish`
-> ([RELEASE.md](../RELEASE.md)). Minimal GHA CI mirrors `just check` on push (free tier when public).
+> ([RELEASE.md](../RELEASE.md)). Minimal GHA CI mirrors `just check` on push.
 > Cosign OIDC, SLSA attestations, Scorecard, and Dependabot are deferred; verification today is
 > checksum + reproducible build + signed tag.
 

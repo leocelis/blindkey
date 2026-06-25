@@ -7,9 +7,9 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Changed
-- Documentation sweep: fix CI/release drift (`RELEASE.md`, `UC-13`, `AUDIT_READINESS`), supported
-  versions in `SECURITY.md`, spec status headers (Accepted v0.2), expanded `docs/README.md` hub,
-  `ARCHITECTURE.md` adds `vault-clip`, `THREAT_MODEL.md` footnote corrected.
+- Public OSS launch (2026-06-25): repository visibility public, CI badge restored, GHA cache.
+- Documentation sweep: drift fixes, spec status headers, expanded `docs/README.md` hub,
+  `ARCHITECTURE.md` adds `vault-clip`, `AUDIT_READINESS.md` post-launch checklist.
 
 ## [0.1.0-alpha.3] - 2026-06-25
 
