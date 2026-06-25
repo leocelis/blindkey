@@ -19,11 +19,10 @@ staleness, exit codes) ✅ *(all v1.1.0–v1.4.0 amendments pending second-maint
 
 ---
 
-## v1.0 release status *(cross-check 2026-06-22)*
+## v1.0 release status *(cross-check 2026-06-25)*
 
-**Is Vault v1 ready?** **Not yet tagged** — the product is **functional pre-1.0** and the
-**automated quality gate is green** (CP-7: 60/60 constraints PASS). What remains is **release
-ceremony** plus a **small C21/C27 surface gap**, not greenfield implementation.
+**Is Vault v1 ready?** **Not yet tagged** — functional pre-1.0, CP-7 green (60/60 PASS), CP-5 closed.
+Remaining: format freeze, `1.0.0` release ceremony, Gate 0 second-maintainer sign-off.
 
 | Gate | Status | Notes |
 |------|--------|-------|
@@ -31,16 +30,15 @@ ceremony** plus a **small C21/C27 surface gap**, not greenfield implementation.
 | CP-2 · crypto core | ✅ | STREAM, KDF, envelope |
 | CP-3 · memory hardening | ✅ | mlock, zeroize, RLIMIT_CORE |
 | CP-4 · read/write API | ✅ | Atomic save, rollback anchor, GUI/TUI on core |
-| CP-5 · CLI core loop | ✅ | Full surface including `vault stanzas list/remove`, headless exit 7 (C27) |
-| CP-6 · distribution | ✅ | Maintainer-local release; tag **`v0.1.0-alpha.2`** + GitHub Release |
-| CP-7 · quality gate | ✅ | `just audit-ready` green; [CONSTRAINT_INDEX](docs/CONSTRAINT_INDEX.md) 60 PASS |
+| CP-5 · CLI core loop | ✅ | stanzas + exit 7 (C21/C27) |
+| CP-6 · distribution | ✅ | **`v0.1.0-alpha.3`** + GitHub Release + checksums |
+| CP-7 · quality gate | ✅ | `just audit-ready` + CI on push |
 
 **To ship `1.0.0` (per [RELEASE.md](docs/RELEASE.md)):**
 
-1. Close CP-5 gaps above (or amend intent if deferring `stanzas` to post-1.0 — currently in C21).
-2. Run first signed release (recommend `v0.1.0` rc if you want a dry run, then `v1.0.0`).
-3. **Format freeze** — declare `format_version` stable; update README/SECURITY pre-1.0 language.
-4. Gate 0 intent amendments — second-maintainer sign-off (process, not code).
+1. **Format freeze** — declare `format_version` stable; update README/SECURITY pre-1.0 language.
+2. Tag `v1.0.0` with maintainer-local release per [RELEASE.md](docs/RELEASE.md).
+3. Gate 0 intent amendments — second-maintainer sign-off (process).
 
 **Explicitly not required for v1.0:** third-party audit ([THIRD_PARTY_AUDIT.md](docs/THIRD_PARTY_AUDIT.md)), live libfido2/TPM FFI (S-8a/S-8c, optional), SwiftUI shell (post-v1).
 
