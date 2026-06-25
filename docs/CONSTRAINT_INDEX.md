@@ -17,7 +17,7 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 |----|---------------|--------|----------|
 | C1 | XChaCha20-Poly1305 STREAM payload | PASS | `vault-core/src/crypto/`, format round-trip tests |
 | C2 | Argon2id KDF floor/ceiling + NFC | PASS | `crypto/kdf.rs` unit tests, open rejects hostile params |
-| C3 | Supply-chain policy (audit/deny) | PASS | `constraint_gaps.rs` (`c3_*`), CI `audit.yml` |
+| C3 | Supply-chain policy (audit/deny) | PASS | `constraint_gaps.rs` (`c3_*`), `just audit` |
 | C4 | Constant data key + stanza re-wrap | PASS | `constraint_gaps.rs`, envelope tests |
 | C5 | HKDF wrapping key derivation | PASS | `crypto/envelope.rs` unit tests |
 | C6 | Hardware stanza HKDF recipe | PASS | `constraint_gaps.rs`, `vault-hardware` |
@@ -48,7 +48,7 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C31 | No secrets on argv | PASS | `cli.rs` argv rejection tests |
 | C32 | Atomic durable saves + flock | PASS | `vault.rs` save tests |
 | C33 | Clipboard concealment hints | PASS | `vault-clip` arboard `exclude_from_history` (+ CLI fallback) |
-| C34 | Reproducible builds + signed releases | PASS | CP-6: `release.yml`, `reproducible-build.sh` |
+| C34 | Reproducible builds + release checksums | PASS | CP-6: `reproducible-build.sh`, `docs/RELEASE.md` |
 | C35 | Metadata-only omni-search | PASS | `search.rs`, CLI find tests |
 | C36 | Frecency ranking | PASS | `frecency.rs` tests |
 | C37 | Search cache invalidation | PASS | search + GUI cache tests |
@@ -94,7 +94,7 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C23, C24 | `crates/vault-cli/tests/constraint_policy.rs` | Zero network + OSS license |
 | C26 | `crates/vault-core/src/gen.rs` | CSPRNG generator |
 | C27–C31 | `crates/vault-cli/tests/cli.rs`, `terminal.rs`, `export.rs` | Model-blind + argv + sanitize |
-| C34 | `scripts/reproducible-build.sh`, `.github/workflows/release.yml`, `scripts/publish-crates.sh` | Release trust + crates.io |
+| C34 | `scripts/reproducible-build.sh`, `scripts/publish-crates.sh`, `docs/RELEASE.md` | Release trust + crates.io |
 | C35–C39 | `crates/vault-core/src/search.rs`, `frecency.rs`, CLI `find` tests | Omni-search |
 | C40–C45 | `crates/vault-gui/tests/uc20_constraints.rs` | Desktop hardening |
 | C46–C54 | `crates/vault-gui/tests/uc21_constraints.rs` | Session hygiene + keyfile GUI |
@@ -109,6 +109,6 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 
 - **C28 / C29 / C13** — named unit tests plus `cli.rs` integration for ls/get sanitize and hold-clipboard.
 - **C40–C54** — `uc20`/`uc21` tests are **static wiring** checks (source grep), not live GUI oracles.
-- **C34** — reproducible build verified in CI `reproducible` job; release signing in `release.yml`.
+- **C34** — reproducible build via `scripts/reproducible-build.sh`; maintainer-local release per `docs/RELEASE.md`.
 
 Contributors: when you satisfy a constraint, add or point to the test in your PR and update this table.

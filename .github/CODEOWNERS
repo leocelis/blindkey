@@ -3,7 +3,8 @@
 /crates/vault-core/     @leocelis
 /docs/THREAT_MODEL.md   @leocelis
 /SECURITY.md            @leocelis
-/.github/workflows/     @leocelis
+/.github/CODEOWNERS     @leocelis
+/scripts/               @leocelis
 /vault_intent.yaml      @leocelis
 
 # Broader surface — either maintainer may review.

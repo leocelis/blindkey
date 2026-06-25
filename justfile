@@ -1,5 +1,5 @@
 # Vault developer task runner — https://github.com/casey/just
-# `just` with no args lists tasks. Each task maps to what CI enforces.
+# `just` with no args lists tasks. Each task is the pre-PR / release gate (no GitHub Actions).
 
 # List available tasks.
 default:
@@ -53,7 +53,7 @@ build-release:
 reproduce:
     ./scripts/reproducible-build.sh
 
-# Everything CI runs.
+# Everything the quality gate runs locally (no paid CI).
 ci: check audit
 
 # CP-7 release quality gate — release search benches + clippy + supply chain.

@@ -72,8 +72,12 @@ fn c24_open_source_license_and_supply_chain_policy() {
         assert!(deny.contains(lic), "deny.toml must allow {lic}");
     }
     assert!(
-        root.join(".github/workflows/audit.yml").exists(),
-        "CI must run cargo-deny / cargo-audit (C24)"
+        root.join("scripts/audit-readiness.sh").exists(),
+        "maintainers must run audit-readiness.sh (C24 supply chain gate)"
+    );
+    assert!(
+        root.join("deny.toml").exists(),
+        "deny.toml must exist for cargo-deny (C24)"
     );
 }
 

@@ -26,7 +26,7 @@ Full per-constraint table: [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md#cp-7-ivd-
 | Envelope & 2FA | `docs/specs/UC-09-hardware-factors.md` | C5, C14–C15 |
 | AI-era delivery | `docs/specs/UC-04-model-blind-retrieval.md` | C26–C27 |
 | Desktop shell boundary | `docs/specs/UC-18-native-ui.md`, `crates/vault-gui/` | C40–C54, C45 |
-| Supply chain | `docs/VERIFYING_RELEASES.md`, cosign/SLSA + `cargo auditable` SBOM in `release.yml` | C3, C34 |
+| Supply chain | `docs/VERIFYING_RELEASES.md`, `scripts/reproducible-build.sh`, `just audit` | C3, C34 |
 
 Out of scope for v1: team vaults, cloud sync service, browser extension (intent `non_goals`).
 
@@ -63,25 +63,21 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 ## Terminology
 
 - **`vault audit`** — password-health report command (weak/reused passwords), not this gate
-- **Dependency audit** — `cargo audit` / `cargo deny` in CI (`.github/workflows/audit.yml`)
+- **Dependency audit** — `cargo audit` / `cargo deny` via `just audit` or `just audit-ready`
 
 ## Public repository readiness *(2026-06-25)*
 
-Checklist before flipping the repo from private → public (Horizon/IVD pattern). **Do not make
-public until every required row is ✅.**
+Checklist before flipping the repo from private → public. **Do not make public until every
+required row is ✅.**
 
 | Step | Status | Notes |
 |------|--------|-------|
-| No private paths / keywords in tracked files | ✅ | `.sdlc/` gitignored; no `internal/`, `/Users/`, `VISIBILITY: PRIVATE` |
+| No private paths / keywords in tracked files | ✅ | `.sdlc/` gitignored; no workspace paths or private keywords |
 | No secrets in tree or history | ✅ | synthetic `FAKE` test tokens only |
-| `github.com/leocelis/vault` URLs consistent | ✅ | fixed 2026-06-25 (badges, GHSA, cosign docs) |
+| `github.com/leocelis/vault` URLs consistent | ✅ | badges, GHSA, docs |
 | SECURITY contact (GHSA + email fallback) | ✅ | `SECURITY.md`, `MAINTAINERS.md` |
 | CP-7 constraint sweep | ✅ | 60/60 PASS — [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) |
-| GitHub Actions CI green on `main` | ⬜ | **blocked:** account billing / spending limit — fix in GitHub Settings → Billing |
-| Signed release shipped for current tag | ⬜ | tag `v0.1.0-alpha.1` exists; re-run `release.yml` after CI billing restored |
-| crates.io first publish + Trusted Publishing | ⬜ | manual step per [`CRATES_IO_TRUSTED_PUBLISHING.md`](CRATES_IO_TRUSTED_PUBLISHING.md) |
-| GitHub Discussions enabled | ⬜ | enable when going public (community channel) |
+| Local quality gate green | ✅ | `just audit-ready` (no paid CI) |
+| First GitHub Release with checksums | ⬜ | maintainer-local build per [`RELEASE.md`](RELEASE.md) |
+| crates.io manual publish | ⬜ | per [`CRATES_IO_TRUSTED_PUBLISHING.md`](CRATES_IO_TRUSTED_PUBLISHING.md) |
 | **Flip repo to public** | ⬜ | **intentionally deferred** |
-
-After billing is restored: re-run the failed Release workflow for `v0.1.0-alpha.1`, confirm
-artifacts per [`VERIFYING_RELEASES.md`](VERIFYING_RELEASES.md), then complete crates.io setup.
