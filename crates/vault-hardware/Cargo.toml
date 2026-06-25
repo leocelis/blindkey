@@ -9,7 +9,7 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-vault-core = { path = "../vault-core", version = "0.1.0-alpha.2" }
+vault-core = { path = "../vault-core", version = "0.1.0-alpha.3" }
 sha2 = { workspace = true }
 zeroize = { workspace = true }
 getrandom = { workspace = true }

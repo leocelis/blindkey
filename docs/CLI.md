@@ -30,6 +30,9 @@ Default vault path: `$HOME/.vault/vault.vlt` (override with `--vault PATH`).
 | `vault enroll keyfile <PATH>` | Required-both keyfile 2FA (no hardware). |
 | `vault enroll-tpm` | TPM stanza enrollment (mock/dev path; live TPM FFI deferred). |
 | `vault re-enroll-tpm` | Re-seal TPM stanza after firmware/kernel update (mock/dev). |
+| `vault stanzas list` | Show enrolled stanza types (no secrets). |
+| `vault stanzas add TYPE` | Enrollment guidance (delegates to `vault enroll …`). |
+| `vault stanzas remove TYPE` | Remove a non-password stanza (requires unlock). |
 
 ## Not yet implemented
 
@@ -37,7 +40,6 @@ Default vault path: `$HOME/.vault/vault.vlt` (override with `--vault PATH`).
 |---------|-------|
 | `vault import --format txt\|json` | Structured importers (UC-12). |
 | `vault merge OLD NEW` | Conflict merge (UC-08). |
-| `vault stanzas …` | Hardware stanza management. |
 
 ## `vault find` — searchable fields (constraint C35)
 

@@ -9,7 +9,7 @@ just check          # fmt + clippy + cargo test --workspace
 just audit-ready    # release search benches + workspace tests + fmt + clippy (C55)
 ```
 
-## CP-7 IVD Rule 2 sweep (2026-06-18)
+## CP-7 IVD Rule 2 sweep (2026-06-25)
 
 **Summary:** 60 PASS · 0 NEEDS_REVIEW · 0 FAIL
 
@@ -35,16 +35,16 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C18 | Zero plaintext in stanzas | PASS | `payload.rs`, vault tests |
 | C19 | Zero plaintext in entries at rest | PASS | entry encryption tests |
 | C20 | CLI exact command surface | PASS | `cli.rs` integration tests |
-| C21 | Export security warning | PASS | `export.rs`, `cli.rs` export tests |
+| C21 | Minimum viable CLI + stanzas + exit codes | PASS | `cli.rs`, `main.rs`, `vault stanzas list/remove` |
 | C22 | `vault tune` KDF calibration | PASS | `crypto/tune.rs`, CLI tune tests |
 | C23 | Zero network in CLI | PASS | `constraint_policy.rs` |
 | C24 | OSS license + dependency policy | PASS | `constraint_policy.rs`, `deny.toml` |
 | C25 | Constant-time secret compare | PASS | `memory/` + clipboard helper |
 | C26 | CSPRNG generation | PASS | `gen.rs` unit tests |
-| C27 | Model-blind retrieval (no plaintext to agent) | PASS | `cli.rs` get/clip paths |
+| C27 | Model-blind retrieval + headless exit 7 | PASS | `cli.rs` C27 test, `vault-clip::clipboard_available` |
 | C28 | Terminal output sanitization | PASS | `terminal.rs` (`c28_*`), `cli.rs` ls/get integration |
 | C29 | Export JSON injection hardening (v1 JSON only) | PASS | `export.rs` (`c29_*`), `cli.rs` export integration |
-| C30 | Parser forbid(unsafe) + fuzz CI | PASS | `lib.rs`, fuzz harnesses, CI |
+| C30 | Parser forbid(unsafe) + fuzz harnesses | PASS | `lib.rs`, fuzz targets, `just fuzz` |
 | C31 | No secrets on argv | PASS | `cli.rs` argv rejection tests |
 | C32 | Atomic durable saves + flock | PASS | `vault.rs` save tests |
 | C33 | Clipboard concealment hints | PASS | `vault-clip` arboard `exclude_from_history` (+ CLI fallback) |

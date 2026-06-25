@@ -2,7 +2,7 @@
 //!
 //! See [`docs/CONSTRAINT_INDEX.md`](../../docs/CONSTRAINT_INDEX.md) for the C1–C60 map.
 
-/// CP-7 sweep status per constraint (2026-06-18).
+/// CP-7 sweep status per constraint (2026-06-25).
 const CP7_SWEEP: &[(&str, &str)] = &[
     ("C1", "PASS"),
     ("C2", "PASS"),

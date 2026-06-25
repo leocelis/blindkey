@@ -6,6 +6,7 @@
 
 Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The credentials your AI tools can see.
 
+[![CI](https://github.com/leocelis/vault/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
@@ -14,7 +15,7 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 </div>
 
 > [!WARNING]
-> **Pre-alpha (`0.1.0-alpha.2`) — not independently audited — keep your own backup of anything you store.**
+> **Pre-alpha (`0.1.0-alpha.3`) — not independently audited — keep your own backup of anything you store.**
 > Vault is **functional**: cryptographic core implemented and tested, working CLI *and* desktop app.
 > On-disk format may still change before 1.0. Use it, kick the tyres, report issues — just don't
 > make it the *only* copy of an irreplaceable secret yet. See [ROADMAP.md](ROADMAP.md).
@@ -53,16 +54,26 @@ developer who is nervous about AI exposure can actually adopt it.**
 
 ## Install
 
+**Fastest path** — download from [GitHub Releases](https://github.com/leocelis/vault/releases), verify SHA256SUMS, `chmod +x`, move to PATH.
+
 ```sh
-# Fastest path — build from clone (see docs/INSTALL.md for GUI deps and releases)
+# Example (macOS x86_64) — see docs/VERIFYING_RELEASES.md
+curl -LO https://github.com/leocelis/vault/releases/download/v0.1.0-alpha.3/vault-x86_64-apple-darwin
+curl -LO https://github.com/leocelis/vault/releases/download/v0.1.0-alpha.3/SHA256SUMS.txt
+shasum -a 256 -c SHA256SUMS.txt
+chmod +x vault-x86_64-apple-darwin && sudo mv vault-x86_64-apple-darwin /usr/local/bin/vault
+```
+
+**Build from source** (contributors):
+
+```sh
 git clone https://github.com/leocelis/vault.git && cd vault
 ./scripts/setup-rust.sh && ./scripts/install.sh   # → ~/.local/bin/vault
 ```
 
-Or download a **prebuilt binary** from [GitHub Releases](https://github.com/leocelis/vault/releases)
-and verify the SHA-256 checksum ([docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md)).
+Or `cargo install --git https://github.com/leocelis/vault.git --tag v0.1.0-alpha.3 --locked vault-cli`
 
-Full options: [docs/INSTALL.md](docs/INSTALL.md) · `cargo install --git https://github.com/leocelis/vault.git --locked vault-cli`
+Full options: [docs/INSTALL.md](docs/INSTALL.md)
 
 ## Quickstart
 

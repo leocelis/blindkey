@@ -21,9 +21,37 @@ use crate::Command;
 type CmdResult = Result<(), String>;
 
 pub const USAGE_ERROR_PREFIX: &str = "usage:";
+pub const CLIPBOARD_UNAVAILABLE_PREFIX: &str = "clipboard-unavailable:";
 
 fn usage_err(msg: impl Into<String>) -> String {
     format!("{USAGE_ERROR_PREFIX} {}", msg.into())
+}
+
+fn clipboard_unavailable_err() -> String {
+    format!(
+        "{CLIPBOARD_UNAVAILABLE_PREFIX} no clipboard available on this session; use --stdout \
+         (prints a security warning) if you accept plaintext on stdout."
+    )
+}
+
+fn require_clipboard() -> CmdResult {
+    if vault_clip::clipboard_available() {
+        Ok(())
+    } else {
+        Err(clipboard_unavailable_err())
+    }
+}
+
+fn copy_secret_to_clipboard(secret: &[u8], timeout: u64, label: &str) -> CmdResult {
+    require_clipboard()?;
+    copy_to_clipboard(secret)?;
+    spawn_clipboard_holder(secret, timeout)?;
+    if timeout == 0 {
+        eprintln!("Copied {label} to the clipboard (model-blind).");
+    } else {
+        eprintln!("Copied {label} to the clipboard (model-blind). Clears in {timeout}s.");
+    }
+    Ok(())
 }
 
 /// Shown on init/import/open paths — pre-1.0 software has not had an independent audit.
@@ -144,6 +172,7 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
         Command::EnrollTpm => cmd_enroll_tpm(),
         Command::ReEnrollTpm => cmd_re_enroll_tpm(),
         Command::Lock => cmd_lock(),
+        Command::Stanzas { action } => cmd_stanzas(&vault_path(vault_opt)?, action, opts),
     }
 }
 
@@ -374,13 +403,7 @@ fn cmd_get(
             .and_then(|_| std::io::stdout().write_all(b"\n"))
             .map_err(|e| e.to_string())?;
     } else {
-        copy_to_clipboard(&secret)?;
-        spawn_clipboard_holder(&secret, timeout)?; // C13: auto-clear, clears iff unchanged
-        if timeout == 0 {
-            eprintln!("Copied {name:?} to the clipboard (model-blind).");
-        } else {
-            eprintln!("Copied {name:?} to the clipboard (model-blind). Clears in {timeout}s.");
-        }
+        copy_secret_to_clipboard(&secret, timeout, &format!("{name:?}"))?;
     }
 
     // A tiny convenience: note any extra secret fields the entry carries.
@@ -439,13 +462,7 @@ fn cmd_find(path: &Path, query: &str, stdout: bool, timeout: u64, opts: &OpenOpt
         )
     };
 
-    copy_to_clipboard(&secret)?;
-    spawn_clipboard_holder(&secret, timeout)?; // C13: auto-clear, clears iff unchanged
-    if timeout == 0 {
-        eprintln!("Copied {title:?} to the clipboard (model-blind).");
-    } else {
-        eprintln!("Copied {title:?} to the clipboard (model-blind). Clears in {timeout}s.");
-    }
+    copy_secret_to_clipboard(&secret, timeout, &title)?;
     if !others.is_empty() {
         eprintln!(
             "(best of {} matches — others: {})",
@@ -479,13 +496,8 @@ fn cmd_otp(path: &Path, name: &str, stdout: bool, opts: &OpenOpts) -> CmdResult 
         println!("{}", code.code);
         eprintln!("(valid for {}s)", code.valid_for_secs);
     } else {
-        copy_to_clipboard(code.code.as_bytes())?;
-        // Clear when the code rolls over so a stale code doesn't linger on the clipboard (C13).
-        spawn_clipboard_holder(code.code.as_bytes(), code.valid_for_secs.max(1))?;
-        eprintln!(
-            "Copied 2FA code for {name:?} (valid {}s).",
-            code.valid_for_secs
-        );
+        copy_secret_to_clipboard(code.code.as_bytes(), code.valid_for_secs.max(1), &format!("2FA code for {name:?}"))?;
+        eprintln!("(valid {}s)", code.valid_for_secs);
     }
     Ok(())
 }
@@ -585,6 +597,61 @@ fn cmd_re_enroll_tpm() -> CmdResult {
         "TPM re-enrollment is not enabled in this build. {}",
         vault_hardware::tpm_policy::PCR_MISMATCH_MESSAGE
     ))
+}
+
+fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> CmdResult {
+    use vault_core::format::stanza::{kind, kind_name, parse_kind_name};
+
+    match action {
+        crate::StanzasAction::List => {
+            let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+            let vault = open_vault(path, password.as_bytes(), opts)?;
+            if vault.stanzas().is_empty() {
+                println!("(no stanzas)");
+                return Ok(());
+            }
+            for s in vault.stanzas() {
+                println!("{} ({})", kind_name(s.stanza_type), s.stanza_type);
+            }
+            Ok(())
+        }
+        crate::StanzasAction::Add { stanza_type } => {
+            let msg = match parse_kind_name(&stanza_type) {
+                Some(kind::PW_YUBIKEY) | Some(kind::YUBIKEY) => {
+                    "use `vault enroll yubikey` to add YubiKey 2FA".to_string()
+                }
+                Some(kind::PW_KEYFILE) => {
+                    "use `vault enroll keyfile <PATH>` to add keyfile 2FA".to_string()
+                }
+                Some(kind::TPM) => "use `vault enroll-tpm` (when enabled in your build)".to_string(),
+                Some(kind::FIDO2) => "FIDO2 enrollment is not yet exposed on the CLI (M7)".to_string(),
+                Some(kind::PASSWORD) => {
+                    "password stanza is always present at init (C5)".to_string()
+                }
+                Some(kind::KEYCHAIN) | Some(kind::DPAPI) => {
+                    "OS keystore stanzas are planned (M7); not yet on the CLI".to_string()
+                }
+                Some(t) => format!(
+                    "no enrollment path for `{}` yet",
+                    kind_name(t)
+                ),
+                None => return Err(usage_err(format!("unknown stanza type {stanza_type:?}"))),
+            };
+            Err(usage_err(format!("{msg}; `vault stanzas add` does not enroll directly")))
+        }
+        crate::StanzasAction::Remove { stanza_type } => {
+            let t = parse_kind_name(&stanza_type)
+                .ok_or_else(|| usage_err(format!("unknown stanza type {stanza_type:?}")))?;
+            let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+            let mut vault = open_vault(path, password.as_bytes(), opts)?;
+            vault.remove_stanza_type(t).map_err(|e| e.to_string())?;
+            let out = vault.save().map_err(|e| e.to_string())?;
+            write_vault(path, &out)?;
+            note_saved(&vault);
+            eprintln!("Removed {:?} stanza.", kind_name(t));
+            Ok(())
+        }
+    }
 }
 
 /// Clear local session hygiene (UC-06 §3.4). v1 CLI is per-process — no cached unlock between

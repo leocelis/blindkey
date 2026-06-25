@@ -24,7 +24,7 @@ else
     | sh -s -- -y --no-modify-path --profile minimal --default-toolchain none
 fi
 
-# rust-toolchain.toml selects the version (1.82.0) and components (rustfmt, clippy) on first use.
+# rust-toolchain.toml selects the version (1.96.0) and components (rustfmt, clippy) on first use.
 "$CARGO_HOME/bin/rustup" show
 
 cat <<EOF

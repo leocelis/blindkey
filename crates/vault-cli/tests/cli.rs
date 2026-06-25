@@ -972,3 +972,78 @@ fn c15_re_enroll_tpm_help_documents_pcr() {
     assert!(help.contains("firmware"), "help: {help}");
     assert!(help.contains("re-enroll"), "help: {help}");
 }
+
+/// C21: `vault stanzas list` shows enrolled types (password always present after init).
+#[test]
+fn c21_stanzas_list_after_init() {
+    let home = unique_dir("c21-home");
+    let vault = unique_vault();
+    let vs = vault.to_str().unwrap();
+    let pw = "test-passphrase-12345\n";
+    assert_eq!(
+        run_env(&home, &["--vault", vs, "init", "--allow-weak-password"], pw).0,
+        Some(0)
+    );
+    let (_, out, _) = run_env(&home, &["--vault", vs, "stanzas", "list"], pw);
+    assert!(out.contains("password"), "out: {out}");
+    let _ = std::fs::remove_file(&vault);
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+/// C27: headless Linux sessions refuse clipboard delivery with exit 7.
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn c27_headless_get_exits_7_without_stdout() {
+    let home = unique_dir("c27-home");
+    let vault = unique_vault();
+    let vs = vault.to_str().unwrap();
+    let pw = "test-passphrase-12345\n";
+    assert_eq!(
+        run_env(&home, &["--vault", vs, "init", "--allow-weak-password"], pw).0,
+        Some(0)
+    );
+    let sample = sample_path();
+    assert_eq!(
+        run_env(
+            &home,
+            &[
+                "--vault",
+                vs,
+                "import",
+                "--format",
+                "raw",
+                sample.to_str().unwrap(),
+                "--yes",
+            ],
+            pw,
+        )
+        .0,
+        Some(0)
+    );
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_vault"));
+    cmd.env("HOME", &home)
+        .env("XDG_DATA_HOME", home.join("share"))
+        .env_remove("DISPLAY")
+        .env_remove("WAYLAND_DISPLAY")
+        .args([
+            "--vault",
+            vs,
+            "--password-stdin",
+            "get",
+            "github",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().expect("spawn");
+    child.stdin.take().unwrap().write_all(pw.as_bytes()).unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(7), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("no clipboard available"),
+        "stderr"
+    );
+    assert!(!out.stdout.iter().any(|&b| b.is_ascii_graphic() && b != b'\n'));
+    let _ = std::fs::remove_file(&vault);
+    let _ = std::fs::remove_dir_all(&home);
+}

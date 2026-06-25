@@ -16,11 +16,11 @@ name = "vault"
 path = "src/main.rs"
 
 [dependencies]
-vault-core = { path = "../vault-core", version = "0.1.0-alpha.2" }
-vault-sys = { path = "../vault-sys", version = "0.1.0-alpha.2" }
+vault-core = { path = "../vault-core", version = "0.1.0-alpha.3" }
+vault-sys = { path = "../vault-sys", version = "0.1.0-alpha.3" }
 # The YubiKey 2FA path shells out to `ykman` (std subprocess), so this is a cheap, always-on dep.
-vault-hardware = { path = "../vault-hardware", version = "0.1.0-alpha.2" }
-vault-clip = { path = "../vault-clip", version = "0.1.0-alpha.2" }
+vault-hardware = { path = "../vault-hardware", version = "0.1.0-alpha.3" }
+vault-clip = { path = "../vault-clip", version = "0.1.0-alpha.3" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

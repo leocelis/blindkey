@@ -73,9 +73,9 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 | No secrets in tree or history | ✅ |
 | `github.com/leocelis/vault` URLs consistent | ✅ |
 | SECURITY contact (GHSA + email) | ✅ |
-| CP-7 constraint sweep (60/60 PASS) | ✅ |
-| Local quality gate green | ✅ |
-| GitHub Release with checksums (`v0.1.0-alpha.2`) | ✅ |
+| CP-7 constraint sweep (60/60 PASS) | ✅ | re-sweep 2026-06-25 |
+| Minimal CI (public repo, free tier) | ✅ | `.github/workflows/ci.yml` |
+| GitHub Release with checksums | ✅ | `v0.1.0-alpha.3` |
 | README / INSTALL / SUPPORT / Discussions | ✅ |
 | crates.io publish | ⬜ optional post-launch — `cargo login` + [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md) |
 | **Flip repo to public** | ⬜ **you** — one step below |
