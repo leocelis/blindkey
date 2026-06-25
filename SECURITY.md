@@ -17,10 +17,10 @@ bug reports are welcome against it.
 vulnerabilities.**
 
 Report privately via **GitHub Security Advisories**:
-👉 https://github.com/vault/security/advisories/new
+👉 https://github.com/leocelis/vault/security/advisories/new
 
-If you cannot use that channel, email the maintainers (see [MAINTAINERS.md](MAINTAINERS.md))
-with the subject line `VAULT-SECURITY`. GHSA supports private threads without encryption; if you
+If you cannot use that channel, email **[leo@leocelis.com](mailto:leo@leocelis.com)** with subject
+line `VAULT-SECURITY` (see [MAINTAINERS.md](MAINTAINERS.md)). GHSA supports private threads without encryption; if you
 need encrypted intake, ask in your initial report and we will provide an age public key
 (see [UC-15](docs/specs/UC-15-vulnerability-reporting.md)).
 

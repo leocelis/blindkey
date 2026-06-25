@@ -95,7 +95,7 @@ Already scaffolded in [`release.yml`](../../.github/workflows/release.yml): the
 cosign verify-blob \
   --certificate vault-x86_64-unknown-linux-musl.pem \          # Fulcio cert binds the signing key…
   --signature   vault-x86_64-unknown-linux-musl.sig \
-  --certificate-identity-regexp 'https://github.com/vault/.github/workflows/release.yml@.*' \  # …to OUR workflow identity
+  --certificate-identity-regexp 'https://github.com/leocelis/vault/.github/workflows/release.yml@.*' \  # …to OUR workflow identity
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \                              # …issued by GitHub's OIDC
   vault-x86_64-unknown-linux-musl
 ```
