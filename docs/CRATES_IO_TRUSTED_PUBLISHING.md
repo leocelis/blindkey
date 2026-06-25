@@ -1,8 +1,9 @@
 # crates.io publishing (CP-6)
 
 Vault publishes **`vault-cli`** (and its path dependencies) **manually** from a maintainer machine
-after the local quality gate passes. There is no GitHub Actions workflow — no OIDC Trusted
-Publishing setup required.
+after the local quality gate passes. There is no **crates.io Trusted Publishing** workflow yet —
+manual `cargo login` + `cargo publish` only (see below). A minimal CI workflow runs `just check`
+on push; it does not publish crates.
 
 ## One-time setup (maintainer)
 

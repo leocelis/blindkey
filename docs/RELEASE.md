@@ -1,7 +1,9 @@
 # Release checklist (CP-6 / CP-7)
 
-Vault ships **without GitHub Actions** — no paid CI minutes. Maintainers run the quality gate
-locally, build release artifacts on their machines, and publish manually.
+Releases are **maintainer-built** (binaries, checksums, signed tags). The authoritative gate before
+tagging is local: `just check` and `just audit-ready`. A minimal GitHub Actions workflow
+([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) mirrors `just check` on push — free
+tier on public repos; the local gate still wins before every release.
 
 ## Before tagging
 

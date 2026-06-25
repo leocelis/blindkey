@@ -1,6 +1,6 @@
 # UC-12 — Migrate from an Existing Manager
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
+> **Tech spec** · Accepted v0.2 · design only — not yet implemented · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-12 · **Constraints:** C21 (import), C26; touches C16, C17, C18, C23, C24, C27
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

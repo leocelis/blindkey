@@ -29,8 +29,10 @@
 | **Supply-chain attacker** | Compromises a dependency or the release pipeline | Audited-libs-only; `cargo audit`/`deny` (`vet`*); reproducible + signed releases | C3, C24, C34 |
 | **Hostile-file attacker** | Hands you a crafted vault file | Parser fuzzing; KDF parameter ceiling; bounded allocations | C2, C7–C10, C30 |
 
-`*` = partially covered today or proposed as a constraint in
-[research/security_coverage_gaps.md](../research/security_coverage_gaps.md) (Part 2, candidate IDs C35+).
+`*` = partially covered today. Further hardening (anti-ptrace, `cargo vet` in the release path,
+live TPM/FIDO2 FFI) is tracked in
+[research/security_coverage_gaps.md](../research/security_coverage_gaps.md) Part 2 — distinct from
+the shipped C1–C60 set (C35–C39 are omni-search, already in intent v1.7.0).
 
 ## Explicitly out of scope (residual risk)
 

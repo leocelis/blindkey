@@ -1,6 +1,6 @@
 # UC-11 — Keep KDF Cost Calibrated
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
+> **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-11 · **Constraints:** C2, C22, C8 (touches C4, C9, C16)
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

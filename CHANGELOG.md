@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Documentation sweep: fix CI/release drift (`RELEASE.md`, `UC-13`, `AUDIT_READINESS`), supported
+  versions in `SECURITY.md`, spec status headers (Accepted v0.2), expanded `docs/README.md` hub,
+  `ARCHITECTURE.md` adds `vault-clip`, `THREAT_MODEL.md` footnote corrected.
+
 ## [0.1.0-alpha.3] - 2026-06-25
 
 Pre-launch honesty sweep — CP-5 closed, docs aligned, minimal free CI.

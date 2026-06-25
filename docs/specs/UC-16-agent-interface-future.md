@@ -6,7 +6,7 @@
 > exploration, not design-of-record. The only binding text is C27's FORWARD CONSTRAINT, which
 > any future implementation of these ideas must satisfy.
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
+> **Tech spec** · Accepted v0.2 · post-v1 exploration · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-16 · **Constraints:** C27 (forward constraint); context: C13, C16, C23, C26
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

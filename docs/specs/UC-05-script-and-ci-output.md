@@ -1,6 +1,6 @@
 # UC-05 — Scripts & CI: Explicit, Warned Plaintext Opt-Outs
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
+> **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-5 · **Constraints:** C27, C21, SC5 (resolution); C23; C31 (promoted from gap B1, §3.5)
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

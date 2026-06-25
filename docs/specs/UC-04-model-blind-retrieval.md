@@ -1,6 +1,6 @@
 # UC-04 — Model-Blind Retrieval: Get a Secret While an AI Agent Is Watching
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026 · **the flagship use case**
+> **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026 · **the flagship use case**
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-4 · **Constraints:** C27 (primary), C13, C23; touches B2 ([gaps](../../research/security_coverage_gaps.md))
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

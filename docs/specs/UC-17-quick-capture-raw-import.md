@@ -1,6 +1,6 @@
 # UC-17 — Quick-Capture from a Messy Secrets File
 
-> **Tech spec** · Draft v0.1 · June 2026
+> **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-17 · **Constraints:** C21 (import), C26, C18, C19, C27; touches C11, C16, C17, C23
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

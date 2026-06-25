@@ -5,8 +5,13 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  vault-cli  (the `vault` binary)                             │
-│  clap commands · clipboard/stdout delivery · prompts         │  C20–C22, C26, C27
+│  clap commands · stdout delivery · prompts                   │  C20–C22, C26, C27
 │  output sanitization · export escaping · no argv secrets     │  C28, C29, C31
+└───────────────┬─────────────────────────────────────────────┘
+                │ uses
+┌───────────────▼─────────────────────────────────────────────┐
+│  vault-clip  (clipboard delivery — no vault secrets at rest) │  C13, C27, C33
+│  arboard · concealment hints · headless session detection    │
 └───────────────┬─────────────────────────────────────────────┘
                 │ depends on
 ┌───────────────▼─────────────────────────────────────────────┐
@@ -42,8 +47,9 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
 - **Hardware behind a feature gate**: a user with no FIDO2 key compiles and runs without that code
   path; hardware factors are *additive*, never required (the password stanza always unlocks — C5).
 - **One trust boundary**: secrets only ever live inside `vault-core` types (`Secret<…>`,
-  `Zeroizing<…>`); the CLI receives delivery *channels* (clipboard handle), not raw key material —
-  the same principle that protects against AI-agent exfiltration (C27).
+  `Zeroizing<…>`). `vault-clip` handles clipboard I/O only; the CLI/GUI receive delivery
+  *channels*, not long-lived key material — the same principle that protects against AI-agent
+  exfiltration (C27).
 
 ## Data flow: opening a vault
 

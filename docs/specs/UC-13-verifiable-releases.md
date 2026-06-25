@@ -1,6 +1,6 @@
 # UC-13 — Verify What You're Running
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
+> **Tech spec** · Accepted v0.2 · partially implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-13 · **Constraints:** C24, C23, C3; milestone M8; coverage-gaps D1/D2
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 
@@ -65,10 +65,10 @@ integrity the user checks without trusting the channel.
 
 ## 3. Proposed design
 
-> **Implementation note (2026-06-25):** GitHub Actions workflows were removed — no paid CI.
-> Current shipping path: maintainer-local builds (`scripts/reproducible-build.sh`), SHA-256
-> checksums, signed git tags, manual `cargo publish` ([RELEASE.md](../RELEASE.md)). Cosign OIDC,
-> SLSA attestations, Scorecard, and Dependabot are deferred enhancements; verification today is
+> **Implementation note (2026-06-25):** Shipping today: maintainer-local builds
+> (`scripts/reproducible-build.sh`), SHA-256 checksums, signed git tags, manual `cargo publish`
+> ([RELEASE.md](../RELEASE.md)). Minimal GHA CI mirrors `just check` on push (free tier when public).
+> Cosign OIDC, SLSA attestations, Scorecard, and Dependabot are deferred; verification today is
 > checksum + reproducible build + signed tag.
 
 ### 3.1 Reproducible builds

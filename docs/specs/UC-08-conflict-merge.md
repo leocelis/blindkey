@@ -1,6 +1,6 @@
 # UC-08 — Recover from a sync conflict
 
-> **Tech spec** · Draft v0.2 (pending acceptance review; updated for intent v1.3.0–v1.4.0, 2026-06-10) · June 2026
+> **Tech spec** · Accepted v0.2 · design only — not yet implemented · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-8 · **Constraints:** C21 (merge), C16, SC3
 > Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
 

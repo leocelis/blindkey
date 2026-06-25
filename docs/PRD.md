@@ -1,6 +1,6 @@
 # Vault — Product Requirements Document (PRD)
 
-> **Status:** Draft v0.2 · June 2026 · **functional pre-1.0** (CLI + desktop app; format may change before 1.0)
+> **Status:** Accepted v0.2 · June 2026 · **functional pre-1.0** (CLI + desktop app; format may change before 1.0)
 > **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (60 testable constraints, v1.7.0),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),

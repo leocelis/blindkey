@@ -37,6 +37,12 @@ plan and open questions.
 
 `Draft` → reviewed by maintainers → `Accepted` (hard-to-reverse decisions also get an
 [ADR](../adr/)) → implementation per the intent's segmentation plan → spec updated to
-`Implemented` with deviations noted. New constraints discovered while spec-writing are
-proposed as Part-2 candidates — C35+; the 2026-06-10 pass promoted the first batch as C28–C34 (see
+`Implemented` (or `Accepted · implemented pre-1.0` / `design only` where noted in the header).
+
+Most UC specs through CP-7 are **Accepted v0.2 · implemented pre-1.0** as of the 2026-06-25
+constraint sweep. Exceptions: UC-08 and UC-12 (design only, not yet implemented); UC-16 (post-v1
+exploration); UC-13 (checksums + reproducible build shipped; cosign/SLSA deferred).
+
+New constraints discovered while spec-writing are proposed as Part-2 candidates — the
+2026-06-10 pass promoted the first batch as C28–C34 (see
 [research/security_coverage_gaps.md](../../research/security_coverage_gaps.md)).

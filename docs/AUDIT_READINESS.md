@@ -1,9 +1,12 @@
 # Release Quality Gate (CP-7)
 
+> **Audience:** maintainers and security reviewers. End users: start at
+> [README.md](../README.md) or [docs/README.md](README.md).
+
 Vault is **functional pre-1.0**. This document describes the **local quality gate** before the
 `1.0.0` tag ([ROADMAP](../ROADMAP.md) CP-7) — not a substitute for careful review.
 
-## CP-7 sweep result (2026-06-18)
+## CP-7 sweep result (2026-06-25)
 
 | Metric | Value |
 |--------|-------|
@@ -12,7 +15,7 @@ Vault is **functional pre-1.0**. This document describes the **local quality gat
 | NEEDS_REVIEW | 0 |
 | FAIL | 0 |
 
-Full per-constraint table: [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md#cp-7-ivd-rule-2-sweep-2026-06-18).
+Full per-constraint table: [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md#cp-7-ivd-rule-2-sweep-2026-06-25).
 
 **Residual (documented, not sweep blockers):** live libfido2/TPM device FFI (M7); clipboard managers that ignore concealment hints ([`THREAT_MODEL.md`](THREAT_MODEL.md)).
 

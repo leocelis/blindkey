@@ -6,10 +6,16 @@ coordinated disclosure. Thank you for helping keep Vault and its users safe.
 ## Supported versions
 
 Vault is **functional pre-1.0** — the CLI and desktop app work today, but the on-disk format may
-still change before `1.0.0`. Signed GitHub Releases and crates.io (`cargo install vault-cli --locked`)
-ship from tag push — see [docs/RELEASE.md](docs/RELEASE.md). Once we ship versioned releases,
-this section will list supported version ranges. Until then, `main` is the development branch and
-bug reports are welcome against it.
+still change before `1.0.0`. Security fixes land on `main` and are tagged from there — see
+[docs/RELEASE.md](docs/RELEASE.md).
+
+| Version | Supported |
+|---------|-----------|
+| `0.1.0-alpha.3` (latest) | ✅ — report against this tag or `main` |
+| Older `0.1.0-alpha.*` | ⚠️ upgrade; fixes not backported pre-1.0 |
+| Pre-release / dev builds | report against commit hash |
+
+crates.io (`cargo install vault-cli --locked`) is optional and not published yet.
 
 ## Reporting a vulnerability
 
