@@ -24,7 +24,7 @@ was signed by Vault's GitHub Actions release workflow via its OIDC identity:
 cosign verify-blob \
   --certificate vault-x86_64-unknown-linux-musl.pem \
   --signature   vault-x86_64-unknown-linux-musl.sig \
-  --certificate-identity-regexp 'https://github.com/vault/.github/workflows/release.yml@.*' \
+  --certificate-identity-regexp 'https://github.com/leocelis/vault/.github/workflows/release.yml@.*' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   vault-x86_64-unknown-linux-musl
 ```

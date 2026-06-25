@@ -2,10 +2,10 @@
 
 Vault is maintained by a small team that practices four-eyes review on all security-critical code.
 
-| Maintainer | Role | GitHub |
-|-----------|------|--------|
-| Leo | Founder / lead maintainer / code owner | `@leocelis` |
-| Juan | Maintainer | `@jgm972` |
+| Maintainer | Role | GitHub | Security contact |
+|-----------|------|--------|------------------|
+| Leo | Founder / lead maintainer / code owner | `@leocelis` | [leo@leocelis.com](mailto:leo@leocelis.com) |
+| Juan | Maintainer | `@jgm972` | — |
 
 ## Responsibilities
 

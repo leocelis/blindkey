@@ -397,4 +397,5 @@ still change before `1.0.0`. Not independently audited.
 ### Notes
 - Vault is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
-[Unreleased]: https://github.com/vault/commits/main
+[Unreleased]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.1...main
+[0.1.0-alpha.1]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.1
