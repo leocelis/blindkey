@@ -59,7 +59,7 @@ search syntax (may come later as an opt-in `/regex` mode); cross-vault search.
 - **Burkhard & Keller (1973)** BK-trees, n-gram indexing — surveyed and **rejected** at this scale
   (§4): constant factors invert below ~10⁴ entries, and a persisted index is a disk side-channel.
 
-Full citations: `.sdlc/features/omni-search/research.md` (private).
+Full citations are in the references listed in §2 above (Navarro, Miller, BK-trees survey).
 
 ## 3. Proposed design
 

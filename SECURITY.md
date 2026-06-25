@@ -65,9 +65,8 @@ the attacker to already have the unlocked master key, and social-engineering of 
 
 - **Memory-safe Rust**, `#![forbid(unsafe_code)]` outside a vetted crypto-FFI boundary.
 - **Audited libraries only** — no custom cryptographic primitives.
-- **`cargo audit` / `cargo deny`** in CI; builds fail on High/Critical advisories.
+- **`cargo audit` / `cargo deny`** via `just audit` / `just audit-ready` (maintainers run locally before release).
 - **Fuzzed parsers** for all untrusted input.
-- **Reproducible builds + signed releases** (Sigstore/cosign + SLSA provenance) so you can verify
-  what you run — see [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
+- **Reproducible builds + checksums** — see [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
 - **Release quality gate** before `1.0.0` — see [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md)
   (`just audit-ready`).

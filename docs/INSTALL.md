@@ -89,7 +89,7 @@ sudo apt install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes
 sudo dnf install gtk3-devel openssl-devel xdg-desktop-portal-kde zenity
 ```
 
-CI installs the GTK stack — see `.github/workflows/ci.yml` for the canonical package list.
+CI installs the GTK stack — package list is in the block above.
 
 ### Enterprise / fleet deployment
 

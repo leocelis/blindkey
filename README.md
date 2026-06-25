@@ -6,9 +6,6 @@
 
 Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The credentials your AI tools can see.
 
-[![CI](https://github.com/leocelis/vault/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/ci.yml)
-[![Dependency audit](https://github.com/leocelis/vault/actions/workflows/audit.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/audit.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/leocelis/vault/badge)](https://securityscorecards.dev/viewer/?uri=github.com/leocelis/vault)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
@@ -77,7 +74,7 @@ cargo build --release -p vault-cli
 alias vault=target/release/vault
 
 vault init                      # create a vault (prompts for a master password)
-vault import --format raw --yes keys.txt   # migrate a messy keys.txt (use --yes when piped)
+vault import --format raw --yes samples/keys.txt   # migrate a messy keys.txt (use --yes when piped)
 vault gen --length 24           # generate a CSPRNG password…
 vault gen --words 8             # …or a diceware passphrase
 vault add github                # add an entry (no secrets on the command line)
@@ -119,7 +116,7 @@ Vault follows **Intent-Verified Development**: the design is captured as testabl
 - ✅ Intent specification — [vault_intent.yaml](vault_intent.yaml) (60 constraints, 15 groups, v1.7.0)
 - ✅ Open-source scaffolding — this repository
 - ✅ **Core implementation** — encrypted format, Argon2id, in-memory protection, rollback
-  detection, CLI **and** desktop app (CI green on Linux/macOS/Windows; see [ROADMAP.md](ROADMAP.md))
+  detection, CLI **and** desktop app (quality gate: `just check` + `just audit-ready` locally; see [ROADMAP.md](ROADMAP.md))
 - ⏳ Remaining features — hardware-backed unlock polish, sync/merge (see the roadmap)
 - ⏳ **1.0 release** — format freeze + broader constraint test coverage
 

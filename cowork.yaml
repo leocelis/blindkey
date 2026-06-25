@@ -42,8 +42,8 @@ branching:
     - "force-push to main (ever)"
     - "long-lived divergent branches (> ~10 commits behind main = rebase now)"
     - "committing directly to main for anything that touches crates/vault-core/,
-       vault_intent.yaml, the file format, SECURITY.md, or .github/workflows/
-       (CODEOWNERS + GOVERNANCE tiers require PR review there)"
+       vault_intent.yaml, the file format, SECURITY.md, or scripts/
+       (release/audit scripts — CODEOWNERS + GOVERNANCE tiers require PR review there)"
   allowed_direct_to_main:
     - "docs typo-level fixes outside the protected paths, at maintainer discretion"
 
@@ -67,7 +67,7 @@ ownership:
   "docs/specs/":                   shared_read_only   # changes via PR + both maintainers
   "docs/":                         lane_B_default
   "research/":                     shared_read_only
-  ".github/workflows/":            lane_A
+  "scripts/":                      lane_A
   "docs/CONSTRAINT_INDEX.md":  "update when adding constraint tests"
 
 locked_files:

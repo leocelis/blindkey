@@ -32,7 +32,7 @@ ceremony** plus a **small C21/C27 surface gap**, not greenfield implementation.
 | CP-3 · memory hardening | ✅ | mlock, zeroize, RLIMIT_CORE |
 | CP-4 · read/write API | ✅ | Atomic save, rollback anchor, GUI/TUI on core |
 | CP-5 · CLI core loop | 🟡 | `init/import/ls/get/add/edit/rm/lock/find/export/tune/enroll` shipped; **missing:** `vault stanzas list\|add\|remove` (G0.8/C21), headless **exit 7** when clipboard unavailable (C27) |
-| CP-6 · distribution | ✅ *first tag pending* | Pipeline in `release.yml`; tag **`v0.1.0-alpha.1`** (pre-alpha) |
+| CP-6 · distribution | 🟡 | Maintainer-local release (`docs/RELEASE.md`); tag **`v0.1.0-alpha.1`** |
 | CP-7 · quality gate | ✅ | `just audit-ready` green; [CONSTRAINT_INDEX](docs/CONSTRAINT_INDEX.md) 60 PASS |
 
 **To ship `1.0.0` (per [RELEASE.md](docs/RELEASE.md)):**

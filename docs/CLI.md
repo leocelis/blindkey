@@ -28,6 +28,8 @@ Default vault path: `$HOME/.vault/vault.vlt` (override with `--vault PATH`).
 | `vault pad on\|off` | Toggle Padmé payload size-padding (UC-07). |
 | `vault enroll yubikey` | Required-both YubiKey 2FA + one-time recovery code. |
 | `vault enroll keyfile <PATH>` | Required-both keyfile 2FA (no hardware). |
+| `vault enroll-tpm` | TPM stanza enrollment (mock/dev path; live TPM FFI deferred). |
+| `vault re-enroll-tpm` | Re-seal TPM stanza after firmware/kernel update (mock/dev). |
 
 ## Not yet implemented
 
@@ -36,7 +38,6 @@ Default vault path: `$HOME/.vault/vault.vlt` (override with `--vault PATH`).
 | `vault import --format txt\|json` | Structured importers (UC-12). |
 | `vault merge OLD NEW` | Conflict merge (UC-08). |
 | `vault stanzas …` | Hardware stanza management. |
-| `vault enroll-tpm` | TPM stanza enrollment. |
 
 ## `vault find` — searchable fields (constraint C35)
 

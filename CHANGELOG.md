@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- **No GitHub Actions:** removed all `.github/workflows/` and Dependabot — quality gate is
+  local-only (`just check`, `just audit-ready`). Releases are maintainer-built per
+  `docs/RELEASE.md`.
+- **OSS scrub:** fixed README quickstart path, removed stale CI badges, corrected security/docs
+  URLs; removed internal `.sdlc` / cross-project references from public docs.
+
 ## [0.1.0-alpha.1] - 2026-06-22
 
 First **pre-alpha** tagged release — functional CLI + desktop app; on-disk format and API may

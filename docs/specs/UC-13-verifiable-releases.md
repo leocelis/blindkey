@@ -38,8 +38,7 @@ integrity the user checks without trusting the channel.
   don't protect the *artifacts*.
 - **sigstore-rs** ([github.com/sigstore/sigstore-rs](https://github.com/sigstore/sigstore-rs)):
   ✓ verified — the Rust sigstore client crate self-describes as **experimental**. We therefore
-  use the cosign *CLI* in CI (as `release.yml` already does) rather than linking sigstore-rs
-  into anything; users verify with cosign/slsa-verifier CLIs.
+  use the cosign *CLI* for verification rather than linking sigstore-rs into anything.
 - **cargo-auditable** ([rust-secure-code/cargo-auditable](https://github.com/rust-secure-code/cargo-auditable)):
   ✓ verified — `cargo auditable build --release` embeds the dependency list in a dedicated
   section of the binary; readable by `cargo audit bin`, trivy, `rust-audit-info` (JSON) and
@@ -62,17 +61,22 @@ integrity the user checks without trusting the channel.
   Until stable we use `--remap-path-prefix` (stable since 1.26) via `RUSTFLAGS`.
 - **SLSA v1.0** ([slsa.dev](https://slsa.dev/spec/v1.0/faq)) — provenance levels; the GitHub
   generic generator yields SLSA Build L3.
-- **OpenSSF Scorecard** — already wired (`.github/workflows/scorecard.yml`); measures exactly
-  the practices this spec mandates (pinned deps, signed releases, token permissions).
+- **OpenSSF Scorecard** — optional external measurement; not wired (no GitHub Actions).
 
 ## 3. Proposed design
+
+> **Implementation note (2026-06-25):** GitHub Actions workflows were removed — no paid CI.
+> Current shipping path: maintainer-local builds (`scripts/reproducible-build.sh`), SHA-256
+> checksums, signed git tags, manual `cargo publish` ([RELEASE.md](../RELEASE.md)). Cosign OIDC,
+> SLSA attestations, Scorecard, and Dependabot are deferred enhancements; verification today is
+> checksum + reproducible build + signed tag.
 
 ### 3.1 Reproducible builds
 
 | Lever | Mechanism | Status |
 |---|---|---|
 | Toolchain pinned | `rust-toolchain.toml` (already in repo) — exact channel/version, no "stable" drift | ✅ scaffolded |
-| Dependency graph pinned | `cargo build --locked` (already in `release.yml`); `Cargo.lock` committed (C3) | ✅ scaffolded |
+| Dependency graph pinned | `cargo build --locked`; `Cargo.lock` committed (C3) | ✅ |
 | Timestamps | export `SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)` in the release job | add |
 | Build-path leakage | `RUSTFLAGS="--remap-path-prefix=$PWD=/build"` (stable); migrate to `trim-paths = "all"` in the release profile **when RFC 3127 stabilizes** | add |
 | Vendored source | attach `cargo vendor`-produced `vault-<tag>-vendor.tar.gz` (+ checksum) to each release, so rebuilds need no live crates.io | add |
@@ -84,41 +88,14 @@ code-signing and MSVC PE timestamps introduce nondeterminism); the docs say so e
 rather than overclaiming. Known upstream issues are tracked at
 [rust#129080](https://github.com/rust-lang/rust/issues/129080).
 
-### 3.2 Signing pipeline (Sigstore cosign, keyless)
+### 3.2 Signing pipeline (deferred — cosign OIDC)
 
-Already scaffolded in [`release.yml`](../../.github/workflows/release.yml): the
-`sign-and-publish` job has `id-token: write`, installs cosign, and runs
-`cosign sign-blob --yes` per artifact, emitting `.sig` + `.pem`. The user-side verification
-(from [VERIFYING_RELEASES](../VERIFYING_RELEASES.md)) checks all three trust links:
+**Future enhancement:** Sigstore cosign keyless signing tied to a CI workflow OIDC identity.
+Not shipped — releases use signed git tags + SHA-256 checksums today ([RELEASE.md](../RELEASE.md)).
 
-```sh
-cosign verify-blob \
-  --certificate vault-x86_64-unknown-linux-musl.pem \          # Fulcio cert binds the signing key…
-  --signature   vault-x86_64-unknown-linux-musl.sig \
-  --certificate-identity-regexp 'https://github.com/leocelis/vault/.github/workflows/release.yml@.*' \  # …to OUR workflow identity
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \                              # …issued by GitHub's OIDC
-  vault-x86_64-unknown-linux-musl
-```
+### 3.3 SLSA provenance (deferred)
 
-`Verified OK` ⇒ this exact byte stream was signed by the release workflow of this repo — not by
-a maintainer laptop, not by a fork. There is no long-lived signing key to steal (keyless:
-ephemeral key, Fulcio certificate, Rekor log entry).
-
-**Known fix needed (✓ verified by reading the workflow):** `release.yml`'s `provenance` job
-consumes `needs.build.outputs.hashes`, but the `build` job currently defines **no `outputs`**.
-M8 must add a step computing `hashes=$(sha256sum dist/* | base64 -w0)` and expose it as a job
-output, or the SLSA subjects will be empty.
-
-### 3.3 SLSA provenance
-
-`slsa-framework/slsa-github-generator` `generator_generic_slsa3.yml@v2.0.0` (pinned, already
-referenced) produces an in-toto attestation (`*.intoto.jsonl`) asserting builder identity,
-source repo, and commit. User-side:
-
-```sh
-slsa-verifier verify-artifact vault-x86_64-unknown-linux-musl \
-  --provenance-path provenance.intoto.jsonl --source-uri github.com/leocelis/vault
-```
+**Future enhancement:** in-toto attestations via `slsa-verifier`. Not shipped in v1 pre-alpha.
 
 ### 3.4 SBOM (decision: cargo-auditable, plus CycloneDX file)
 
@@ -130,24 +107,20 @@ section data; no runtime effect. Additionally emit `vault-<tag>.cdx.json` per re
 `auditable2cdx` (single source of truth: the binary's own embedded list) for SBOM-consuming
 tooling. `cargo-sbom`/`cargo-cyclonedx` were considered (see §4).
 
-### 3.5 Supply-chain gates already scaffolded (kept, unchanged)
+### 3.5 Supply-chain gates (local)
 
 | Gate | Where | Property |
 |---|---|---|
-| `cargo-deny` (advisories, licenses, bans, sources) | [`audit.yml`](../../.github/workflows/audit.yml) + [`deny.toml`](../../deny.toml) | C24 license allowlist; openssl banned; crates.io-only sources |
-| `cargo-audit` | `audit.yml`, weekly cron + every dep change | C3/C24: fail on High/Critical RustSec advisories |
-| Dependabot | `.github/dependabot.yml` | dependency update hygiene |
-| OpenSSF Scorecard | `.github/workflows/scorecard.yml` | external measurement of the above |
+| `cargo-deny` (advisories, licenses, bans, sources) | `just audit` + [`deny.toml`](../../deny.toml) | C24 license allowlist; openssl banned; crates.io-only sources |
+| `cargo-audit` | `just audit` / `just audit-ready` | C3/C24: fail on High/Critical RustSec advisories |
 | `cargo vet` | SECURITY.md commitment, M9 | reviewed-dependency gating (gap D2) |
 
 ### 3.6 crates.io publishing trust
 
 - **Who can publish:** crate owners only — restricted to the maintainers
   ([MAINTAINERS.md](../../MAINTAINERS.md)); reserve the `vault-cli`/`vault-core` names early.
-- **Token hygiene → none to manage:** adopt **Trusted Publishing** (GA July 2025). Publishing
-  is allowed only from `release.yml` in this repo via OIDC; tokens live ~30 minutes; no
-  long-lived `crates.io` token exists to leak. Publish with `cargo publish --locked` from the
-  same tag the binaries are built from.
+- **Publish path:** manual `cargo publish --locked` from a maintainer machine after
+  `just audit-ready` passes — see [CRATES_IO_TRUSTED_PUBLISHING.md](../CRATES_IO_TRUSTED_PUBLISHING.md).
 - **The provenance gap, stated honestly:** crates.io does **not** yet attach or verify
   cryptographic provenance/signatures on crate files — RFC 3691 lists sigstore-style provenance
   as a *future possibility*, and the cargo/sigstore RFC ([rfcs#3403](https://github.com/rust-lang/rfcs/pull/3403))
