@@ -11,7 +11,7 @@ a future product line.
 | Zero plaintext entry metadata on disk | C18, `strings` tests |
 | Argon2id with enforced floor | C2 |
 | Model-blind secret delivery | C27, C13 |
-| Reproducible signed releases | UC-13, C34 |
+| Reproducible builds + checksums | UC-13, C34, `docs/RELEASE.md` |
 | Constraint-driven development | `vault_intent.yaml`, IVD |
 | Desktop session hygiene | UC-21 (reveal timeout, lock-on-blur, keyfile GUI) |
 | Audit readiness package | [AUDIT_READINESS.md](AUDIT_READINESS.md) (release quality gate) |

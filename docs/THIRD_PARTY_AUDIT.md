@@ -34,7 +34,7 @@ audit reports, contact maintainers through the same channel before public disclo
 1. `just audit-ready` exits 0 on the tagged commit
 2. [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — all 60 constraints PASS or acknowledged
 3. [`docs/THREAT_MODEL.md`](THREAT_MODEL.md) — residual risks documented
-4. Fuzz targets run clean (`just fuzz-smoke` or CI fuzz job)
+4. Fuzz targets run clean (`just fuzz` locally)
 5. Release artifacts verifiable per [`VERIFYING_RELEASES.md`](VERIFYING_RELEASES.md)
 
 ## Deliverables expected from auditors

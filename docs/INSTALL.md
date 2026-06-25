@@ -25,7 +25,7 @@ cargo install --git https://github.com/leocelis/vault.git --locked vault-cli
 Pin a release tag for reproducibility:
 
 ```sh
-cargo install --git https://github.com/leocelis/vault.git --tag v0.1.0-alpha.2 --locked vault-cli
+cargo install --git https://github.com/leocelis/vault.git --tag v0.1.0-alpha.3 --locked vault-cli
 ```
 
 ## Install from crates.io

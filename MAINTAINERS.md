@@ -10,9 +10,9 @@ Vault is maintained by a small team that practices four-eyes review on all secur
 ## Responsibilities
 
 - Changes to `crates/vault-core/`, the file format, the threat model, `SECURITY.md`, and
-  CI/release workflows require review from the code owner (see [`.github/CODEOWNERS`](.github/CODEOWNERS)).
+  release scripts require review from the code owner (see [`.github/CODEOWNERS`](.github/CODEOWNERS)).
 - Security reports are triaged jointly per [SECURITY.md](SECURITY.md).
-- Releases are signed; maintainers hold signing identities (see
+- Releases are maintainer-built with SHA-256 checksums (see
   [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md)).
 
 ## Decision-making

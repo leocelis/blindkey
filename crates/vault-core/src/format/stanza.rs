@@ -33,6 +33,36 @@ pub mod kind {
     pub const PW_KEYFILE: u8 = 8;
 }
 
+/// Human-readable stanza type for `vault stanzas list` (no secrets).
+pub fn kind_name(stanza_type: u8) -> &'static str {
+    match stanza_type {
+        kind::PASSWORD => "password",
+        kind::FIDO2 => "fido2",
+        kind::YUBIKEY => "yubikey",
+        kind::TPM => "tpm",
+        kind::KEYCHAIN => "keychain",
+        kind::DPAPI => "dpapi",
+        kind::PW_YUBIKEY => "pw-yubikey",
+        kind::PW_KEYFILE => "pw-keyfile",
+        _ => "unknown",
+    }
+}
+
+/// Parse a user-facing stanza type name (C21 `vault stanzas`).
+pub fn parse_kind_name(name: &str) -> Option<u8> {
+    match name.to_ascii_lowercase().as_str() {
+        "password" => Some(kind::PASSWORD),
+        "fido2" => Some(kind::FIDO2),
+        "yubikey" => Some(kind::YUBIKEY),
+        "tpm" => Some(kind::TPM),
+        "keychain" | "secure-enclave" => Some(kind::KEYCHAIN),
+        "dpapi" => Some(kind::DPAPI),
+        "pw-yubikey" | "pw_yubikey" => Some(kind::PW_YUBIKEY),
+        "pw-keyfile" | "pw_keyfile" => Some(kind::PW_KEYFILE),
+        _ => None,
+    }
+}
+
 /// One key-wrapping stanza record. `data` is opaque at this layer (interpreted by the envelope).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stanza {
@@ -44,7 +74,6 @@ pub struct Stanza {
 }
 
 impl Stanza {
-    /// On-disk byte length of this record: `1 (type) + 4 (len) + data`.
     pub fn on_disk_len(&self) -> usize {
         1 + 4 + self.data.len()
     }

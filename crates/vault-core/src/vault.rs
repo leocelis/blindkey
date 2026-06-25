@@ -489,6 +489,31 @@ impl Vault {
         self.header.kdf.p_cost = p_cost;
         Ok(())
     }
+
+    /// Enrolled unlock stanzas (types only — no secret material; C21 `vault stanzas list`).
+    pub fn stanzas(&self) -> &[crate::format::Stanza] {
+        &self.header.stanzas
+    }
+
+    /// Remove every stanza of `stanza_type`. Password stanzas are irremovable (C5).
+    pub fn remove_stanza_type(&mut self, stanza_type: u8) -> Result<()> {
+        if stanza_type == kind::PASSWORD {
+            return Err(Error::Hardware(
+                "password stanza cannot be removed (constraint C5)".into(),
+            ));
+        }
+        let before = self.header.stanzas.len();
+        self.header
+            .stanzas
+            .retain(|s| s.stanza_type != stanza_type);
+        if self.header.stanzas.len() == before {
+            return Err(Error::Hardware(format!(
+                "no {:?} stanza enrolled",
+                crate::format::stanza::kind_name(stanza_type)
+            )));
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

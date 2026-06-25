@@ -5,9 +5,6 @@
 //!   no-echo prompt or stdin; entry secrets come from an imported file.
 //! - `vault get` delivers to the clipboard by default; `--stdout` is a warned opt-in so an AI agent
 //!   watching stdout cannot scrape the secret (constraint C27).
-//!
-//! MVP surface: `init`, `import`, `ls`, `get`. The rest of the surface is declared (C21) and lands
-//! in later segments.
 
 #![forbid(unsafe_code)]
 
@@ -126,7 +123,7 @@ enum Command {
         #[arg(long, default_value_t = 30)]
         timeout: u64,
     },
-    /// Add an entry. Secrets are read interactively, never from a flag. *(not yet implemented)*
+    /// Add an entry. Secrets are read interactively, never from a flag.
     Add { name: String },
     /// Generate a CSPRNG password — or a diceware passphrase with `--words N` (constraint C26).
     Gen {
@@ -141,9 +138,9 @@ enum Command {
         #[arg(long)]
         wordlist: Option<PathBuf>,
     },
-    /// Edit an entry. *(not yet implemented)*
+    /// Edit an entry.
     Edit { name: String },
-    /// Delete an entry (confirmation required). *(not yet implemented)*
+    /// Delete an entry (confirmation required).
     Rm { name: String },
     /// Clear the in-memory session (clipboard; v1 CLI has no cross-command unlock cache).
     Lock,
@@ -159,8 +156,13 @@ enum Command {
         #[arg(long, default_value_t = 4)]
         kdf_p_cost: u32,
     },
-    /// Benchmark and recommend Argon2id parameters (constraint C22). *(not yet implemented)*
+    /// Benchmark and recommend Argon2id parameters (constraint C22).
     Tune,
+    /// List, add, or remove hardware/OS unlock stanzas (constraint C21).
+    Stanzas {
+        #[command(subcommand)]
+        action: StanzasAction,
+    },
     /// Add a required second factor (true 2FA): `vault enroll yubikey`, or
     /// `vault enroll keyfile <PATH>` (a new keyfile is generated if PATH doesn't exist).
     Enroll {
@@ -189,6 +191,16 @@ enum Command {
     HoldClipboard { secs: u64 },
 }
 
+#[derive(Debug, Subcommand)]
+pub enum StanzasAction {
+    /// Show enrolled stanza types (no secrets).
+    List,
+    /// Enroll guidance for a stanza type (delegates to `vault enroll …`).
+    Add { stanza_type: String },
+    /// Remove a non-password stanza (requires unlock).
+    Remove { stanza_type: String },
+}
+
 fn main() -> std::process::ExitCode {
     vault_core::memory::harden_process(); // C25: disable core dumps before touching secrets
     let cli = Cli::parse();
@@ -209,6 +221,8 @@ fn main() -> std::process::ExitCode {
         Err(e) => {
             let code = if e.starts_with(commands::USAGE_ERROR_PREFIX) {
                 8
+            } else if e.starts_with(commands::CLIPBOARD_UNAVAILABLE_PREFIX) {
+                7
             } else if e.starts_with(unlock_secret::AUTH_ERROR_PREFIX) {
                 5
             } else {
@@ -216,6 +230,7 @@ fn main() -> std::process::ExitCode {
             };
             let msg = e
                 .strip_prefix(commands::USAGE_ERROR_PREFIX)
+                .or_else(|| e.strip_prefix(commands::CLIPBOARD_UNAVAILABLE_PREFIX))
                 .map(|s| s.trim_start())
                 .unwrap_or(&e);
             eprintln!("vault: {msg}");

@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-06-25
+
+Pre-launch honesty sweep — CP-5 closed, docs aligned, minimal free CI.
+
+### Added
+- `vault stanzas list|add|remove` (C21); headless clipboard refusal **exit 7** (C27).
+- `docs/README.md` documentation hub; GitHub Actions CI (`just check` equivalent, free tier).
+- Integration tests: `c21_stanzas_list_after_init`, `c27_headless_get_exits_7` (Linux).
+
+### Fixed
+- Clap help no longer marks implemented commands as “not yet implemented”.
+- `CONSTRAINT_INDEX.md` C21/C27 labels and evidence; enterprise/release doc contradictions removed.
+- `MAINTAINERS.md`, `setup-rust.sh`, `THIRD_PARTY_AUDIT.md` stale references.
+
 ## [0.1.0-alpha.2] - 2026-06-25
 
 Open-source launch candidate — documentation polish, no GitHub Actions (local quality gate only),
@@ -411,6 +425,7 @@ still change before `1.0.0`. Not independently audited.
 ### Notes
 - Vault is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
-[Unreleased]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.2...main
+[Unreleased]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.3...main
+[0.1.0-alpha.3]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.1

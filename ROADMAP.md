@@ -31,7 +31,7 @@ ceremony** plus a **small C21/C27 surface gap**, not greenfield implementation.
 | CP-2 · crypto core | ✅ | STREAM, KDF, envelope |
 | CP-3 · memory hardening | ✅ | mlock, zeroize, RLIMIT_CORE |
 | CP-4 · read/write API | ✅ | Atomic save, rollback anchor, GUI/TUI on core |
-| CP-5 · CLI core loop | 🟡 | `init/import/ls/get/add/edit/rm/lock/find/export/tune/enroll` shipped; **missing:** `vault stanzas list\|add\|remove` (G0.8/C21), headless **exit 7** when clipboard unavailable (C27) |
+| CP-5 · CLI core loop | ✅ | Full surface including `vault stanzas list/remove`, headless exit 7 (C27) |
 | CP-6 · distribution | ✅ | Maintainer-local release; tag **`v0.1.0-alpha.2`** + GitHub Release |
 | CP-7 · quality gate | ✅ | `just audit-ready` green; [CONSTRAINT_INDEX](docs/CONSTRAINT_INDEX.md) 60 PASS |
 
@@ -98,18 +98,17 @@ lane can build against from that point on.
   UI-related work that lands in v1 — it unblocks every future shell (TUI/egui/SwiftUI) on one core.
 - **Freezes:** the full `vault-core` public API (v0 API freeze — the big sync point)
 
-### CP-5 · CLI core loop *(M6)* 🟡
-`C20 C21 C22 C27ᵈᵉᶠᵃᵘˡᵗ C28 C29 C31` · specs [UC-01](docs/specs/UC-01-install-and-init.md), [UC-04](docs/specs/UC-04-model-blind-retrieval.md), [UC-06](docs/specs/UC-06-entry-management.md)
-- Shipped: `init` · `import` · `ls`/`find` · `get` · `add` · `edit` · `rm` · `lock` · `export` · `tune` · `enroll` (yubikey/keyfile) · `otp` · `audit` · unlock channels
-- **Remaining for CP-5 close:** `vault stanzas list|add|remove` (C21/G0.8); headless clipboard refusal **exit 7** (C27); stale clap doc comments on implemented commands
-- Non-TTY matrix largely wired; no secrets on argv; musl static build in release CI
-- **Freezes:** CLI surface & exit codes (scripts can rely on them) — *pending stanzas + exit 7*
+### CP-5 · CLI core loop *(M6)* ✅
+`C20 C21 C22 C27` · specs [UC-01](docs/specs/UC-01-install-and-init.md), [UC-04](docs/specs/UC-04-model-blind-retrieval.md), [UC-06](docs/specs/UC-06-entry-management.md)
+- Shipped: full surface including `vault stanzas list/add/remove`, headless **exit 7** (C27)
+- Non-TTY matrix wired; no secrets on argv
+- **Freezes:** CLI surface & exit codes (scripts can rely on them)
 
-### CP-6 · Distribution & trust *(M8)* ✅ *(pipeline coded; first tag pending)*
+### CP-6 · Distribution & trust *(M8)* ✅
 `C3 C23 C24 C34` · spec [UC-13](docs/specs/UC-13-verifiable-releases.md)
-- Reproducible builds (`SOURCE_DATE_EPOCH`, `--remap-path-prefix`, `--locked`) · cosign keyless · SLSA provenance
-- `cargo auditable` embedded SBOM + CycloneDX sidecar · vendor tarball · in-pipeline cosign verify
-- crates.io Trusted Publishing ([docs/CRATES_IO_TRUSTED_PUBLISHING.md](docs/CRATES_IO_TRUSTED_PUBLISHING.md))
+- Maintainer-local releases: reproducible build script, SHA-256 checksums, GitHub Releases
+- Optional GPG-signed tags; cosign/SLSA deferred
+- crates.io manual publish ([docs/CRATES_IO_TRUSTED_PUBLISHING.md](docs/CRATES_IO_TRUSTED_PUBLISHING.md))
 
 ### CP-7 · Full IVD sweep → release quality gate ✅ *(M10)*
 - **Sweep complete 2026-06-22:** 60 PASS · 0 NEEDS_REVIEW — [`docs/CONSTRAINT_INDEX.md`](docs/CONSTRAINT_INDEX.md)

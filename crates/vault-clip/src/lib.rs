@@ -17,6 +17,22 @@ pub fn clipboard_still_ours(cur: &[u8], secret: &[u8]) -> bool {
         || cur.strip_suffix(b"\r\n") == Some(secret)
 }
 
+/// True when the OS clipboard is likely usable on this session (constraint C27).
+///
+/// On Linux without `DISPLAY` or `WAYLAND_DISPLAY`, clipboard delivery is refused headlessly.
+pub fn clipboard_available() -> bool {
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if std::env::var_os("DISPLAY").is_none() && std::env::var_os("WAYLAND_DISPLAY").is_none() {
+            return false;
+        }
+    }
+    if Clipboard::new().is_ok() {
+        return true;
+    }
+    copy_subprocess(b"").is_ok()
+}
+
 /// Copy secret bytes to the clipboard with C33 concealment hints when possible.
 pub fn copy_secret(data: &[u8]) -> Result<(), String> {
     if data.is_empty() {
