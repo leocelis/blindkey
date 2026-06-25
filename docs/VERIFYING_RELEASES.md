@@ -5,8 +5,8 @@ A security tool you can't verify is a security tool you have to *trust*. Vault r
 **SHA-256 checksums** published alongside each binary. *(constraint C34)*
 
 > Vault is **functional pre-1.0**. There is no automated cosign/SLSA pipeline — maintainers build
-> locally per [RELEASE.md](RELEASE.md). Until your first GitHub Release ships, build from source
-> per [INSTALL.md](INSTALL.md).
+> locally per [RELEASE.md](RELEASE.md). Latest release: [`v0.1.0-alpha.3`](https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.3)
+> (macOS x86_64 binary + SHA256SUMS). Other platforms: [INSTALL.md](INSTALL.md).
 
 ## 1. Verify the checksum
 
@@ -21,7 +21,7 @@ Release tags should be GPG-signed by a maintainer:
 
 ```sh
 git fetch --tags
-git tag -v v0.1.0-alpha.1
+git tag -v v0.1.0-alpha.3
 ```
 
 ## 3. Reproduce the build yourself

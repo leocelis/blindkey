@@ -6,7 +6,6 @@
 
 Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The credentials your AI tools can see.
 
-[![CI](https://github.com/leocelis/vault/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
@@ -46,7 +45,7 @@ developer who is nervous about AI exposure can actually adopt it.**
 |---|---|---|
 | Plaintext metadata (URLs, titles, timestamps) | **None — all encrypted** | Often leaks at least some |
 | KDF | **Argon2id, floor enforced on open** | Argon2d / PBKDF2; no floor check |
-| Unlock model | **Any-of-N stanzas** (password + hardware + OS keystore) | Single factor |
+| Unlock model | **Multi-stanza unlock** (password + optional hardware; OS keystore planned) | Single factor |
 | In-memory secrets | **`zeroize` + `mlock`** | Often left in plaintext |
 | Whole-file rollback by a sync backend | **Detected** (monotonic counter) | Undetected |
 | AI-era hardening | **CSPRNG generation + model-blind delivery** | Not designed for it |
@@ -55,6 +54,8 @@ developer who is nervous about AI exposure can actually adopt it.**
 ## Install
 
 **Fastest path** — download from [GitHub Releases](https://github.com/leocelis/vault/releases), verify SHA256SUMS, `chmod +x`, move to PATH.
+
+Prebuilt binaries today: **macOS x86_64 only** (`v0.1.0-alpha.3`). Linux, Windows, and Apple Silicon: build from source ([docs/INSTALL.md](docs/INSTALL.md)).
 
 ```sh
 # Example (macOS x86_64) — see docs/VERIFYING_RELEASES.md
@@ -92,6 +93,7 @@ Desktop app: `cargo run -p vault-gui` — drag `samples/keys.txt` onto the windo
 
 | Topic | Doc |
 |-------|-----|
+| Doc hub (start here) | [docs/README.md](docs/README.md) |
 | Install & build | [docs/INSTALL.md](docs/INSTALL.md) |
 | CLI reference | [docs/CLI.md](docs/CLI.md) |
 | Threat model | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) |
@@ -110,7 +112,7 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 
 - ✅ Research + 60 constraint intent (v1.7.0) + CP-7 sweep (60/60 PASS)
 - ✅ CLI, TUI, desktop GUI on shared `vault-core`
-- ✅ Local quality gate: `just check` + `just audit-ready` (no paid CI)
+- ✅ Quality gate: local `just check` / `just audit-ready`; minimal [GHA CI](.github/workflows/ci.yml) on push (free tier when public)
 - ⏳ Hardware FFI polish, sync/merge, format freeze for 1.0 — [ROADMAP.md](ROADMAP.md)
 
 ## Repository layout
