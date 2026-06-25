@@ -82,3 +82,7 @@ Do **not** use issues or PRs. Follow [SECURITY.md](SECURITY.md).
 
 This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By participating, you agree
 to uphold it.
+
+## Getting help
+
+See [SUPPORT.md](SUPPORT.md) — Discussions for questions, issues for bugs, SECURITY.md for vulnerabilities.

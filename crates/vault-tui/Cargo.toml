@@ -17,7 +17,7 @@ name = "vault-tui"
 path = "src/main.rs"
 
 [dependencies]
-vault-core = { path = "../vault-core", version = "0.1.0-alpha.1" }
+vault-core = { path = "../vault-core", version = "0.1.0-alpha.2" }
 ratatui.workspace = true
 crossterm.workspace = true
 clap.workspace = true

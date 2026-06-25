@@ -6,12 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-06-25
+
+Open-source launch candidate — documentation polish, no GitHub Actions (local quality gate only),
+first GitHub Release with checksums.
+
+### Added
+- `SUPPORT.md` — community support paths (Discussions, issues, security).
+- README: install/docs/community sections; issue template links to Discussions.
+
 ### Changed
-- **No GitHub Actions:** removed all `.github/workflows/` and Dependabot — quality gate is
-  local-only (`just check`, `just audit-ready`). Releases are maintainer-built per
-  `docs/RELEASE.md`.
-- **OSS scrub:** fixed README quickstart path, removed stale CI badges, corrected security/docs
-  URLs; removed internal `.sdlc` / cross-project references from public docs.
+- **No GitHub Actions** (from alpha.1 follow-up): maintainer-local releases per `docs/RELEASE.md`.
+- `docs/INSTALL.md` — accurate install paths (git, releases, crates.io when published).
+- Public-readiness checklist in `docs/AUDIT_READINESS.md`.
 
 ## [0.1.0-alpha.1] - 2026-06-22
 
@@ -404,5 +411,6 @@ still change before `1.0.0`. Not independently audited.
 ### Notes
 - Vault is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
-[Unreleased]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.1...main
+[Unreleased]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.2...main
+[0.1.0-alpha.2]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.1

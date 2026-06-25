@@ -9,14 +9,14 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
 
+[Install](#install) · [Documentation](#documentation) · [Quickstart](#quickstart) · [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md)
+
 </div>
 
 > [!WARNING]
-> **Pre-alpha (`0.1.0-alpha.1`) — not independently audited — keep your own backup of anything you store.**
-> Vault is now **functional**: the cryptographic core is implemented and tested, and there's a
-> working CLI *and* a desktop app (create/unlock, import a `keys.txt`, search, copy, edit, 2FA
-> codes, auto-lock). What it has **not** had is an independent third-party security audit, and the
-> on-disk format may still change before 1.0. Use it, kick the tyres, report issues — just don't
+> **Pre-alpha (`0.1.0-alpha.2`) — not independently audited — keep your own backup of anything you store.**
+> Vault is **functional**: cryptographic core implemented and tested, working CLI *and* desktop app.
+> On-disk format may still change before 1.0. Use it, kick the tyres, report issues — just don't
 > make it the *only* copy of an irreplaceable secret yet. See [ROADMAP.md](ROADMAP.md).
 
 ---
@@ -51,101 +51,83 @@ developer who is nervous about AI exposure can actually adopt it.**
 | AI-era hardening | **CSPRNG generation + model-blind delivery** | Not designed for it |
 | How you verify the claims | **60 constraints** with distributed tests ([index](docs/CONSTRAINT_INDEX.md)) | Trust us |
 
-## Design at a glance
+## Install
 
-- **Cipher:** XChaCha20-Poly1305 in STREAM mode (64 KiB chunks, tag-verified before release).
-- **KDF:** Argon2id (default m=64 MiB, t=3, p=4), with an enforced minimum floor *and* a maximum
-  ceiling against hostile files.
-- **Envelope:** age-style multi-stanza — a random per-vault data key wrapped by any of: password
-  (always present), FIDO2/PRF, YubiKey, TPM, macOS Secure Enclave, Windows DPAPI. Lose a hardware
-  factor, keep your vault.
-- **Format:** versioned, KDBX-4-style header integrity (SHA-256 + keyed HMAC), encrypt-then-MAC body.
-- **Everything encrypted:** one opaque blob, safe to sync over Git / Syncthing / Dropbox.
-- **Zero network. Zero telemetry. Ever.**
+```sh
+# Fastest path — build from clone (see docs/INSTALL.md for GUI deps and releases)
+git clone https://github.com/leocelis/vault.git && cd vault
+./scripts/setup-rust.sh && ./scripts/install.sh   # → ~/.local/bin/vault
+```
 
-Full rationale: [docs/CRYPTO.md](docs/CRYPTO.md) · Format: [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md)
-· Threat model: [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) · The constraints: [vault_intent.yaml](vault_intent.yaml)
+Or download a **prebuilt binary** from [GitHub Releases](https://github.com/leocelis/vault/releases)
+and verify the SHA-256 checksum ([docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md)).
+
+Full options: [docs/INSTALL.md](docs/INSTALL.md) · `cargo install --git https://github.com/leocelis/vault.git --locked vault-cli`
 
 ## Quickstart
 
 ```sh
-# Build from source or `cargo install vault-cli --locked`; produces one static binary, no runtime deps.
-cargo build --release -p vault-cli
-alias vault=target/release/vault
-
-vault init                      # create a vault (prompts for a master password)
-vault import --format raw --yes samples/keys.txt   # migrate a messy keys.txt (use --yes when piped)
-vault gen --length 24           # generate a CSPRNG password…
-vault gen --words 8             # …or a diceware passphrase
-vault add github                # add an entry (no secrets on the command line)
-vault get github                # copy password to clipboard (auto-clears in 30s)
-vault otp github                # copy the current 2FA code (if the entry has a 2FA secret)
-vault ls --search git           # search after unlock (in-memory only)
-vault tune                      # benchmark Argon2id and recommend KDF params
-vault pad on                    # hide the file's exact size on untrusted storage (Padmé)
+vault init
+vault import --format raw --yes samples/keys.txt   # synthetic sample — safe to try
+vault ls
+vault get github                                   # copies to clipboard (model-blind)
+vault gen --length 24
+vault add myservice                                # interactive — no secrets on argv
 ```
 
-### Desktop app *(works today, locally)*
+Desktop app: `cargo run -p vault-gui` — drag `samples/keys.txt` onto the window to import.
 
-There is a simple, fast, pure-Rust **desktop window app** (`vault-gui`) over the same core — create
-or unlock a vault, **drag a `keys.txt` onto the window** (or pick one) to import with a masked
-review, **type to search**, and **copy** a password that stays **shadowed** on screen (the secret is
-never rendered; the clipboard auto-clears). You can add, edit, change, and delete entries.
+## Documentation
 
-```sh
-cargo run -p vault-gui          # launch the window
-./scripts/bundle-macos.sh       # macOS: build a double-clickable target/Vault.app
-```
+| Topic | Doc |
+|-------|-----|
+| Install & build | [docs/INSTALL.md](docs/INSTALL.md) |
+| CLI reference | [docs/CLI.md](docs/CLI.md) |
+| Threat model | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) |
+| Cryptography | [docs/CRYPTO.md](docs/CRYPTO.md) |
+| File format | [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md) |
+| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| 60 security constraints | [vault_intent.yaml](vault_intent.yaml) · [test index](docs/CONSTRAINT_INDEX.md) |
+| Use-case specs (22) | [docs/specs/](docs/specs/README.md) |
+| Roadmap | [ROADMAP.md](ROADMAP.md) |
+| Release verification | [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md) |
 
-It shares one vault with the CLI/TUI at `~/.vault/vault.vlt`, auto-locks when idle, and shows live
-2FA codes. (Functional but not yet independently audited — see the warning above.)
-
-Secrets are **never** passed as command-line arguments, and `vault get` delivers to the clipboard
-by default so an AI agent watching stdout can't scrape them. To be precise about the boundary:
-this defends against *incidental* capture (a secret landing in an agent's transcript); a hostile
-agent with shell access to an unlocked session is same-user malware, bounded — not eliminated — by
-auto-lock and clipboard concealment. See [docs/CLI.md](docs/CLI.md) and the
-[threat model](docs/THREAT_MODEL.md).
+Design at a glance: XChaCha20-Poly1305 STREAM · Argon2id · age-style multi-stanza envelope ·
+encrypt-then-MAC · **zero network, zero telemetry**.
 
 ## Project status
 
-Vault follows **Intent-Verified Development**: the design is captured as testable constraints
-*before* code. We are here:
-
-- ✅ Research foundation — [research/](research/)
-- ✅ Intent specification — [vault_intent.yaml](vault_intent.yaml) (60 constraints, 15 groups, v1.7.0)
-- ✅ Open-source scaffolding — this repository
-- ✅ **Core implementation** — encrypted format, Argon2id, in-memory protection, rollback
-  detection, CLI **and** desktop app (quality gate: `just check` + `just audit-ready` locally; see [ROADMAP.md](ROADMAP.md))
-- ⏳ Remaining features — hardware-backed unlock polish, sync/merge (see the roadmap)
-- ⏳ **1.0 release** — format freeze + broader constraint test coverage
+- ✅ Research + 60 constraint intent (v1.7.0) + CP-7 sweep (60/60 PASS)
+- ✅ CLI, TUI, desktop GUI on shared `vault-core`
+- ✅ Local quality gate: `just check` + `just audit-ready` (no paid CI)
+- ⏳ Hardware FFI polish, sync/merge, format freeze for 1.0 — [ROADMAP.md](ROADMAP.md)
 
 ## Repository layout
 
 ```
 vault/
 ├── crates/
-│   ├── vault-core/      # crypto, format, envelope, memory, rollback (the security core)
+│   ├── vault-core/      # crypto, format, envelope, memory, rollback
 │   ├── vault-cli/       # the `vault` binary
-│   ├── vault-tui/       # ratatui terminal UI (thin shell)
-│   ├── vault-gui/       # egui desktop window (thin shell)
-│   ├── vault-sys/       # OS calls (mlock, setrlimit) — the only `unsafe` boundary
-│   └── vault-hardware/  # optional FIDO2 / TPM / OS-keystore stanzas
-├── docs/                # architecture, threat model, CONSTRAINT_INDEX.md, ADRs
-├── research/            # the security research this design is built on
-├── fuzz/                # cargo-fuzz harnesses for the untrusted-input parsers
-├── benches/             # benchmark notes (C22 via `vault tune`)
-└── vault_intent.yaml    # the constraint specification — the source of truth
+│   ├── vault-gui/       # egui desktop app
+│   ├── vault-tui/       # ratatui terminal UI
+│   ├── vault-clip/      # clipboard concealment
+│   ├── vault-sys/       # mlock, setrlimit — only `unsafe` boundary
+│   └── vault-hardware/  # FIDO2 / TPM / OS keystore stanzas
+├── docs/                # specs, threat model, CONSTRAINT_INDEX
+├── samples/             # synthetic keys.txt for import demo
+├── research/            # security research behind the design
+└── vault_intent.yaml    # constraint specification (source of truth)
 ```
 
-## Contributing
+## Community
 
-We'd love help — see [CONTRIBUTING.md](CONTRIBUTING.md) and our [governance model](GOVERNANCE.md).
-Found a vulnerability? **Do not open a public issue** — follow [SECURITY.md](SECURITY.md).
+- **Questions:** [GitHub Discussions](https://github.com/leocelis/vault/discussions)
+- **Bugs:** [issue tracker](https://github.com/leocelis/vault/issues) · **Security:** [SECURITY.md](SECURITY.md)
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · [GOVERNANCE.md](GOVERNANCE.md)
 
 Maintained by [Leo](MAINTAINERS.md) and [Juan](MAINTAINERS.md).
 
 ## License
 
-Dual-licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at your option.
-See [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE). See [COPYRIGHT](COPYRIGHT).

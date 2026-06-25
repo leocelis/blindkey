@@ -1,6 +1,6 @@
 # Release Quality Gate (CP-7)
 
-Vault is **functional pre-1.0**. This document describes the **automated quality gate** before the
+Vault is **functional pre-1.0**. This document describes the **local quality gate** before the
 `1.0.0` tag ([ROADMAP](../ROADMAP.md) CP-7) — not a substitute for careful review.
 
 ## CP-7 sweep result (2026-06-18)
@@ -67,17 +67,22 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 
 ## Public repository readiness *(2026-06-25)*
 
-Checklist before flipping the repo from private → public. **Do not make public until every
-required row is ✅.**
+| Step | Status |
+|------|--------|
+| No private paths / keywords in tracked files | ✅ |
+| No secrets in tree or history | ✅ |
+| `github.com/leocelis/vault` URLs consistent | ✅ |
+| SECURITY contact (GHSA + email) | ✅ |
+| CP-7 constraint sweep (60/60 PASS) | ✅ |
+| Local quality gate green | ✅ |
+| GitHub Release with checksums (`v0.1.0-alpha.2`) | ✅ |
+| README / INSTALL / SUPPORT / Discussions | ✅ |
+| crates.io publish | ⬜ optional post-launch — `cargo login` + [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md) |
+| **Flip repo to public** | ⬜ **you** — one step below |
 
-| Step | Status | Notes |
-|------|--------|-------|
-| No private paths / keywords in tracked files | ✅ | `.sdlc/` gitignored; no workspace paths or private keywords |
-| No secrets in tree or history | ✅ | synthetic `FAKE` test tokens only |
-| `github.com/leocelis/vault` URLs consistent | ✅ | badges, GHSA, docs |
-| SECURITY contact (GHSA + email fallback) | ✅ | `SECURITY.md`, `MAINTAINERS.md` |
-| CP-7 constraint sweep | ✅ | 60/60 PASS — [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) |
-| Local quality gate green | ✅ | `just audit-ready` (no paid CI) |
-| First GitHub Release with checksums | ⬜ | maintainer-local build per [`RELEASE.md`](RELEASE.md) |
-| crates.io manual publish | ⬜ | per [`CRATES_IO_TRUSTED_PUBLISHING.md`](CRATES_IO_TRUSTED_PUBLISHING.md) |
-| **Flip repo to public** | ⬜ | **intentionally deferred** |
+### Flip to public (one step)
+
+GitHub → **Settings** → **General** → **Danger zone** → **Change repository visibility** → **Public**.
+
+After flipping: enable **Security advisories** tab if prompted; post an announcement in
+[Discussions](https://github.com/leocelis/vault/discussions).

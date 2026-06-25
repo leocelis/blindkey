@@ -1,6 +1,7 @@
 # Rust
 /target
 **/target
+/dist/
 Cargo.lock.bak
 *.rs.bk
 # Project-scoped Rust toolchain (RUSTUP_HOME / CARGO_HOME live here — never machine-wide).
