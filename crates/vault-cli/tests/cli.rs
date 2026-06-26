@@ -659,9 +659,9 @@ fn cli_rollback_detection() {
     let mut up_args = vec!["--vault", vs, "upgrade-kdf"];
     up_args.extend_from_slice(&[
         "--kdf-m-cost",
-        "8192",
+        "19456",
         "--kdf-t-cost",
-        "1",
+        "2",
         "--kdf-p-cost",
         "1",
     ]);
