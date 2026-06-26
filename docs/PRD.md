@@ -1,6 +1,6 @@
 # Vault — Product Requirements Document (PRD)
 
-> **Status:** Accepted v0.2 · June 2026 · **functional pre-1.0** (CLI + desktop app; format may change before 1.0)
+> **Status:** Accepted v0.2 · June 2026 · **v1.0.0** (CLI + desktop app; format v1 frozen per ADR-0005)
 > **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (60 testable constraints, v1.7.0),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),
@@ -49,8 +49,10 @@ designed for it:
    field; nothing is marketing.
 5. **Simple beats clever.** One binary, one file, one command to install. Complexity users
    can't verify is risk, not protection.
-6. **Never lock the user out.** Any-of-N unlock: hardware factors are additive, the password
-   always works, losing a YubiKey never loses the vault.
+6. **Never lock the user out.** Required-both 2FA (YubiKey or keyfile on CLI/GUI) keeps a recovery
+   stanza; the password-only path always exists for vaults without 2FA. Deferred factors (FIDO2,
+   TPM, Secure Enclave) follow the same OR-unlock design when they ship — see
+   [guides/hardware-factor-status.md](guides/hardware-factor-status.md).
 
 ## 4. Target users (personas)
 
@@ -135,9 +137,12 @@ unlocked merge. (Per-entry mergeable encryption is deliberately prohibited — d
 per-entry encryption enables leakage-abuse reconstruction; Grubbs et al. 2017.)
 
 ### UC-9 · Add a hardware factor — without lockout risk
-**Persona:** P1, P2 · **Constraints:** C5, C6, C14, C15
+**Persona:** P1, P2 · **Constraints:** C5, C6, C14, C15 · **Status (v1.0.0):** **YubiKey
+challenge-response** and **keyfile 2FA** ship on CLI/GUI with recovery codes. **FIDO2 (libfido2),
+TPM PCR seal, Secure Enclave, and DPAPI** are design-complete with **mock/stub paths only** — no
+production device FFI until S-8a/S-8c ([hardware-factor-status.md](guides/hardware-factor-status.md)).
 
-The user enrolls a FIDO2 key (`hmac-secret` via libfido2), YubiKey challenge-response, TPM
+The target design: enroll FIDO2 (`hmac-secret` via libfido2), YubiKey challenge-response, TPM
 PCR-sealed stanza, macOS Secure Enclave, or Windows DPAPI as an *additional* way to unlock.
 Any single stanza unlocks (OR model); the password stanza always remains. Losing the
 hardware never loses the vault. TPM PCR drift after a firmware update produces a clear

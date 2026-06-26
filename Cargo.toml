@@ -11,10 +11,11 @@ members = [
     "crates/vault-sys",
     "crates/vault-hardware",
     "crates/vault-clip",
+    "crates/vault-agent",
 ]
 
 [workspace.package]
-version = "0.1.0-alpha.3"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.96"            # MSRV — keep in sync with rust-toolchain.toml (constraint C24).
 license = "MIT OR Apache-2.0"

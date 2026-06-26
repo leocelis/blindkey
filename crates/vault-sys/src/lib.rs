@@ -14,8 +14,10 @@
 
 /// Disable core dumps so a crash cannot leave secrets in a core file (constraint C25).
 ///
-/// On Unix: `setrlimit(RLIMIT_CORE, 0)`, plus `prctl(PR_SET_DUMPABLE, 0)` on Linux (which also
-/// blocks `ptrace` attach). Returns `true` on success, `false` if unsupported or it failed.
+/// On Unix: `setrlimit(RLIMIT_CORE, 0)`. On Linux, also `prctl(PR_SET_DUMPABLE, 0)` (blocks
+/// same-uid `ptrace` attach and non-root `/proc/<pid>/mem` under default Yama — gap B3) and
+/// best-effort `"0"` to `/proc/self/coredump_filter` when writable. Returns `true` when the
+/// required platform calls succeed; coredump_filter failure does not fail the return value.
 pub fn disable_core_dumps() -> bool {
     #[cfg(unix)]
     {
@@ -29,6 +31,7 @@ pub fn disable_core_dumps() -> bool {
         {
             // SAFETY: prctl with PR_SET_DUMPABLE takes scalar args; no memory is dereferenced.
             let dumpable_ok = unsafe { libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) } == 0;
+            write_coredump_filter_zero();
             core_ok && dumpable_ok
         }
         #[cfg(not(target_os = "linux"))]
@@ -42,24 +45,47 @@ pub fn disable_core_dumps() -> bool {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn write_coredump_filter_zero() {
+    use std::io::Write;
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .write(true)
+        .open("/proc/self/coredump_filter")
+    {
+        let _ = f.write_all(b"0");
+    }
+}
+
 /// Lock the pages backing `[ptr, ptr + len)` into RAM so secrets stay off swap (constraint C12).
 ///
 /// Best-effort: returns `false` on failure (e.g. `RLIMIT_MEMLOCK` exceeded, or an unprivileged
-/// container). `len == 0` is a no-op success.
+/// container). `len == 0` is a no-op success. See [`lock_region_errno`] for the failure errno.
 pub fn lock_region(ptr: *const u8, len: usize) -> bool {
+    lock_region_errno(ptr, len).is_ok()
+}
+
+/// Like [`lock_region`], but returns the `errno` from a failed `mlock(2)` (Unix only).
+pub fn lock_region_errno(ptr: *const u8, len: usize) -> Result<(), i32> {
     if len == 0 {
-        return true;
+        return Ok(());
     }
     #[cfg(unix)]
     {
         // SAFETY: mlock operates on page tables for the given range; it does not read/write the
-        // bytes. A bad range returns an errno (handled as `false`), never UB.
-        unsafe { libc::mlock(ptr as *const libc::c_void, len) == 0 }
+        // bytes. A bad range returns an errno (handled below), never UB.
+        let rc = unsafe { libc::mlock(ptr as *const libc::c_void, len) };
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::last_os_error()
+                .raw_os_error()
+                .unwrap_or(-1))
+        }
     }
     #[cfg(not(unix))]
     {
         let _ = (ptr, len);
-        false
+        Err(-1)
     }
 }
 
@@ -161,5 +187,28 @@ mod tests {
         unlock_region(buf.as_ptr(), buf.len());
         // empty region is a trivial success
         assert!(lock_region(buf.as_ptr(), 0));
+    }
+
+    /// Gap B3 — non-dumpable process blocks same-uid ptrace under default Yama.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_non_dumpable_after_harden() {
+        assert!(disable_core_dumps(), "RLIMIT_CORE + PR_SET_DUMPABLE must succeed");
+        // SAFETY: PR_GET_DUMPABLE returns the dumpable flag; no pointers.
+        let dumpable = unsafe { libc::prctl(libc::PR_GET_DUMPABLE, 0, 0, 0, 0) };
+        assert_eq!(dumpable, 0, "process must be non-dumpable (anti-ptrace B3)");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_coredump_filter_zero_when_writable() {
+        assert!(disable_core_dumps());
+        if let Ok(raw) = std::fs::read_to_string("/proc/self/coredump_filter") {
+            assert_eq!(
+                raw.trim(),
+                "0",
+                "coredump_filter should be cleared when writable (C25)"
+            );
+        }
     }
 }

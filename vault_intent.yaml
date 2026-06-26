@@ -244,10 +244,14 @@ constraints:
       Output: 32 bytes. This output is the IKM (input keying material) passed to the
       HKDF step in C5 — it is NOT used directly as the wrapping key. The final
       wrapping_key = HKDF-SHA-256(ikm=argon2id_output, salt=vault_id, info="vault-pw-wrap-v1").
-      If stored params are BELOW the floor on open, the vault MUST:
+      If stored params are BELOW the floor on **open**, the vault MUST:
         (a) Print a prominent WARNING to stderr.
         (b) Offer the user an upgrade prompt before unlocking.
         (c) NOT silently proceed without warning.
+      On **creation** (`vault init` / `Vault::create`) and **KDF upgrade targets**
+      (`vault upgrade-kdf` / `change_kdf`), parameters below the floor MUST be rejected
+      with [`Error::KdfBelowFloor`]. `vault init` MAY accept `--allow-weak-kdf` for
+      scripted/tests only. Import opens an existing vault and follows the open policy.
       The vault MUST provide `vault upgrade-kdf` to re-derive with current recommended params.
       `vault upgrade-kdf` MUST be a FULL body-writing save (Gate 0 G0.3): it MUST
       increment vault_version (C16), regenerate master_seed and nonce_prefix (C8, C1),
@@ -305,6 +309,9 @@ constraints:
       INTEGRATION (G0.3): Run `vault upgrade-kdf`; assert vault_version incremented by 1,
         master_seed and nonce_prefix both regenerated, and the body ciphertext differs
         from the pre-upgrade file (full save, not a header-only rewrite).
+      INTEGRATION: `vault init` with m=8192,t=1,p=1 without `--allow-weak-kdf` MUST fail
+        with below-floor error; with `--allow-weak-kdf` MUST succeed.
+      INTEGRATION: `vault upgrade-kdf` targeting below-floor params MUST fail.
 
   - id: C3
     group: G1

@@ -1,7 +1,8 @@
 # ADR-0003: Per-body-write nonce_prefix as the payload-key HKDF salt
 
-- **Status:** Proposed (pending two-maintainer sign-off — intent v1.1.0, Gate 0 G0.1)
-- **Date:** 2026-06-10
+- **Status:** Accepted
+- **Date:** 2026-06-26
+- **Deciders:** maintainers (Gate 0 G0.1)
 - **Constraints:** C1, C8, C4 (via SC6)
 - **Supersedes:** the payload-key derivation paragraph of [ADR-0002](0002-aead-xchacha20-poly1305-stream.md)
   (`payload_key = HKDF(ikm=data_key, salt=b"", info="vault-payload-v1")`). ADR-0002's cipher and

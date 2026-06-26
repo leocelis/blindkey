@@ -1,8 +1,15 @@
 # Third-Party Security Audit (Optional)
 
 Vault v1.0 is gated on the **CP-7 release quality gate** (`just audit-ready` + IVD constraint
-sweep), not on commissioning an external audit. A third-party review is **recommended** before
-wide production adoption but remains optional.
+sweep), not on commissioning an external audit. A third-party review is **optional** before
+wide production adoption.
+
+**Project decision (2026-06-26):** maintainers declined commissioning an external firm audit;
+trust posture is **semi-automatic gates** — CP-7 (`audit-ready`), 60 IVD constraints + tests,
+`cargo audit`/`deny`, fuzz targets (C30), reproducible releases (C34). Do not market Vault as
+"independently audited." See [AUDIT_READINESS.md](AUDIT_READINESS.md).
+
+The RFP pack in [AUDIT_COMMISSION.md](AUDIT_COMMISSION.md) remains if policy changes later.
 
 ## When to commission one
 

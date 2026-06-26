@@ -8,17 +8,17 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 
 [![CI](https://github.com/leocelis/vault/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/vault/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Status: pre-alpha / pre-1.0 / unaudited](https://img.shields.io/badge/status-pre--alpha%20%2F%20pre--1.0%20%2F%20unaudited-yellow.svg)](#project-status)
+[![Status: v1.0.0 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.0.0%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
 
 [Install](#install) · [Documentation](#documentation) · [Quickstart](#quickstart) · [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md)
 
 </div>
 
 > [!WARNING]
-> **Pre-alpha (`0.1.0-alpha.3`) — not independently audited — keep your own backup of anything you store.**
+> **v1.0.0 — not independently third-party audited — keep your own backup of anything you store.**
 > Vault is **functional**: cryptographic core implemented and tested, working CLI *and* desktop app.
-> On-disk format may still change before 1.0. Use it, kick the tyres, report issues — just don't
-> make it the *only* copy of an irreplaceable secret yet. See [ROADMAP.md](ROADMAP.md).
+> **On-disk format v1 is stable** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)) — vault files from
+> alpha releases open on 1.x without migration. See [ROADMAP.md](ROADMAP.md) and [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -46,7 +46,7 @@ developer who is nervous about AI exposure can actually adopt it.**
 |---|---|---|
 | Plaintext metadata (URLs, titles, timestamps) | **None — all encrypted** | Often leaks at least some |
 | KDF | **Argon2id, floor enforced on open** | Argon2d / PBKDF2; no floor check |
-| Unlock model | **Multi-stanza unlock** (password + optional hardware; OS keystore planned) | Single factor |
+| Unlock model | **Multi-stanza unlock** — password always works; optional **YubiKey or keyfile 2FA** on CLI/GUI ([hardware status](docs/guides/hardware-factor-status.md); FIDO2/TPM/SE deferred) | Single factor |
 | In-memory secrets | **`zeroize` + `mlock`** | Often left in plaintext |
 | Whole-file rollback by a sync backend | **Detected** (monotonic counter) | Undetected |
 | AI-era hardening | **CSPRNG generation + model-blind delivery** | Not designed for it |
@@ -56,12 +56,12 @@ developer who is nervous about AI exposure can actually adopt it.**
 
 **Fastest path** — download from [GitHub Releases](https://github.com/leocelis/vault/releases), verify SHA256SUMS, `chmod +x`, move to PATH.
 
-Prebuilt binaries today: **macOS x86_64 only** (`v0.1.0-alpha.3`). Linux, Windows, and Apple Silicon: build from source ([docs/INSTALL.md](docs/INSTALL.md)).
+Prebuilt binaries today: **macOS x86_64 only** (`v1.0.0`). Linux, Windows, and Apple Silicon: build from source ([docs/INSTALL.md](docs/INSTALL.md)).
 
 ```sh
 # Example (macOS x86_64) — see docs/VERIFYING_RELEASES.md
-curl -LO https://github.com/leocelis/vault/releases/download/v0.1.0-alpha.3/vault-x86_64-apple-darwin
-curl -LO https://github.com/leocelis/vault/releases/download/v0.1.0-alpha.3/SHA256SUMS.txt
+curl -LO https://github.com/leocelis/vault/releases/download/v1.0.0/vault-x86_64-apple-darwin
+curl -LO https://github.com/leocelis/vault/releases/download/v1.0.0/SHA256SUMS.txt
 shasum -a 256 -c SHA256SUMS.txt
 chmod +x vault-x86_64-apple-darwin && sudo mv vault-x86_64-apple-darwin /usr/local/bin/vault
 ```
@@ -73,7 +73,7 @@ git clone https://github.com/leocelis/vault.git && cd vault
 ./scripts/setup-rust.sh && ./scripts/install.sh   # → ~/.local/bin/vault
 ```
 
-Or `cargo install --git https://github.com/leocelis/vault.git --tag v0.1.0-alpha.3 --locked vault-cli`
+Or `cargo install --git https://github.com/leocelis/vault.git --tag v1.0.0 --locked vault-cli`
 
 Full options: [docs/INSTALL.md](docs/INSTALL.md)
 
@@ -114,7 +114,8 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 - ✅ Research + 60 constraint intent (v1.7.0) + CP-7 sweep (60/60 PASS)
 - ✅ CLI, TUI, desktop GUI on shared `vault-core`
 - ✅ Quality gate: local `just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml) on push
-- ⏳ Hardware FFI polish, sync/merge, format freeze for 1.0 — [ROADMAP.md](ROADMAP.md)
+- ✅ **v1.0.0** — first stable release; format v1 frozen ([ADR-0005](docs/adr/0005-format-v1-freeze.md))
+- ⏳ Hardware FFI polish, sync/merge, optional third-party audit — [ROADMAP.md](ROADMAP.md)
 
 ## Repository layout
 
@@ -127,7 +128,7 @@ vault/
 │   ├── vault-tui/       # ratatui terminal UI
 │   ├── vault-clip/      # clipboard concealment
 │   ├── vault-sys/       # mlock, setrlimit — only `unsafe` boundary
-│   └── vault-hardware/  # FIDO2 / TPM / OS keystore stanzas
+│   └── vault-hardware/  # YubiKey CR (CLI); FIDO2/TPM mocks — see docs/guides/hardware-factor-status.md
 ├── docs/                # specs, threat model, CONSTRAINT_INDEX
 ├── samples/             # synthetic keys.txt for import demo
 ├── research/            # security research behind the design

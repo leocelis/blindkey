@@ -36,7 +36,8 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
                 │ optional
 ┌───────────────▼─────────────────────────────────────────────┐
 │  vault-hardware  (optional crate, feature-gated)             │
-│  FIDO2 (libfido2) · TPM 2.0 · Secure Enclave · DPAPI         │  C14, C15
+│  v1 shipped: YubiKey CR (`ykman`) · keyfile 2FA              │
+│  mock/stub only: FIDO2 (libfido2) · TPM · SE · DPAPI (S-8*)  │  C14, C15
 └─────────────────────────────────────────────────────────────┘
 ```
 

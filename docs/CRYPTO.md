@@ -31,8 +31,11 @@ master password ──Argon2id(salt, m,t,p)──▶ master_key
 
 - The **data key** is random per vault (CSPRNG), never derived from the password, never stored in
   plaintext (C4). Changing the password re-wraps one stanza; the payload is untouched.
-- **Any-of-N stanzas**: password (always present) + optional FIDO2 / YubiKey / TPM / Secure Enclave /
-  DPAPI. Any single valid stanza unlocks (C5). Lose a hardware factor → password still works.
+- **Any-of-N stanzas**: password (always present) + optional second factors. **v1 ships** YubiKey
+  challenge-response and keyfile **2FA** (required-both AND model). **Deferred:** FIDO2 / TPM /
+  Secure Enclave / DPAPI — file format and mocks exist; live device FFI is S-8a/S-8c ([hardware
+  factor status](guides/hardware-factor-status.md)). Optional OR-unlock stanzas (lose hardware →
+  password still works) apply to future factors per C5.
 
 ## Why these choices (the short version)
 
@@ -58,6 +61,12 @@ master password ──Argon2id(salt, m,t,p)──▶ master_key
 
 ## Post-quantum posture
 
-The symmetric core (XChaCha20, Argon2id, HMAC/HKDF-SHA-256) retains ~128-bit security under Grover —
-fine. Optional asymmetric stanzas (FIDO2 P-256, Secure Enclave secp256r1) wrap a symmetric data key
-and are never the sole path. The versioned format (C7) reserves room for a future hybrid-PQ wrap.
+The symmetric core (XChaCha20-Poly1305, Argon2id, HMAC/HKDF-SHA-256) retains ~128-bit security
+under Grover — adequate for a password vault. Optional asymmetric stanzas (FIDO2 P-256, Secure
+Enclave secp256r1) wrap only the data key; the password path always remains (C5).
+
+**Canonical statement:** [guides/post-quantum-posture.md](guides/post-quantum-posture.md).
+
+**Agility:** `format_version` and typed algorithm ids ([FILE_FORMAT.md](FILE_FORMAT.md)) allow
+new primitives in a future format version. v1 is frozen (ADR-0005); hybrid-PQ wrap (e.g. ML-KEM
+alongside classical seal) is reserved for a v2 cycle with migration — not shipped in 1.0.

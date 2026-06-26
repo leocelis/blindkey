@@ -19,6 +19,7 @@ use crate::unlock_secret::{self, UnlockSecretOpts};
 use crate::Command;
 
 type CmdResult = Result<(), String>;
+type SaveResult = Result<Vec<u8>, String>;
 
 pub const USAGE_ERROR_PREFIX: &str = "usage:";
 pub const CLIPBOARD_UNAVAILABLE_PREFIX: &str = "clipboard-unavailable:";
@@ -54,8 +55,10 @@ fn copy_secret_to_clipboard(secret: &[u8], timeout: u64, label: &str) -> CmdResu
     Ok(())
 }
 
-/// Shown on init/import/open paths — pre-1.0 software has not had an independent audit.
-const PRE_RELEASE_NOTICE: &str = "note: Vault is pre-1.0 and not independently audited — \
+/// Shown on init/import/open paths — honest unaudited posture (third-party audit optional per security-gap review P1).
+/// On-disk format v1 is stable (ADR-0005); this notice covers audit/backup only.
+pub const PRE_RELEASE_NOTICE: &str =
+    "note: Vault has not had an independent third-party security audit — \
 keep a separate backup; do not make this your only copy of irreplaceable secrets.";
 
 fn pre_release_notice() {
@@ -81,17 +84,55 @@ fn backup_vault_if_exists(path: &Path) -> CmdResult {
 }
 
 /// Options that affect how a vault is opened — the rollback policy (constraint C16).
-pub struct OpenOpts {
+pub(crate) struct OpenOpts {
     /// Proceed past a regression without prompting (the anchor is never lowered).
     pub allow_rollback: bool,
     /// On a fresh machine (no anchor), require at least this version (TOFU mitigation).
     pub expect_min_version: Option<u64>,
+    /// Force strict YubiKey-at-save (constraint C5).
+    pub strict_yubikey: bool,
+    /// Allow graceful stale YubiKey stanza on save (constraint C5).
+    pub allow_stale_yubikey: bool,
     /// Unlock a YubiKey-2FA vault with its recovery code instead of the key (UC-09 anti-lockout).
     pub recovery: bool,
     /// Keyfile path supplied as the second factor for a keyfile-2FA vault.
     pub keyfile: Option<PathBuf>,
     /// Non-interactive master-password channels (UC-05 §3.2).
     pub unlock: UnlockSecretOpts,
+}
+
+fn effective_yubikey_strict(vault: &vault_core::Vault, opts: &OpenOpts) -> bool {
+    if opts.allow_stale_yubikey {
+        return false;
+    }
+    if opts.strict_yubikey {
+        return true;
+    }
+    vault.yubikey_strict()
+}
+
+/// Body-writing save with YubiKey refresh policy (constraint C5).
+fn save_vault(vault: &mut vault_core::Vault, password: &[u8], opts: &OpenOpts) -> SaveResult {
+    use vault_core::{Error, SaveOptions, YUBIKEY_STALE_WARNING};
+    let strict = effective_yubikey_strict(vault, opts);
+    if vault.has_yubikey_2fa() {
+        let mut respond = |challenge: &[u8; 32]| -> Result<Zeroizing<Vec<u8>>, Error> {
+            vault_hardware::yubikey::challenge_response(challenge).map_err(Error::Hardware)
+        };
+        let report = vault
+            .save_with(SaveOptions {
+                password: Some(password),
+                yubikey_strict: Some(strict),
+                yubikey_respond: Some(&mut respond),
+            })
+            .map_err(|e| e.to_string())?;
+        if report.yubikey_stale {
+            eprintln!("{YUBIKEY_STALE_WARNING}");
+        }
+        Ok(report.bytes)
+    } else {
+        vault.save().map_err(|e| e.to_string())
+    }
 }
 
 /// Route a parsed command to its handler.
@@ -102,12 +143,16 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
             kdf_t_cost,
             kdf_p_cost,
             allow_weak_password,
+            allow_weak_kdf,
+            with_recovery_code,
         } => cmd_init(
             &vault_path(vault_opt)?,
             kdf_m_cost,
             kdf_t_cost,
             kdf_p_cost,
             allow_weak_password,
+            allow_weak_kdf,
+            with_recovery_code,
             &opts.unlock,
         ),
         Command::Import {
@@ -164,13 +209,27 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
             kdf_p_cost,
             opts,
         ),
+        Command::RotateDataKey { re_seal_recovery } => {
+            cmd_rotate_data_key(&vault_path(vault_opt)?, re_seal_recovery, opts)
+        }
         Command::Pad { state } => cmd_pad(&vault_path(vault_opt)?, &state, opts),
         Command::Tune => cmd_tune(),
-        Command::Enroll { factor, path } => {
-            cmd_enroll(&vault_path(vault_opt)?, &factor, path.as_deref(), opts)
+        Command::Enroll {
+            factor,
+            path,
+            graceful_yubikey,
+        } => cmd_enroll(
+            &vault_path(vault_opt)?,
+            &factor,
+            path.as_deref(),
+            graceful_yubikey,
+            opts,
+        ),
+        Command::EnrollTpm => cmd_enroll_tpm(&vault_path(vault_opt)?, opts),
+        Command::ReEnrollTpm => cmd_re_enroll_tpm(&vault_path(vault_opt)?, opts),
+        Command::Agent { action } => {
+            crate::agent::dispatch(&vault_path(vault_opt)?, opts, action)
         }
-        Command::EnrollTpm => cmd_enroll_tpm(),
-        Command::ReEnrollTpm => cmd_re_enroll_tpm(),
         Command::Lock => cmd_lock(),
         Command::Stanzas { action } => cmd_stanzas(&vault_path(vault_opt)?, action, opts),
     }
@@ -184,6 +243,8 @@ fn cmd_init(
     t_cost: u32,
     p_cost: u32,
     allow_weak_password: bool,
+    allow_weak_kdf: bool,
+    with_recovery_code: bool,
     unlock: &UnlockSecretOpts,
 ) -> CmdResult {
     if path.exists() {
@@ -209,8 +270,24 @@ fn cmd_init(
         }
     }
     eprintln!("Deriving key (Argon2id)…");
-    let mut vault =
-        Vault::create(password.as_bytes(), m_cost, t_cost, p_cost).map_err(|e| e.to_string())?;
+    let mut vault = Vault::create(password.as_bytes(), m_cost, t_cost, p_cost, allow_weak_kdf)
+        .map_err(|e| e.to_string())?;
+
+    let add_recovery = with_recovery_code
+        || (std::io::stdin().is_terminal()
+            && confirm(
+                "Add an offline recovery code? There is NO password reset — lose master password \
+                 AND recovery code = lose the vault forever.",
+            )?);
+    let mut printed_recovery: Option<String> = None;
+    if add_recovery {
+        let recovery = recovery_code()?;
+        vault
+            .add_recovery_stanza(recovery.as_bytes())
+            .map_err(|e| e.to_string())?;
+        printed_recovery = Some(recovery);
+    }
+
     let bytes = vault.save().map_err(|e| e.to_string())?;
     write_vault(path, &bytes)?;
     // Seed a recoverable copy alongside the new vault (pre-1.0: never the only copy).
@@ -220,6 +297,12 @@ fn cmd_init(
     }
     note_saved(&vault); // C16: seed the local anchor at the initial version
     pre_release_notice();
+    if let Some(recovery) = printed_recovery {
+        eprintln!("\n   RECOVERY CODE — write it down OFFLINE. Shown once; not stored in plaintext:");
+        eprintln!("       {recovery}\n");
+        eprintln!("   Unlock with:  vault --recovery <command>");
+        eprintln!("   (Master password still works. No server reset — lose both secrets = vault lost.)");
+    }
     eprintln!("Created vault at {}", path.display());
     Ok(())
 }
@@ -280,7 +363,7 @@ fn cmd_import(path: &Path, format: &str, source: &Path, yes: bool, opts: &OpenOp
         vault.add_entry(entry);
     }
     backup_vault_if_exists(path)?;
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     eprintln!("Imported {n} entries into {}.", path.display());
@@ -473,7 +556,7 @@ fn cmd_find(path: &Path, query: &str, stdout: bool, timeout: u64, opts: &OpenOpt
 
     // Learn: bump the chosen entry's frecency and persist it (inside the encrypted payload — C36).
     vault.record_use(id, now);
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     Ok(())
@@ -586,21 +669,57 @@ fn cmd_gen_passphrase(n: usize, wordlist: Option<&Path>) -> CmdResult {
     Ok(())
 }
 
-/// TPM enroll stub — full PCR sealing lands behind the `tpm` feature (constraint C15).
-fn cmd_enroll_tpm() -> CmdResult {
-    Err(
-        "TPM stanza enrollment is not enabled in this build (optional M7 feature). \
-         See `vault enroll-tpm --help` for PCR/firmware guidance."
-            .to_string(),
-    )
+/// TPM enroll — seal OR stanza to PCR 7 via tpm2-tools (constraint C15 / S-8c).
+fn cmd_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
+    use vault_core::envelope::tpm::DEFAULT_PCR_INDEX;
+    if !vault_hardware::tpm::available() {
+        return Err(
+            "tpm2-tools not found or TPM unavailable — install tpm2-tools and ensure a TPM 2.0 device"
+                .to_string(),
+        );
+    }
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+    let mut vault = open_vault(path, password.as_bytes(), opts)?;
+    eprintln!("Sealing TPM stanza to PCR {DEFAULT_PCR_INDEX} (Secure Boot state)…");
+    let (ikm, extra) = vault_hardware::tpm::seal(DEFAULT_PCR_INDEX).map_err(|e| e.to_string())?;
+    vault
+        .set_tpm_stanza(&ikm, extra)
+        .map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), &opts)?;
+    write_vault(path, &out)?;
+    note_saved(&vault);
+    eprintln!(
+        "\n✅ TPM stanza enrolled — you can unlock without the password when PCR {DEFAULT_PCR_INDEX} matches."
+    );
+    eprintln!("   Password unlock still works. After firmware/kernel changes, run `vault re-enroll-tpm`.");
+    Ok(())
 }
 
-/// TPM re-enroll stub (constraint C15).
-fn cmd_re_enroll_tpm() -> CmdResult {
-    Err(format!(
-        "TPM re-enrollment is not enabled in this build. {}",
-        vault_hardware::tpm_policy::PCR_MISMATCH_MESSAGE
-    ))
+/// TPM re-enroll after PCR drift (constraint C15).
+fn cmd_re_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
+    use vault_core::envelope::tpm::DEFAULT_PCR_INDEX;
+    if !vault_hardware::tpm::available() {
+        return Err(vault_hardware::tpm_policy::PCR_MISMATCH_MESSAGE.to_string());
+    }
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+    let mut vault = open_vault(path, password.as_bytes(), opts)?;
+    if !vault
+        .stanzas()
+        .iter()
+        .any(|s| s.stanza_type == vault_core::format::stanza::kind::TPM)
+    {
+        return Err("this vault has no TPM stanza — run `vault enroll-tpm` first".into());
+    }
+    eprintln!("Re-sealing TPM stanza to current PCR {DEFAULT_PCR_INDEX}…");
+    let (ikm, extra) = vault_hardware::tpm::seal(DEFAULT_PCR_INDEX).map_err(|e| e.to_string())?;
+    vault
+        .set_tpm_stanza(&ikm, extra)
+        .map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
+    write_vault(path, &out)?;
+    note_saved(&vault);
+    eprintln!("✅ TPM stanza re-sealed to current PCR values.");
+    Ok(())
 }
 
 fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> CmdResult {
@@ -627,12 +746,8 @@ fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> Cm
                 Some(kind::PW_KEYFILE) => {
                     "use `vault enroll keyfile <PATH>` to add keyfile 2FA".to_string()
                 }
-                Some(kind::TPM) => {
-                    "use `vault enroll-tpm` (when enabled in your build)".to_string()
-                }
-                Some(kind::FIDO2) => {
-                    "FIDO2 enrollment is not yet exposed on the CLI (M7)".to_string()
-                }
+                Some(kind::TPM) => "use `vault enroll-tpm`".to_string(),
+                Some(kind::FIDO2) => "use `vault enroll fido2`".to_string(),
                 Some(kind::PASSWORD) => {
                     "password stanza is always present at init (C5)".to_string()
                 }
@@ -652,10 +767,14 @@ fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> Cm
             let password = unlock_secret::read_master_password(false, &opts.unlock)?;
             let mut vault = open_vault(path, password.as_bytes(), opts)?;
             vault.remove_stanza_type(t).map_err(|e| e.to_string())?;
-            let out = vault.save().map_err(|e| e.to_string())?;
+            let out = save_vault(&mut vault, password.as_bytes(), opts)?;
             write_vault(path, &out)?;
             note_saved(&vault);
             eprintln!("Removed {:?} stanza.", kind_name(t));
+            eprintln!(
+                "hint: old sync copies may still carry the removed factor; run `vault rotate-data-key` \
+                 after a compromise (not merely device loss)."
+            );
             Ok(())
         }
     }
@@ -716,7 +835,7 @@ fn cmd_add(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
         expires_at: None,
         custom_fields: Vec::new(),
     });
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     if generated {
@@ -775,7 +894,7 @@ fn cmd_edit(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
         // blank → keep the current 2FA secret unchanged
     }
     e.modified_at = now_unix();
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     eprintln!("Updated {name:?}.");
@@ -794,21 +913,113 @@ fn cmd_rm(path: &Path, name: &str, opts: &OpenOpts) -> CmdResult {
         return Err("aborted".to_string());
     }
     vault.remove(name);
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     eprintln!("Deleted {name:?}.");
+    eprintln!(
+        "note: entry removed from this vault file (crypto-shredded in the new blob); older \
+         `.bak`/sync copies may still hold it — see docs/guides/deletion-and-rotation.md"
+    );
+    Ok(())
+}
+
+fn read_recovery_code_for_rotation(re_seal: bool) -> Result<Zeroizing<String>, String> {
+    if !re_seal {
+        return Err(
+            "this vault has a recovery-code stanza — pass --re-seal-recovery and enter the \
+             recovery code to keep the anti-lockout path valid"
+                .to_string(),
+        );
+    }
+    if !std::io::stdin().is_terminal() {
+        return Err(
+            "non-interactive session — cannot prompt for recovery code; use a TTY or omit \
+             --re-seal-recovery on vaults without a recovery stanza"
+                .to_string(),
+        );
+    }
+    rpassword::prompt_password("Recovery code: ")
+        .map(Zeroizing::new)
+        .map_err(|e| e.to_string())
+}
+
+fn cmd_rotate_data_key(path: &Path, re_seal_recovery: bool, opts: &OpenOpts) -> CmdResult {
+    use vault_core::format::stanza::kind;
+    use vault_core::{Error, RotateDataKeyOptions};
+
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+    let mut vault = open_vault(path, password.as_bytes(), opts)?;
+
+    let needs_recovery = vault.has_recovery_stanza();
+    let recovery = if needs_recovery {
+        Some(read_recovery_code_for_rotation(re_seal_recovery)?)
+    } else {
+        None
+    };
+
+    let keyfile: Option<Zeroizing<Vec<u8>>> = if vault
+        .stanzas()
+        .iter()
+        .any(|s| s.stanza_type == kind::PW_KEYFILE)
+    {
+        let kf_path = opts.keyfile.as_ref().ok_or_else(|| {
+            "this vault requires a keyfile — pass `--keyfile <PATH>` for rotate-data-key".to_string()
+        })?;
+        Some(Zeroizing::new(
+            std::fs::read(kf_path)
+                .map_err(|e| format!("cannot read keyfile {}: {e}", kf_path.display()))?,
+        ))
+    } else {
+        None
+    };
+
+    if vault.has_yubikey_2fa() {
+        eprintln!("Touch your YubiKey to re-seal the 2FA stanza…");
+        let mut respond = |challenge: &[u8; 32]| -> Result<Zeroizing<Vec<u8>>, Error> {
+            vault_hardware::yubikey::challenge_response(challenge).map_err(Error::Hardware)
+        };
+        let mut rotate_opts = RotateDataKeyOptions {
+            password: password.as_bytes(),
+            recovery_code: recovery.as_deref().map(|s| s.as_bytes()),
+            keyfile: keyfile.as_deref().map(|k| k.as_slice()),
+            yubikey_respond: Some(&mut respond),
+        };
+        vault
+            .rotate_data_key(&mut rotate_opts)
+            .map_err(|e| e.to_string())?;
+    } else {
+        let mut rotate_opts = RotateDataKeyOptions {
+            password: password.as_bytes(),
+            recovery_code: recovery.as_deref().map(|s| s.as_bytes()),
+            keyfile: keyfile.as_deref().map(|k| k.as_slice()),
+            yubikey_respond: None,
+        };
+        vault
+            .rotate_data_key(&mut rotate_opts)
+            .map_err(|e| e.to_string())?;
+    }
+
+    eprintln!("Rotating data key — re-encrypting payload…");
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
+    write_vault(path, &out)?;
+    note_saved(&vault);
+    eprintln!(
+        "Data key rotated. Old exfiltrated blobs stay sealed under the previous key only if you \
+         stop syncing them — see docs/guides/deletion-and-rotation.md."
+    );
     Ok(())
 }
 
 fn cmd_upgrade_kdf(path: &Path, m: u32, t: u32, p: u32, opts: &OpenOpts) -> CmdResult {
+    vault_core::crypto::reject_kdf_below_floor(m, t, p).map_err(|e| e.to_string())?;
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     eprintln!("Re-deriving with Argon2id (m={m} KiB, t={t}, p={p})…");
     vault
         .change_kdf(password.as_bytes(), m, t, p)
         .map_err(|e| e.to_string())?;
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     eprintln!("Upgraded KDF parameters.");
@@ -831,14 +1042,53 @@ fn cmd_tune() -> CmdResult {
     Ok(())
 }
 
-fn cmd_enroll(path: &Path, factor: &str, enroll_path: Option<&Path>, opts: &OpenOpts) -> CmdResult {
+fn cmd_enroll(
+    path: &Path,
+    factor: &str,
+    enroll_path: Option<&Path>,
+    graceful_yubikey: bool,
+    opts: &OpenOpts,
+) -> CmdResult {
     match factor.to_lowercase().as_str() {
-        "yubikey" | "yk" => cmd_enroll_yubikey(path, opts),
+        "yubikey" | "yk" => cmd_enroll_yubikey(path, graceful_yubikey, opts),
         "keyfile" | "kf" => cmd_enroll_keyfile(path, enroll_path, opts),
+        "fido2" | "fido" => cmd_enroll_fido2(path, opts),
         other => Err(format!(
-            "unknown factor {other:?} (supported: yubikey, keyfile)"
+            "unknown factor {other:?} (supported: yubikey, keyfile, fido2)"
         )),
     }
+}
+
+fn cmd_enroll_fido2(path: &Path, opts: &OpenOpts) -> CmdResult {
+    if !vault_hardware::fido2::available() {
+        return Err(
+            "fido2-token not found — install libfido2-tools (see docs/guides/hardware-factor-status.md)"
+                .to_string(),
+        );
+    }
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+    let mut vault = open_vault(path, password.as_bytes(), opts)?;
+    if vault
+        .stanzas()
+        .iter()
+        .any(|s| s.stanza_type == vault_core::format::stanza::kind::FIDO2)
+    {
+        return Err("this vault already has a FIDO2 stanza enrolled".into());
+    }
+    eprintln!("Touch your security key to enroll FIDO2 hmac-secret…");
+    let (extra, prf) = vault_hardware::fido2::enroll(vault.vault_id(), None)
+        .map_err(|e| e.to_string())?;
+    vault
+        .add_fido2_stanza(&prf, extra)
+        .map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
+    write_vault(path, &out)?;
+    note_saved(&vault);
+    eprintln!(
+        "\n✅ FIDO2 stanza enrolled — touch the same key to unlock without typing the password."
+    );
+    eprintln!("   Password unlock still works (OR envelope).");
+    Ok(())
 }
 
 fn cmd_enroll_keyfile(path: &Path, keyfile_path: Option<&Path>, opts: &OpenOpts) -> CmdResult {
@@ -869,7 +1119,7 @@ fn cmd_enroll_keyfile(path: &Path, keyfile_path: Option<&Path>, opts: &OpenOpts)
     vault
         .enroll_keyfile_2fa(password.as_bytes(), &keyfile, recovery.as_bytes())
         .map_err(|e| e.to_string())?;
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
 
@@ -912,7 +1162,7 @@ fn write_keyfile(path: &Path, bytes: &[u8]) -> CmdResult {
     Ok(())
 }
 
-fn cmd_enroll_yubikey(path: &Path, opts: &OpenOpts) -> CmdResult {
+fn cmd_enroll_yubikey(path: &Path, graceful_yubikey: bool, opts: &OpenOpts) -> CmdResult {
     use vault_hardware::yubikey;
     if !yubikey::available() {
         return Err(
@@ -952,7 +1202,13 @@ fn cmd_enroll_yubikey(path: &Path, opts: &OpenOpts) -> CmdResult {
             recovery.as_bytes(),
         )
         .map_err(|e| e.to_string())?;
-    let out = vault.save().map_err(|e| e.to_string())?;
+    if graceful_yubikey {
+        vault.set_yubikey_strict(false);
+        eprintln!(
+            "Note: graceful YubiKey mode — saves without the key will proceed with a warning."
+        );
+    }
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
 
@@ -985,7 +1241,7 @@ fn cmd_pad(path: &Path, state: &str, opts: &OpenOpts) -> CmdResult {
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     vault.set_padding(mode);
-    let out = vault.save().map_err(|e| e.to_string())?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     eprintln!(
@@ -1070,10 +1326,65 @@ fn read_vault(path: &Path) -> Result<Vec<u8>, String> {
 
 /// Read + unlock the vault, warning if its KDF is below the recommended floor (constraint C2), then
 /// run the rollback guard (constraint C16 — may `exit(2)` if the user won't accept a regression).
-fn open_vault(path: &Path, password: &[u8], opts: &OpenOpts) -> Result<Vault, String> {
+pub(crate) fn open_vault(path: &Path, password: &[u8], opts: &OpenOpts) -> Result<Vault, String> {
     let bytes = read_vault(path)?;
-    // Progress indicator for the Argon2id unlock so the user doesn't think it hung (constraint C22).
     eprintln!("Deriving key (Argon2id)…");
+
+    // OR hardware stanzas (UC-09 §3.4) — only when not using recovery / 2FA paths.
+    if !opts.recovery && !Vault::requires_yubikey(&bytes) && !Vault::requires_keyfile(&bytes) {
+        use vault_core::envelope::{fido2, tpm};
+        use vault_core::format::stanza::kind;
+        use vault_core::format::Header;
+
+        if Vault::has_tpm_stanza(&bytes) && vault_hardware::tpm::available() {
+            if let Ok(header) = Header::parse(&bytes) {
+                if let Some(s) = header.stanzas.iter().find(|s| s.stanza_type == kind::TPM) {
+                    if let Ok(extra) = tpm::tpm_extra(s) {
+                        if let Ok(ikm) = vault_hardware::tpm::unseal(&extra) {
+                            if let Ok(v) = Vault::open_tpm(&bytes, &ikm) {
+                                if matches!(
+                                    v.kdf_strength(),
+                                    vault_core::crypto::KdfStrength::BelowFloor
+                                ) {
+                                    eprintln!(
+                                        "vault: warning — this vault's Argon2id cost is below the recommended floor; \
+                                         run `vault upgrade-kdf` to strengthen it."
+                                    );
+                                }
+                                rollback_guard(&v, opts);
+                                return Ok(v);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if Vault::has_fido2_stanza(&bytes) && vault_hardware::fido2::available() {
+            if let Ok(header) = Header::parse(&bytes) {
+                if let Some(s) = header.stanzas.iter().find(|s| s.stanza_type == kind::FIDO2) {
+                    if let Ok(extra) = fido2::fido2_extra(s) {
+                        eprintln!("Touch your security key…");
+                        if let Ok(prf) = vault_hardware::fido2::assert_prf(&extra) {
+                            if let Ok(v) = Vault::open_fido2(&bytes, &prf) {
+                                if matches!(
+                                    v.kdf_strength(),
+                                    vault_core::crypto::KdfStrength::BelowFloor
+                                ) {
+                                    eprintln!(
+                                        "vault: warning — this vault's Argon2id cost is below the recommended floor; \
+                                         run `vault upgrade-kdf` to strengthen it."
+                                    );
+                                }
+                                rollback_guard(&v, opts);
+                                return Ok(v);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // A YubiKey-2FA vault needs the key's tap — unless `--recovery`, which opens via the recovery
     // code (entered at the password prompt) through the password path (UC-09 anti-lockout).
     let vault = if Vault::requires_yubikey(&bytes) && !opts.recovery {

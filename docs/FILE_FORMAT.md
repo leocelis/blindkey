@@ -82,6 +82,29 @@ created next to the vault, and both are equally opaque encrypted blobs (C17).
 
 ## Versioning
 
+> **Status (2026-06-26):** `format_version = 1` is **frozen** — see
+> [ADR-0005](adr/0005-format-v1-freeze.md). Vault files created on `0.1.0-alpha.*` at v1 remain
+> readable on future 1.x releases without migration.
+
 `format_version` is bumped on any breaking layout change; readers reject versions newer than they
 support with a clear "created by a newer version" error (C7). Breaking changes require an ADR and a
 migration path (see [GOVERNANCE.md](../GOVERNANCE.md)).
+
+## Crypto agility and post-quantum evolution (C7, gap E1)
+
+The header exposes typed algorithm identifiers so v1 readers can reject unknown futures cleanly:
+
+| Field | v1 value | Future use |
+|-------|----------|------------|
+| `format_version` | `1` | Bump on any breaking layout change (ADR + migration) |
+| `kdf_algorithm` | `1` = Argon2id | New KDF ids without reusing v1 semantics |
+| `stanza_type` | 1–6 | New stanza types (e.g. hybrid PQ wrap) require format bump |
+
+**Post-quantum posture (v1):** symmetric primitives are Grover-resilient (~128-bit effective from
+256-bit keys). Optional asymmetric stanzas (FIDO2 P-256, Secure Enclave) have theoretical
+store-now-decrypt-later exposure but wrap only the data key; the password stanza always remains.
+
+**Not in v1:** ML-KEM, hybrid classical+PQ wraps, or NIST PQ certification. A future
+`format_version = 2` may add hybrid-PQ stanza types per ADR-0005 deferral.
+
+Canonical user statement: [guides/post-quantum-posture.md](guides/post-quantum-posture.md).

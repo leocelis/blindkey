@@ -71,37 +71,99 @@ pub fn encrypt(data_key: &[u8; 32], nonce_prefix: &[u8; 16], plaintext: &[u8]) -
 ///
 /// Each chunk's tag is verified before its bytes are accepted; any failure aborts with
 /// [`Error::BodyAuth`] and no partial plaintext is returned. Output is zeroized on drop.
+///
+/// Prefer [`decrypt_streaming`] when opening a vault — it avoids retaining the full plaintext
+/// buffer (security-gap review P3 / C19 in-memory posture).
 pub fn decrypt(
     data_key: &[u8; 32],
     nonce_prefix: &[u8; 16],
     ciphertext: &[u8],
 ) -> Result<Zeroizing<Vec<u8>>> {
-    let key = Zeroizing::new(payload_key(data_key, nonce_prefix));
-    let cipher = ChaCha20Poly1305::new_from_slice(&*key).map_err(|_| Error::Crypto)?;
-
-    let sealed_full = STREAM_CHUNK_SIZE + TAG_LEN;
+    let mut dec = StreamDecryptor::new(data_key, nonce_prefix, ciphertext)?;
     let mut out = Zeroizing::new(Vec::new());
-    let mut rest = ciphertext;
-    let mut counter: u64 = 0;
+    while let Some(chunk) = dec.next_plaintext_chunk()? {
+        out.extend_from_slice(&chunk);
+    }
+    Ok(out)
+}
 
-    loop {
-        if rest.len() < TAG_LEN {
-            // A sealed chunk is at least its 16-byte tag; fewer bytes is truncation/corruption.
+/// Incremental STREAM decryptor — yields verified plaintext chunks without building one buffer.
+pub struct StreamDecryptor<'a> {
+    cipher: chacha20poly1305::ChaCha20Poly1305,
+    rest: &'a [u8],
+    counter: u64,
+}
+
+impl std::fmt::Debug for StreamDecryptor<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamDecryptor")
+            .field("rest_len", &self.rest.len())
+            .field("counter", &self.counter)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<'a> StreamDecryptor<'a> {
+    /// Begin decrypting `ciphertext` with the payload key derived from `data_key` + `nonce_prefix`.
+    pub fn new(
+        data_key: &[u8; 32],
+        nonce_prefix: &[u8; 16],
+        ciphertext: &'a [u8],
+    ) -> Result<Self> {
+        let key = Zeroizing::new(payload_key(data_key, nonce_prefix));
+        let cipher = ChaCha20Poly1305::new_from_slice(&*key).map_err(|_| Error::Crypto)?;
+        Ok(StreamDecryptor {
+            cipher,
+            rest: ciphertext,
+            counter: 0,
+        })
+    }
+
+    /// Next verified plaintext chunk, or `None` when finished.
+    pub fn next_plaintext_chunk(&mut self) -> Result<Option<Zeroizing<Vec<u8>>>> {
+        if self.rest.is_empty() {
+            return Ok(None);
+        }
+        if self.rest.len() < TAG_LEN {
             return Err(Error::BodyMalformed);
         }
-        let take = rest.len().min(sealed_full);
-        let is_last = take == rest.len(); // this chunk consumes the remaining bytes
-        let nonce = chunk_nonce(counter, is_last);
-        let pt = cipher
-            .decrypt(Nonce::from_slice(&nonce), &rest[..take])
+        let take = self.rest.len().min(sealed_full());
+        let is_last = take == self.rest.len();
+        let nonce = chunk_nonce(self.counter, is_last);
+        let pt = self
+            .cipher
+            .decrypt(Nonce::from_slice(&nonce), &self.rest[..take])
             .map_err(|_| Error::BodyAuth)?;
-        out.extend_from_slice(&pt);
-        rest = &rest[take..];
-        if is_last {
-            return Ok(out);
+        self.rest = &self.rest[take..];
+        if !is_last {
+            self.counter = self
+                .counter
+                .checked_add(1)
+                .ok_or(Error::BodyMalformed)?;
         }
-        counter = counter.checked_add(1).ok_or(Error::BodyMalformed)?;
+        Ok(Some(Zeroizing::new(pt)))
     }
+}
+
+fn sealed_full() -> usize {
+    STREAM_CHUNK_SIZE + TAG_LEN
+}
+
+/// Decrypt the outer STREAM and parse the payload incrementally (security-gap review P3).
+pub fn decrypt_streaming<F>(
+    data_key: &[u8; 32],
+    nonce_prefix: &[u8; 16],
+    ciphertext: &[u8],
+    mut on_chunk: F,
+) -> Result<()>
+where
+    F: FnMut(&[u8]) -> Result<()>,
+{
+    let mut dec = StreamDecryptor::new(data_key, nonce_prefix, ciphertext)?;
+    while let Some(chunk) = dec.next_plaintext_chunk()? {
+        on_chunk(&chunk)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

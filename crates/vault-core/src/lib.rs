@@ -41,7 +41,7 @@ pub mod wordlist; // C26     built-in diceware wordlist
 
 mod error;
 pub use error::{Error, Result};
-pub use vault::Vault;
+pub use vault::{RotateDataKeyOptions, SaveOptions, SaveReport, Vault, YUBIKEY_STALE_WARNING};
 
 /// The current on-disk format version (constraint C7).
 pub const FORMAT_VERSION: u16 = 1;

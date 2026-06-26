@@ -41,10 +41,18 @@ pub enum Error {
     HeaderTampered,
 
     /// KDF parameters exceed the enforced ceiling, or the KiB→bytes math overflows — never
-    /// legitimate; rejected before any allocation (constraint C2 ceiling). Below-floor params are
-    /// NOT this error: they trigger a warning + upgrade prompt (constraint C2).
+    /// legitimate; rejected before any allocation (constraint C2 ceiling). Below-floor params on
+    /// **open** trigger a warning + upgrade offer; on **create/upgrade-kdf** use [`Error::KdfBelowFloor`].
     #[error("KDF parameters exceed safe limits — possible hostile or corrupt file")]
     KdfParamsOutOfRange,
+
+    /// Argon2id parameters are below the enforced floor on a **write** path (init / upgrade-kdf).
+    /// Opening an existing weak vault is allowed with a warning (constraint C2).
+    #[error(
+        "Argon2id parameters are below the minimum floor (m >= 19456 KiB, t >= 2, p >= 1); \
+         use stronger params or `vault upgrade-kdf` on an existing vault"
+    )]
+    KdfBelowFloor,
 
     /// An internal cryptographic operation failed unexpectedly (e.g. a KDF or AEAD primitive
     /// returned an error for non-secret structural reasons). Carries no secret material.
@@ -68,6 +76,13 @@ pub enum Error {
     /// installed, or the challenge-response errored. Carries a non-secret human message (C16/UC-09).
     #[error("hardware factor error: {0}")]
     Hardware(String),
+
+    /// A body-writing save was blocked because the YubiKey was absent and strict mode is on (C5).
+    #[error(
+        "YubiKey required to save (strict mode) — insert the key and retry, or use \
+         --allow-stale-yubikey / enroll with --graceful-yubikey"
+    )]
+    YubiKeyStrictSave,
 
     /// Underlying I/O error.
     #[error("io error: {0}")]

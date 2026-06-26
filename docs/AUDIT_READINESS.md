@@ -3,8 +3,8 @@
 > **Audience:** maintainers and security reviewers. End users: start at
 > [README.md](../README.md) or [docs/README.md](README.md).
 
-Vault is **functional pre-1.0**. This document describes the **local quality gate** before the
-`1.0.0` tag ([ROADMAP](../ROADMAP.md) CP-7) — not a substitute for careful review.
+Vault **1.0.0** is the current release. This document describes the **local quality gate** before
+tagging (CP-7) and the public launch checklist.
 
 ## CP-7 sweep result (2026-06-25)
 
@@ -29,7 +29,7 @@ Full per-constraint table: [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md#cp-7-ivd-
 | Envelope & 2FA | `docs/specs/UC-09-hardware-factors.md` | C5, C14–C15 |
 | AI-era delivery | `docs/specs/UC-04-model-blind-retrieval.md` | C26–C27 |
 | Desktop shell boundary | `docs/specs/UC-18-native-ui.md`, `crates/vault-gui/` | C40–C54, C45 |
-| Supply chain | `docs/VERIFYING_RELEASES.md`, `scripts/reproducible-build.sh`, `just audit` | C3, C34 |
+| Supply chain | `docs/VERIFYING_RELEASES.md`, `scripts/reproducible-build.sh`, `just audit`, `supply-chain/` (cargo-vet) | C3, C24, C34 |
 
 Out of scope for v1: team vaults, cloud sync service, browser extension (intent `non_goals`).
 
@@ -43,7 +43,8 @@ just audit-ready
 ```
 
 Runs release search benchmarks (C38/C59), **workspace tests**, **format check**, clippy, and
-supply-chain checks when tools are installed.
+supply-chain checks (`cargo audit`, `cargo deny`, **`cargo vet`**) when tools are installed.
+Install vet once: `cargo install cargo-vet --locked` (project toolchain via `. scripts/dev-env.sh`).
 
 ## IVD constraint index
 
@@ -66,7 +67,7 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 ## Terminology
 
 - **`vault audit`** — password-health report command (weak/reused passwords), not this gate
-- **Dependency audit** — `cargo audit` / `cargo deny` via `just audit` or `just audit-ready`
+- **Dependency audit** — `cargo audit` / `cargo deny` / `cargo vet` via `just audit`, `just vet`, or `just audit-ready`
 
 ## Public launch checklist *(2026-06-25)*
 
@@ -78,7 +79,7 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 | SECURITY contact (GHSA + email) | ✅ |
 | CP-7 constraint sweep (60/60 PASS) | ✅ |
 | GHA CI (`.github/workflows/ci.yml`) | ✅ |
-| GitHub Release with checksums | ✅ `v0.1.0-alpha.3` |
+| GitHub Release with checksums | ✅ `v1.0.0` (repo prep; maintainer publishes tag) |
 | README / INSTALL / SUPPORT / Discussions | ✅ |
 | **Public repository** | ✅ flipped 2026-06-25 |
 | crates.io publish | ⬜ optional — [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md) |

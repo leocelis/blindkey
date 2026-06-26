@@ -5,6 +5,7 @@
 //!   • **type to search** your entries,
 //!   • **copy** a password to the clipboard *model-blind* (the secret is shown shadowed, never
 //!     rendered; the clipboard auto-clears — C13/C27),
+//!   • show **TOTP / 2FA codes in-app only** (live countdown; never copied to clipboard — security-gap review),
 //!   • **add / edit / change / delete** entries.
 //!
 //! Every byte that touches a secret stays inside `vault-core`; this binary only renders metadata,
@@ -133,7 +134,6 @@ enum Action {
     ToggleReveal,
     CopyPassword(usize),
     CopyUsername(usize),
-    CopyOtp(usize),
     Edit(usize),
     SetPadding(bool),
     SetAutoLock(u64),
@@ -306,6 +306,22 @@ impl VaultApp {
             return true;
         }
         false
+    }
+
+    /// Keep the in-app TOTP countdown fresh (security-gap review — never clipboard).
+    fn enforce_otp_live_refresh(&self, ctx: &egui::Context) {
+        let Some(idx) = self.selected else {
+            return;
+        };
+        let has_otp = self
+            .vault
+            .as_ref()
+            .and_then(|v| v.entries().get(idx))
+            .and_then(|e| e.otp_secret.as_ref())
+            .is_some();
+        if has_otp {
+            ctx.request_repaint_after(Duration::from_secs(1));
+        }
     }
 
     fn vault_needs_keyfile(&self) -> bool {
@@ -577,29 +593,6 @@ impl VaultApp {
             } else {
                 self.status = "Copied username to the clipboard.".into();
             }
-        }
-    }
-
-    fn copy_otp(&mut self, idx: usize) {
-        let generated = self
-            .vault
-            .as_ref()
-            .and_then(|v| v.entries().get(idx))
-            .and_then(|e| e.otp_secret.as_ref())
-            .map(|p| vault_core::totp::generate_now(&p.expose()));
-        match generated {
-            Some(Ok(c)) => {
-                let secret = Zeroizing::new(c.code.clone().into_bytes());
-                match clip::copy(&secret) {
-                    Ok(()) => {
-                        clip::schedule_clear(secret, c.valid_for_secs.max(1));
-                        self.status = format!("Copied 2FA code — valid {}s.", c.valid_for_secs);
-                    }
-                    Err(e) => self.error = Some(e),
-                }
-            }
-            Some(Err(_)) => self.error = Some("the stored 2FA secret is not valid base32".into()),
-            None => {}
         }
     }
 
@@ -1018,7 +1011,7 @@ impl VaultApp {
                 ui.horizontal(|ui| {
                     ui.colored_label(
                         egui::Color32::from_rgb(210, 160, 60),
-                        "⚠ Pre-1.0 — no independent security audit. Keep a separate backup.",
+                        "⚠ Not third-party audited — keep a separate backup.",
                     );
                     if ui.button("Dismiss").clicked() {
                         action = Some(Action::DismissPre10);
@@ -1244,17 +1237,17 @@ impl VaultApp {
 
                     if let Some((code, secs)) = &otp_display {
                         ui.label("2FA code");
-                        ui.horizontal(|ui| {
-                            let pretty = if code.len() == 6 {
-                                format!("{} {}", &code[..3], &code[3..])
-                            } else {
-                                code.clone()
-                            };
-                            ui.monospace(pretty);
-                            ui.weak(format!("({secs}s)"));
-                            if ui.button("📋 Copy").clicked() {
-                                action = Some(Action::CopyOtp(idx));
-                            }
+                        ui.vertical(|ui| {
+                            ui.horizontal(|ui| {
+                                let pretty = if code.len() == 6 {
+                                    format!("{} {}", &code[..3], &code[3..])
+                                } else {
+                                    code.clone()
+                                };
+                                ui.monospace(pretty);
+                                ui.weak(format!("({secs}s)"));
+                            });
+                            ui.weak("In-app only — not copied to clipboard.");
                         });
                         ui.end_row();
                     }
@@ -1297,7 +1290,6 @@ impl VaultApp {
                 }
                 Action::CopyPassword(i) => self.copy_password(i),
                 Action::CopyUsername(i) => self.copy_username(i),
-                Action::CopyOtp(i) => self.copy_otp(i),
                 Action::Edit(i) => self.begin_edit(i),
                 Action::SetPadding(on) => self.set_padding(on),
                 Action::SetAutoLock(secs) => {
@@ -1753,6 +1745,7 @@ impl eframe::App for VaultApp {
         }
         if self.vault.is_some() {
             self.enforce_reveal_timeout(ctx);
+            self.enforce_otp_live_refresh(ctx);
             self.handle_dropped_files(ctx);
             self.unlocked_screen(ctx);
             self.editor_window(ctx);

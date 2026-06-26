@@ -24,10 +24,11 @@ clippy:
 test:
     cargo test --all-features --workspace
 
-# Supply-chain checks: advisories + licenses + bans (constraints C3, C24).
+# Supply-chain checks: advisories + licenses + bans + vet (constraints C3, C24; gap D2).
 audit:
     cargo audit
     cargo deny check
+    cargo vet
 
 # Optional deeper dependency vetting (Part-2 backlog, gap D2).
 vet:

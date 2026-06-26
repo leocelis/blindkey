@@ -69,8 +69,7 @@ pub enum KdfStrength {
 /// Returns `Err(KdfParamsOutOfRange)` only for params that are unsafe to even attempt — above the
 /// ceiling, or where the KiB→bytes math would overflow (`m < 8·p`) — so a hostile file can never
 /// make us allocate gigabytes before the keyed integrity check runs. Below-floor params are valid
-/// but return [`KdfStrength::BelowFloor`] so the caller can warn and offer an upgrade (never a hard
-/// failure — that would strand a legitimate, if weak, vault).
+/// on **open** but return [`KdfStrength::BelowFloor`] so the caller can warn and offer an upgrade.
 pub fn validate_kdf_params(m_cost: u32, t_cost: u32, p_cost: u32) -> Result<KdfStrength> {
     // Ceiling FIRST — reject hostile/overflowing params before any allocation or Argon2id (C2).
     if m_cost > ARGON2_CEILING_M_COST_KIB
@@ -105,9 +104,20 @@ pub fn validate_kdf_params(m_cost: u32, t_cost: u32, p_cost: u32) -> Result<KdfS
     }
 }
 
+/// Reject below-floor parameters on **write** paths (init, upgrade-kdf targets) — constraint C2.
+///
+/// Opening an existing weak vault must NOT call this; use [`validate_kdf_params`] and warn instead.
+pub fn reject_kdf_below_floor(m_cost: u32, t_cost: u32, p_cost: u32) -> crate::Result<()> {
+    match validate_kdf_params(m_cost, t_cost, p_cost)? {
+        KdfStrength::BelowFloor => Err(crate::Error::KdfBelowFloor),
+        _ => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
 
     // `Error` cannot derive `PartialEq` (it wraps `io::Error`), so assert via matches! / unwrap.
 
@@ -178,5 +188,19 @@ mod tests {
             validate_kdf_params(64, 3, 16),
             Err(Error::KdfParamsOutOfRange)
         ));
+    }
+
+    #[test]
+    fn reject_below_floor_for_write_paths() {
+        assert!(matches!(
+            super::reject_kdf_below_floor(8192, 1, 1),
+            Err(Error::KdfBelowFloor)
+        ));
+        assert!(super::reject_kdf_below_floor(
+            ARGON2_FLOOR_M_COST_KIB,
+            ARGON2_FLOOR_T_COST,
+            ARGON2_FLOOR_P_COST
+        )
+        .is_ok());
     }
 }

@@ -6,7 +6,36 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **KDF floor write policy (C2):** hard-reject below-floor Argon2id on `vault init` and
+  `vault upgrade-kdf`; warn-only on open/import. Escape hatch: `vault init --allow-weak-kdf`.
+  Research: [research/kdf_floor_policy_research.md](research/kdf_floor_policy_research.md).
+- **Sync / fleet provisioning (C16):** expanded
+  [guides/sync-to-untrusted-storage.md](docs/guides/sync-to-untrusted-storage.md) with
+  `--expect-min-version`, anchor lookup, and headless fleet script; global flags in
+  [docs/CLI.md](docs/CLI.md); enterprise cross-link.
+  Research: [research/sync_provisioning_research.md](research/sync_provisioning_research.md).
+- **YubiKey strict default (C5):** new 2FA enrollments persist `yubikey_strict=true`; saves
+  refresh the composite stanza when the key is present; strict abort / graceful warning when absent.
+  Flags: `--graceful-yubikey`, `--strict-yubikey`, `--allow-stale-yubikey`.
+  Research: [research/yubikey_strict_default_research.md](research/yubikey_strict_default_research.md).
+- **Agent broker scaffold (S-13 / C27):** `vault-agent` crate + `vault agent` CLI (handles,
+  Unix-socket broker, TTY approval, env injection, status-only IPC). ADR-0006.
+  Guide: [docs/AGENT_BROKER.md](docs/AGENT_BROKER.md).
+  Research: [research/agent_broker_research.md](research/agent_broker_research.md).
+
+## [1.0.0] - 2026-06-26
+
+First **stable** release — format v1 frozen, CP-7 quality gate, post-1.0 user copy.
+
+### Added
+- **Format v1 freeze** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)): `format_version = 1` declared
+  stable; research in [research/format_freeze_research.md](research/format_freeze_research.md).
+- **v1.0.0** workspace version bump; release prep per [docs/RELEASE.md](docs/RELEASE.md).
+
 ### Changed
+- README, SECURITY, PRD, FILE_FORMAT: **stable format v1** + **v1.0.0** (drop pre-1.0 / pre-alpha banner language).
+- CLI `PRE_RELEASE_NOTICE` and GUI audit banner: third-party audit honesty without pre-1.0 label.
 - Public OSS launch (2026-06-25): repository visibility public, CI badge restored, GHA cache.
 - Documentation sweep: drift fixes, spec status headers, expanded `docs/README.md` hub,
   `ARCHITECTURE.md` adds `vault-clip`, `AUDIT_READINESS.md` post-launch checklist.
@@ -430,7 +459,8 @@ still change before `1.0.0`. Not independently audited.
 ### Notes
 - Vault is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
-[Unreleased]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.3...main
+[Unreleased]: https://github.com/leocelis/vault/compare/v1.0.0...main
+[1.0.0]: https://github.com/leocelis/vault/compare/v0.1.0-alpha.3...v1.0.0
 [0.1.0-alpha.3]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/leocelis/vault/releases/tag/v0.1.0-alpha.1

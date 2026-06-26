@@ -83,7 +83,7 @@ fn c17_many_entries_one_opaque_file() {
     const T: u32 = 1;
     const P: u32 = 1;
 
-    let mut v = Vault::create(b"pw", M, T, P).unwrap();
+    let mut v = Vault::create(b"pw", M, T, P, true).unwrap();
     for i in 0..8 {
         v.add_entry(Entry {
             id: [i; 16],

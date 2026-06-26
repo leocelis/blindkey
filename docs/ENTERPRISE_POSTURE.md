@@ -25,6 +25,8 @@ Vault **does not** provide:
 - SSO (SAML/OIDC), SCIM provisioning, or directory sync
 - Hosted admin console, usage analytics, or central policy server
 - Browser extension or native mobile apps (post-v1 roadmap)
+- **Production FIDO2, TPM, Secure Enclave, or Touch ID unlock** — v1 ships YubiKey CR + keyfile 2FA
+  only; see [guides/hardware-factor-status.md](guides/hardware-factor-status.md)
 
 These are **intent non-goals** unless a separate enterprise product is scoped.
 
@@ -49,5 +51,5 @@ See [guides/enterprise-deployment.md](guides/enterprise-deployment.md):
 ## Path to 1.0
 
 1. **CP-7** — `just audit-ready` green + IVD Rule 2 sweep (60 constraints)
-2. **v1.0.0** — format freeze after quality gate passes
+2. **v1.0.0** — format v1 frozen ([ADR-0005](adr/0005-format-v1-freeze.md)); tag after quality gate + ceremony
 3. **v2+** — evaluate org vaults / SSO only if product strategy changes (new intent artifact)

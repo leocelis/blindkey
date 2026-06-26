@@ -39,6 +39,7 @@ gh release create v0.1.0 target/release/vault SHA256SUMS.txt --notes-file CHANGE
 
 1. Verify checksums on the downloaded artifact match your local build
 2. CP-7: IVD constraint sweep → update [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) if needed
-3. For `1.0.0`: format freeze + drop pre-1.0 banner language in README
+3. **v1.0.0 shipped (repo):** format freeze done ([ADR-0005](adr/0005-format-v1-freeze.md)); post-1.0
+   copy in README. Maintainer publishes signed tag + GitHub Release.
 
 See [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md) for what users can check today.

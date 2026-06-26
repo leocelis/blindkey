@@ -5,14 +5,16 @@ coordinated disclosure. Thank you for helping keep Vault and its users safe.
 
 ## Supported versions
 
-Vault is **functional pre-1.0** — the CLI and desktop app work today, but the on-disk format may
-still change before `1.0.0`. Security fixes land on `main` and are tagged from there — see
-[docs/RELEASE.md](docs/RELEASE.md).
+Vault **1.0.0** is the current stable release — the CLI and desktop app work today and have
+**not** had an independent third-party security audit (recommended before enterprise adoption; see
+[THIRD_PARTY_AUDIT.md](docs/THIRD_PARTY_AUDIT.md)). **On-disk format v1 is stable** (see
+[ADR-0005](docs/adr/0005-format-v1-freeze.md)). Security fixes land on `main` and are tagged from
+there — see [docs/RELEASE.md](docs/RELEASE.md).
 
 | Version | Supported |
 |---------|-----------|
-| `0.1.0-alpha.3` (latest) | ✅ — report against this tag or `main` |
-| Older `0.1.0-alpha.*` | ⚠️ upgrade; fixes not backported pre-1.0 |
+| `1.0.0` (latest) | ✅ — report against this tag or `main` |
+| `0.1.0-alpha.*` | ⚠️ upgrade to 1.0.0; alpha vault files open without migration |
 | Pre-release / dev builds | report against commit hash |
 
 crates.io (`cargo install vault-cli --locked`) is optional and not published yet.
@@ -65,7 +67,9 @@ integrity, and dependency supply chain.
 
 **Out of scope (documented residual risk — see [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)):**
 physical bus-level attacks on a TPM, a fully compromised OS kernel with root, attacks requiring
-the attacker to already have the unlocked master key, and social-engineering of the human user.
+the attacker to already have the unlocked master key, social-engineering of the human user, and
+**sync/storage metadata** (blob size, mtime, save frequency on untrusted backends — C17 accepted
+residual, not entry-level plaintext).
 
 ## Our commitments to security (defensive posture)
 

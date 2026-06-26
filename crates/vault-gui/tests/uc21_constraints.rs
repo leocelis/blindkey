@@ -42,7 +42,7 @@ fn c49_keyfile_enroll_wired() {
 fn c50_pre10_banner_wired() {
     let src = read_gui_main();
     assert!(src.contains("dismissed_pre10"));
-    assert!(src.contains("Pre-1.0"));
+    assert!(src.contains("third-party") || src.contains("Not third-party audited"));
 }
 
 #[test]

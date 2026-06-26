@@ -261,7 +261,7 @@ mod tests {
     }
 
     fn app_with(titles: &[&str]) -> App {
-        let mut v = Vault::create(b"pw", 8192, 1, 1).unwrap();
+        let mut v = Vault::create(b"pw", 8192, 1, 1, true).unwrap();
         for t in titles {
             v.add_entry(entry(t));
         }

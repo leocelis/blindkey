@@ -71,7 +71,7 @@ proptest! {
             0..6,
         ),
     ) {
-        let mut v = Vault::create(password.as_bytes(), 64, 1, 1).unwrap();
+        let mut v = Vault::create(password.as_bytes(), 64, 1, 1, true).unwrap();
         for (title, secret) in &entries {
             v.add_entry(make_entry(title, secret.as_bytes()));
         }
@@ -102,7 +102,7 @@ proptest! {
         secret in "[ -~]{8,32}",
         flip_frac in 0.0f64..1.0,
     ) {
-        let mut v = Vault::create(b"tamper-pw", 64, 1, 1).unwrap();
+        let mut v = Vault::create(b"tamper-pw", 64, 1, 1, true).unwrap();
         v.add_entry(make_entry("svc", secret.as_bytes()));
         let mut bytes = v.save().unwrap();
 

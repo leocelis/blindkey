@@ -6,7 +6,10 @@
 //!
 //! This module implements the **password** stanza (the always-present path). Hardware stanzas
 //! (C6/C14/C15) share the same wrapping recipe — `wrapping_key = HKDF(ikm, salt=vault_id, info)`
-//! then XChaCha20-Poly1305 seal of the data key — and land in a later segment.
+//! then XChaCha20-Poly1305 seal of the data key — implemented for password, FIDO2, and TPM paths.
+
+pub mod fido2;
+pub mod tpm;
 
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce};
@@ -27,7 +30,7 @@ const KEYFILE_WRAP_INFO: &[u8] = b"vault-keyfile-wrap-v1";
 /// XChaCha20-Poly1305 nonce length (constraint C5 stanza layout).
 const WRAP_NONCE_LEN: usize = 24;
 /// Wrapped data-key length: 32-byte key + 16-byte Poly1305 tag (constraint C5).
-const WRAPPED_KEY_LEN: usize = 48;
+pub(crate) const WRAPPED_KEY_LEN: usize = 48;
 /// Length of the YubiKey challenge stored in a 2FA stanza (sent to the key on every unlock).
 const CHALLENGE_LEN: usize = 32;
 

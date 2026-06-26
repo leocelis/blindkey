@@ -264,6 +264,7 @@ fn cli_otp_requires_a_2fa_secret() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
 
     let mut init_args = vec!["--vault", vs, "init"];
@@ -309,6 +310,7 @@ fn cli_find_fuzzy_lists_titles_and_never_leaks() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
 
     let mut init = vec!["--vault", vs, "init"];
@@ -373,6 +375,7 @@ fn cli_import_non_tty_requires_yes() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
 
     let mut init = vec!["--vault", vs, "init"];
@@ -417,6 +420,7 @@ fn cli_find_does_not_search_secrets_or_notes() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
     let import_file = std::env::temp_dir().join(format!("vault-c35-{}.txt", std::process::id()));
     std::fs::write(
@@ -473,6 +477,7 @@ fn cli_init_writes_initial_backup_and_notice() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
     let mut init = vec!["--vault", vs, "init"];
     init.extend_from_slice(&fast);
@@ -483,8 +488,10 @@ fn cli_init_writes_initial_backup_and_notice() {
         "init should seed vault.vlt.bak"
     );
     assert!(
-        err.contains("pre-1.0") || err.contains("backup"),
-        "init should warn about pre-1.0 / backup: {err}"
+        err.contains("third-party")
+            || err.contains("independently audited")
+            || err.contains("backup"),
+        "init should warn about audit posture / backup: {err}"
     );
 
     let _ = std::fs::remove_file(&vault);
@@ -504,6 +511,7 @@ fn cli_init_warns_on_weak_master_password() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
 
     let v1 = unique_vault();
@@ -574,6 +582,7 @@ fn cli_padding_toggle() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
 
     let mut init_args = vec!["--vault", vs, "init"];
@@ -632,6 +641,7 @@ fn cli_rollback_detection() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
 
     // init → version 1, anchor = 1
@@ -784,6 +794,7 @@ fn non_interactive_without_password_channel_exits_5() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
     let mut init_args = vec!["--vault", vs, "init", "--allow-weak-password"];
     init_args.extend_from_slice(fast);
@@ -830,6 +841,7 @@ fn vault_password_file_env_unlocks() {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ];
     let mut init_args = vec!["--vault", vs, "init", "--allow-weak-password"];
     init_args.extend_from_slice(fast);
@@ -857,7 +869,7 @@ fn vault_password_file_env_unlocks() {
     let _ = std::fs::remove_file(&vault);
 }
 
-fn fast_kdf() -> [&'static str; 6] {
+fn fast_kdf() -> [&'static str; 7] {
     [
         "--kdf-m-cost",
         "8192",
@@ -865,6 +877,7 @@ fn fast_kdf() -> [&'static str; 6] {
         "1",
         "--kdf-p-cost",
         "1",
+        "--allow-weak-kdf",
     ]
 }
 

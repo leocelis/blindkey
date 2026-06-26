@@ -15,7 +15,7 @@
 ## Checklist
 
 - [ ] `just check` passes (fmt, clippy `-D warnings`, tests)
-- [ ] `just audit` passes (no new advisories / license violations)
+- [ ] `just audit` passes (no new advisories / license violations / unvetted deps)
 - [ ] New/changed behavior has a test that maps to a constraint
 - [ ] No secret material can reach a log, `Debug`, default stdout, or argv
 - [ ] No `unsafe` outside the reviewed crypto-FFI module; no custom crypto

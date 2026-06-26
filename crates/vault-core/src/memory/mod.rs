@@ -19,6 +19,19 @@ pub type SecretBuffer = Zeroizing<Vec<u8>>;
 
 use subtle::ConstantTimeEq;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static MLOCK_WARNED: AtomicBool = AtomicBool::new(false);
+
+fn warn_mlock_once(errno: i32) {
+    if MLOCK_WARNED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    eprintln!(
+        "WARNING: could not lock memory pages (mlock failed: {errno}). Secrets may be swapped to disk. Consider running with CAP_IPC_LOCK or raising ulimit -l."
+    );
+}
+
 /// Locks a byte buffer's pages into RAM for its lifetime, keeping secrets off swap (constraint C12).
 ///
 /// Unlocks on drop. Borrows the buffer so it cannot outlive it; the buffer must not be reallocated
@@ -34,7 +47,13 @@ pub struct PageLock<'a> {
 impl<'a> PageLock<'a> {
     /// Attempt to lock the pages backing `buf`.
     pub fn new(buf: &'a [u8]) -> Self {
-        let locked = vault_sys::lock_region(buf.as_ptr(), buf.len());
+        let locked = match vault_sys::lock_region_errno(buf.as_ptr(), buf.len()) {
+            Ok(()) => true,
+            Err(errno) => {
+                warn_mlock_once(errno);
+                false
+            }
+        };
         PageLock { buf, locked }
     }
 
@@ -59,9 +78,10 @@ pub fn ct_eq(a: &[u8], b: &[u8]) -> bool {
     a.ct_eq(b).into()
 }
 
-/// Process-wide runtime hardening applied at startup (constraint C25): disable core dumps
-/// (`setrlimit(RLIMIT_CORE, 0)`, plus `PR_SET_DUMPABLE, 0` on Linux). Best-effort: on failure it
-/// prints a one-line warning to stderr and continues (C25 must not abort). Call once from `main`.
+/// Process-wide runtime hardening applied at startup (constraint C25, gap B3): disable core dumps
+/// (`setrlimit(RLIMIT_CORE, 0)`; on Linux also `PR_SET_DUMPABLE, 0` and `coredump_filter=0`).
+/// Best-effort: on failure it prints a one-line warning to stderr and continues (C25 must not
+/// abort). Call once from `main`.
 pub fn harden_process() {
     if !vault_sys::disable_core_dumps() {
         eprintln!(

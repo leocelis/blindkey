@@ -35,7 +35,7 @@ The desktop app does the same: open it, drag `keys.txt` onto the window, then se
 | You're **not** protected from… | What to do |
 |---|---|
 | The backend **deleting / corrupting-to-garbage** the file (availability) | Keep your own copy. Vault guarantees confidentiality + tamper-*evidence*, not that a vandal can't destroy the file. |
-| The backend learning **metadata**: file size (≈ how many entries), how often you save, timestamps | Turn on **size-padding** — `vault pad on` (or the desktop app's **"Pad size"** toggle) — to bucket the file size with Padmé (`≤ ~12 %` overhead), so the size leaks only `O(log log L)` bits (UC-07 §3.2). Save frequency / timestamps still leak. |
+| The backend learning **metadata**: file size (≈ how many entries), how often you save, timestamps | Turn on **size-padding** — [`vault pad on`](../../docs/guides/size-padding-padme.md) (or the desktop app's **"Pad size"** toggle) — Padmé buckets file size (`≤ ~12 %` overhead). Save frequency / timestamps still leak. |
 | **Forgetting your master password** | There is no recovery. The whole design assumes the blob will be stolen, so there is no backdoor. |
 
 ## Rollback detection in practice (C16)
@@ -55,9 +55,86 @@ Proceed anyway? [y/N]
 - Non-interactively (scripts/CI): **no prompt**, exit code **2** (reserved for rollback). Use
   `vault --allow-rollback …` to proceed anyway (the anchor is not lowered).
 - **Fresh machine, first open:** there's no anchor yet, so any valid version is trusted
-  (trust-on-first-use). To pin a floor when provisioning a new machine:
-  `vault --expect-min-version 7 get …`. This residual risk is listed in
+  (trust-on-first-use). See [Provisioning a new machine](#provisioning-a-new-machine-fleet--tofu)
+  below for `--expect-min-version`. Residual risk is also in
   [docs/THREAT_MODEL.md](../THREAT_MODEL.md).
+
+## Provisioning a new machine (fleet / TOFU)
+
+When you drop a synced `vault.vlt` onto a **brand-new laptop**, Vault has no local anchor yet.
+Any **valid** copy of the file opens — including an **old** copy an attacker might have kept on
+the sync backend. That is the documented TOFU gap (constraint C16).
+
+**Mitigation:** pass a version floor on the first (and every) open until the anchor exists:
+
+```sh
+vault --vault /path/to/vault.vlt --expect-min-version 42 ls
+```
+
+`--expect-min-version N` is a **global** flag (works with `ls`, `get`, `import`, etc.). Vault
+compares the decrypted `vault_version` against `max(N, local_anchor)`. If the file is older than
+that floor:
+
+- **Interactive terminal:** prints the rollback warning and prompts `[y/N]` (default abort).
+- **Scripts / CI / MDM** (stdin not a TTY): **no prompt**, exit code **2**. Override only when
+  you deliberately accept an old copy: `--allow-rollback` (the anchor is **not** lowered).
+
+### Where does **N** come from?
+
+On a **trusted machine** that already uses this vault, after any normal successful open, read the
+local anchor (never synced):
+
+| OS | Anchor directory |
+|----|------------------|
+| Linux | `~/.local/share/vault/<vault_id_hex>.state` |
+| macOS | `~/Library/Application Support/vault/<vault_id_hex>.state` |
+| Windows | `%LOCALAPPDATA%\vault\<vault_id_hex>.state` |
+
+The file is 8 bytes — little-endian `u64` = the last `vault_version` this machine saw:
+
+```sh
+# Linux/macOS — pick the .state file for your vault (one per vault_id)
+od -An -tu8 -N8 -j0 ~/.local/share/vault/*.state
+```
+
+Publish that number in your internal runbook (or MDM env var) before imaging new machines.
+
+### Fleet provisioning example
+
+Headless first open on a new host — fails closed if the cloud served a stale copy:
+
+```sh
+#!/usr/bin/env bash
+# /etc/vault/provision-first-open.sh — run once per new machine (MDM / onboarding)
+set -euo pipefail
+
+VAULT_FILE="${VAULT_FILE:-$HOME/Drive/vault.vlt}"
+# Set by IT from a trusted admin workstation (see "Where does N come from?" above)
+VAULT_EXPECT_MIN_VERSION="${VAULT_EXPECT_MIN_VERSION:?set VAULT_EXPECT_MIN_VERSION}"
+
+# Unlock via VAULT_PASSWORD_FILE (mode 0600) — see UC-05; never put secrets on argv
+export VAULT_PASSWORD_FILE="${VAULT_PASSWORD_FILE:-/etc/vault/unlock.password}"
+
+if vault --vault "$VAULT_FILE" \
+         --expect-min-version "$VAULT_EXPECT_MIN_VERSION" \
+         ls; then
+  echo "vault: anchor established; future opens use local rollback detection"
+else
+  code=$?
+  if [ "$code" -eq 2 ]; then
+    echo "vault: rollback or below-floor version — refuse stale sync copy" >&2
+  fi
+  exit "$code"
+fi
+```
+
+After this succeeds, the local `.state` anchor is written and routine use no longer depends on
+`--expect-min-version` — but keeping **N** in MDM as a belt-and-braces floor is harmless
+(`max(N, anchor)`).
+
+Enterprise MDM notes (config dir, lock policy): [enterprise-deployment.md](enterprise-deployment.md).
+
+Global flags reference: [CLI.md](../CLI.md#global-flags-rollback-c16).
 
 ## If you use Git as the backend
 

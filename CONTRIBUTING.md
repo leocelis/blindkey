@@ -53,7 +53,8 @@ cd vault
 # We use `just` for common tasks (see the justfile):
 just            # list tasks
 just check      # fmt + clippy + test
-just audit      # cargo audit + cargo deny
+just audit      # cargo audit + cargo deny + cargo vet
+just vet        # cargo vet only (supply-chain/ exemptions)
 just fuzz       # smoke-run the fuzz targets
 ```
 
@@ -66,7 +67,7 @@ profiles; `scripts/setup-rust.sh` is the supported path.
 ## Pull request checklist
 
 - [ ] `just check` passes (fmt, clippy with `-D warnings`, tests).
-- [ ] `just audit` passes (no new advisories or license violations).
+- [ ] `just audit` passes (no new advisories, license violations, or unvetted deps).
 - [ ] New/changed behavior has a test, and the test maps to a constraint.
 - [ ] The PR description lists affected constraints.
 - [ ] No secret material can reach a log, `Debug`, stdout-by-default, or an argv.

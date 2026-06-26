@@ -34,5 +34,10 @@ if command -v cargo-deny >/dev/null 2>&1 || cargo deny --version >/dev/null 2>&1
 else
   echo "WARN: cargo-deny not installed — skip"
 fi
+if command -v cargo-vet >/dev/null 2>&1 || cargo vet --version >/dev/null 2>&1; then
+  cargo vet
+else
+  echo "WARN: cargo-vet not installed — skip (cargo install cargo-vet --locked)"
+fi
 
 echo "OK: release quality gate passed"

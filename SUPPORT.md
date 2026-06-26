@@ -1,6 +1,6 @@
 # Support
 
-Vault is **pre-alpha** — we welcome bug reports, questions, and ideas.
+Vault **1.0.0** — we welcome bug reports, questions, and ideas.
 
 ## Questions and ideas
 

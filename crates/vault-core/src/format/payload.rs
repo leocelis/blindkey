@@ -32,6 +32,7 @@ mod tag {
     pub const INNER_ALGO: u16 = 0x0001;
     pub const INNER_KEY: u16 = 0x0002;
     pub const PAD_MODE: u16 = 0x0003; // UC-07 §3.2 padding policy (u8); absent = none
+    pub const YUBIKEY_STRICT: u16 = 0x0004; // C5: abort body-writing saves without YubiKey when set
     pub const VAULT_VERSION: u16 = 0x0010;
     pub const ENTRY: u16 = 0x0020;
     pub const USAGE: u16 = 0x0030; // UC-19 frecency store (id‖uses‖last_used × n); absent = empty
@@ -47,6 +48,9 @@ pub struct Payload {
     pub pad_mode: PadMode,
     /// Monotonic version counter (constraint C16).
     pub vault_version: u64,
+    /// When true (default for new YubiKey 2FA enrollments), body-writing saves require the key
+    /// to refresh the composite stanza; when false, saves proceed with a loud stale warning (C5).
+    pub yubikey_strict: bool,
     /// The entries.
     pub entries: Vec<Entry>,
     /// Per-entry usage signal for search ranking (UC-19). Lives here so it is encrypted at rest
@@ -65,6 +69,9 @@ impl Payload {
         tlv::write_record(&mut out, tag::INNER_ALGO, &[INNER_STREAM_CHACHA20]);
         tlv::write_record(&mut out, tag::INNER_KEY, &self.inner_stream_key.expose());
         tlv::write_record(&mut out, tag::PAD_MODE, &[self.pad_mode.to_byte()]);
+        if self.yubikey_strict {
+            tlv::write_record(&mut out, tag::YUBIKEY_STRICT, &[1u8]);
+        }
         tlv::write_record(
             &mut out,
             tag::VAULT_VERSION,
@@ -87,10 +94,14 @@ impl Payload {
     /// Entries are collected first, then decoded through one [`InnerStream`] built from the parsed
     /// `inner_stream_key` — so the key is always available before any Protected field is decrypted,
     /// regardless of record order (constraint C19).
+    ///
+    /// For vault open, prefer [`Self::parse_from_stream_ciphertext`] — it never materializes the
+    /// full outer plaintext in one buffer (security-gap review P3).
     pub fn parse(bytes: &[u8]) -> Result<Payload> {
         let mut cur = Cursor::new(bytes);
         let mut inner_key: Option<Protected> = None;
         let mut pad_mode = PadMode::None;
+        let mut yubikey_strict = false;
         let mut version: Option<u64> = None;
         let mut entry_blobs: Vec<&[u8]> = Vec::new();
         let mut usage = crate::frecency::FrecencyStore::new();
@@ -114,6 +125,9 @@ impl Payload {
                         pad_mode = PadMode::from_byte(b);
                     }
                 }
+                tag::YUBIKEY_STRICT => {
+                    yubikey_strict = v.first().copied().unwrap_or(0) != 0;
+                }
                 tag::VAULT_VERSION => version = Some(tlv::decode_u64(v)?),
                 tag::ENTRY => entry_blobs.push(v),
                 tag::USAGE => usage = crate::frecency::FrecencyStore::parse(v)?,
@@ -135,6 +149,90 @@ impl Payload {
             inner_stream_key: inner_key,
             pad_mode,
             vault_version: version.ok_or(Error::BodyMalformed)?,
+            yubikey_strict,
+            entries,
+            usage,
+        })
+    }
+
+    /// Open-path parse: decrypt the outer STREAM chunk-by-chunk and assemble the payload without
+    /// ever holding the full decrypted plaintext in one contiguous buffer (security-gap review P3 / C19).
+    pub fn parse_from_stream_ciphertext(
+        data_key: &[u8; 32],
+        nonce_prefix: &[u8; 16],
+        stream_ciphertext: &[u8],
+    ) -> Result<Payload> {
+        use super::inner_stream::SealKey;
+        use super::tlv_incremental::IncrementalTlv;
+        use crate::crypto::stream;
+
+        let mut tlv = IncrementalTlv::new(MAX_ENTRY_LEN);
+        let mut inner_key: Option<Protected> = None;
+        let mut pad_mode = PadMode::None;
+        let mut yubikey_strict = false;
+        let mut version: Option<u64> = None;
+        let mut entries: Vec<Entry> = Vec::new();
+        let mut usage = crate::frecency::FrecencyStore::new();
+        let mut seal: Option<Arc<SealKey>> = None;
+        let mut stream_offset: u64 = 0;
+        let mut saw_end = false;
+
+        let mut ingest_records = |tlv: &mut IncrementalTlv| -> Result<()> {
+            while let Some((t, v)) = tlv.try_next_record()? {
+                match t {
+                    tag::END => {
+                        saw_end = true;
+                        break;
+                    }
+                    tag::INNER_ALGO => {
+                        if v.as_slice() != [INNER_STREAM_CHACHA20] {
+                            return Err(Error::BodyMalformed);
+                        }
+                    }
+                    tag::INNER_KEY => {
+                        if v.len() != INNER_STREAM_KEY_LEN {
+                            return Err(Error::BodyMalformed);
+                        }
+                        inner_key = Some(Protected::new(v.to_vec()));
+                        seal = Some(Arc::new(SealKey::new(&inner_key.as_ref().unwrap().expose())));
+                    }
+                    tag::PAD_MODE => {
+                        if let Some(&b) = v.first() {
+                            pad_mode = PadMode::from_byte(b);
+                        }
+                    }
+                    tag::YUBIKEY_STRICT => {
+                        yubikey_strict = v.first().copied().unwrap_or(0) != 0;
+                    }
+                    tag::VAULT_VERSION => version = Some(tlv::decode_u64(&v)?),
+                    tag::ENTRY => {
+                        let key = seal.as_ref().ok_or(Error::BodyMalformed)?;
+                        entries.push(Entry::parse(&v, key, &mut stream_offset)?);
+                    }
+                    tag::USAGE => usage = crate::frecency::FrecencyStore::parse(&v)?,
+                    _ => {}
+                }
+            }
+            Ok(())
+        };
+
+        stream::decrypt_streaming(data_key, nonce_prefix, stream_ciphertext, |chunk| {
+            let _lock = crate::memory::PageLock::new(chunk);
+            tlv.feed(chunk);
+            ingest_records(&mut tlv)
+        })?;
+
+        ingest_records(&mut tlv)?;
+        if !saw_end {
+            return Err(Error::BodyMalformed);
+        }
+
+        let inner_key = inner_key.ok_or(Error::BodyMalformed)?;
+        Ok(Payload {
+            inner_stream_key: inner_key,
+            pad_mode,
+            vault_version: version.ok_or(Error::BodyMalformed)?,
+            yubikey_strict,
             entries,
             usage,
         })
@@ -175,6 +273,7 @@ mod tests {
             inner_stream_key: Protected::new(vec![0x5A; INNER_STREAM_KEY_LEN]),
             pad_mode: PadMode::None,
             vault_version: 3,
+            yubikey_strict: false,
             entries: vec![entry(1, "a", b"pw-a"), entry(2, "b", b"pw-b")],
             usage,
         }
@@ -196,6 +295,7 @@ mod tests {
             inner_stream_key: Protected::new(vec![0x5A; INNER_STREAM_KEY_LEN]),
             pad_mode: PadMode::None,
             vault_version: 1,
+            yubikey_strict: false,
             entries: vec![entry(1, "svc", secret)],
             usage: crate::frecency::FrecencyStore::new(),
         };
@@ -214,6 +314,7 @@ mod tests {
             inner_stream_key: Protected::new(vec![1; INNER_STREAM_KEY_LEN]),
             pad_mode: PadMode::None,
             vault_version: 0,
+            yubikey_strict: false,
             entries: vec![],
             usage: crate::frecency::FrecencyStore::new(),
         };
@@ -254,5 +355,20 @@ mod tests {
         let mut bytes = p.serialize();
         bytes.extend_from_slice(&[0xFF; 16]); // trailing padding
         assert_eq!(Payload::parse(&bytes).unwrap(), p);
+    }
+
+    #[test]
+    fn streaming_parse_matches_buffer_parse() {
+        use crate::crypto::stream;
+
+        const DK: [u8; 32] = [0x44; 32];
+        const NP: [u8; 16] = [0x55; 16];
+
+        let p = sample();
+        let pt = p.serialize();
+        let ct = stream::encrypt(&DK, &NP, &pt).unwrap();
+        let from_buf = Payload::parse(&pt).unwrap();
+        let from_stream = Payload::parse_from_stream_ciphertext(&DK, &NP, &ct).unwrap();
+        assert_eq!(from_buf, from_stream);
     }
 }

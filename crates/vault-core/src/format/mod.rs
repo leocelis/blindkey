@@ -15,6 +15,7 @@ mod inner_stream;
 pub mod payload;
 pub mod stanza;
 mod tlv;
+mod tlv_incremental;
 
 pub use entry::{CustomField, CustomValue, Entry, Protected};
 pub use header::{Header, KdfParams};

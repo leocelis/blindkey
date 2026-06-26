@@ -11,6 +11,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+mod agent;
 mod clipboard;
 mod commands;
 mod export;
@@ -31,6 +32,12 @@ struct Cli {
     /// trust-on-first-use mitigation against being served an old copy (constraint C16).
     #[arg(long, global = true, value_name = "N")]
     expect_min_version: Option<u64>,
+    /// Abort body-writing saves when the YubiKey is absent (constraint C5). Overrides per-vault policy.
+    #[arg(long, global = true)]
+    strict_yubikey: bool,
+    /// Allow a body-writing save without refreshing the YubiKey stanza (graceful staleness).
+    #[arg(long, global = true)]
+    allow_stale_yubikey: bool,
     /// Unlock a YubiKey-2FA vault with its recovery code instead of the key (anti-lockout, UC-09).
     #[arg(long, global = true)]
     recovery: bool,
@@ -63,6 +70,12 @@ enum Command {
         /// Skip the weak-master-password warning/confirmation (for scripted setup).
         #[arg(long)]
         allow_weak_password: bool,
+        /// Allow Argon2id params below the enforced floor (tests/scripts only; constraint C2).
+        #[arg(long, hide = true)]
+        allow_weak_kdf: bool,
+        /// Generate and enroll an offline recovery-code stanza at init (gap C3).
+        #[arg(long)]
+        with_recovery_code: bool,
     },
     /// Import secrets from a file (e.g. a messy `keys.txt`) into the vault.
     Import {
@@ -156,6 +169,12 @@ enum Command {
         #[arg(long, default_value_t = 4)]
         kdf_p_cost: u32,
     },
+    /// Generate a fresh data key and re-wrap all stanzas (gap C2 — forward secrecy).
+    RotateDataKey {
+        /// Re-seal the anti-lockout recovery-code stanza (required when 2FA enrolled).
+        #[arg(long)]
+        re_seal_recovery: bool,
+    },
     /// Benchmark and recommend Argon2id parameters (constraint C22).
     Tune,
     /// List, add, or remove hardware/OS unlock stanzas (constraint C21).
@@ -164,27 +183,35 @@ enum Command {
         action: StanzasAction,
     },
     /// Add a required second factor (true 2FA): `vault enroll yubikey`, or
-    /// `vault enroll keyfile <PATH>` (a new keyfile is generated if PATH doesn't exist).
+    /// `vault enroll keyfile <PATH>`. Additive OR factors: `vault enroll fido2`.
     Enroll {
-        /// Factor to enroll: `yubikey` or `keyfile`.
+        /// Factor to enroll: `yubikey`, `keyfile`, or `fido2`.
         factor: String,
         /// Keyfile path (for `keyfile`): used if it exists, otherwise a random one is created here.
         path: Option<PathBuf>,
+        /// Allow saves without the YubiKey present (graceful staleness — not recommended).
+        #[arg(long)]
+        graceful_yubikey: bool,
     },
     /// Toggle payload size-padding so the file's exact size is hidden (UC-07 §3.2). `vault pad on|off`.
     Pad {
         /// `on` to enable Padmé size-padding, `off` to disable it.
         state: String,
     },
-    /// Seal a TPM stanza to the current PCR policy (optional; Linux/Windows — constraint C15).
+    /// Seal a TPM stanza to the current PCR policy (Linux/Windows — requires tpm2-tools).
     ///
-    /// PCR values change after firmware or kernel updates — run `vault re-enroll-tpm` to re-seal.
-    /// Discrete TPM bus attacks (SPI sniffing, TPM Genie) are not mitigated by PCR sealing alone.
+    /// Default policy: PCR 7 (Secure Boot certificate state). PCR values change after firmware
+    /// or kernel updates — run `vault re-enroll-tpm` to re-seal.
     EnrollTpm,
     /// Re-seal the TPM stanza after firmware or kernel updates changed PCR values (constraint C15).
     ///
     /// Unseals with the current PCR policy, re-seals to new PCRs, and updates the TPM stanza.
     ReEnrollTpm,
+    /// Model-blind agent broker — opaque handles + OS approval gate (S-13 / UC-16 scaffold).
+    Agent {
+        #[command(subcommand)]
+        action: crate::agent::AgentAction,
+    },
     /// Internal: detached clipboard auto-clear helper. Reads the secret on stdin; not for direct
     /// use (constraint C13 / UC-04).
     #[command(hide = true)]
@@ -207,6 +234,8 @@ fn main() -> std::process::ExitCode {
     let opts = commands::OpenOpts {
         allow_rollback: cli.allow_rollback,
         expect_min_version: cli.expect_min_version,
+        strict_yubikey: cli.strict_yubikey,
+        allow_stale_yubikey: cli.allow_stale_yubikey,
         recovery: cli.recovery,
         keyfile: cli.keyfile,
         unlock: unlock_secret::UnlockSecretOpts {
