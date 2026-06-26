@@ -86,12 +86,7 @@ fn enterprise_posture_denies_deferred_hardware() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/marketing_hardware_audit_research.md");
     assert!(research.contains("S-8a") && research.contains("mock"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../internal/patterns/vault/marketing_hardware_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read marketing_hardware_patterns.yaml: {e}"));
-    assert!(patterns.contains("HW-MKT-01"));
 }

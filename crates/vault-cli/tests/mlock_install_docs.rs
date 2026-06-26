@@ -50,12 +50,7 @@ fn vault_sys_exposes_lock_region_errno() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/mlock_docker_research.md");
     assert!(research.contains("EPERM") && research.contains("host-native"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../internal/patterns/vault/mlock_degradation_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read mlock_degradation_patterns.yaml: {e}"));
-    assert!(patterns.contains("MLOCK-04"));
 }

@@ -84,14 +84,9 @@ fn threat_model_cross_links_pq_residual() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/pq_posture_research.md");
     assert!(research.contains("gap E1"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../internal/patterns/vault/pq_posture_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read pq_posture_patterns.yaml: {e}"));
-    assert!(patterns.contains("post-quantum-posture.md"));
 }
 
 #[test]

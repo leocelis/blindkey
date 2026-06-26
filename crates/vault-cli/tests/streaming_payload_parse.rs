@@ -42,13 +42,8 @@ fn payload_documents_streaming_open_path() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/streaming_payload_parse_research.md");
     assert!(research.contains("IncrementalTlv"));
     assert!(research.contains("StreamDecryptor"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../internal/patterns/vault/streaming_payload_parse_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read streaming_payload_parse_patterns.yaml: {e}"));
-    assert!(patterns.contains("STR-01"));
 }

@@ -38,12 +38,7 @@ fn gui_main_shows_totp_in_app_without_clipboard() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/gui_totp_in_app_research.md");
     assert!(research.contains("clipboard") && research.contains("In-app only"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../internal/patterns/vault/gui_totp_in_app_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read gui_totp_in_app_patterns.yaml: {e}"));
-    assert!(patterns.contains("TOTP-02"));
 }

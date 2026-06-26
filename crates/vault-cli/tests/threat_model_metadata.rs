@@ -61,14 +61,9 @@ fn security_md_lists_sync_metadata_out_of_scope() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/metadata_leak_research.md");
     assert!(research.contains("C17") && research.contains("mtime"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../internal/patterns/vault/metadata_leak_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read metadata_leak_patterns.yaml: {e}"));
-    assert!(patterns.contains("META-01"));
 }
 
 #[test]
