@@ -92,6 +92,7 @@ fn cli_end_to_end() {
             "1",
             "--kdf-p-cost",
             "1",
+            "--allow-weak-kdf",
         ],
         pw,
     );
@@ -171,6 +172,7 @@ fn export_json_dumps_all_entries() {
             "--kdf-p-cost",
             "1",
             "--allow-weak-password",
+            "--allow-weak-kdf",
         ],
         pw,
     );
@@ -219,6 +221,7 @@ fn export_piped_without_yes_exits_8() {
             "--kdf-p-cost",
             "1",
             "--allow-weak-password",
+            "--allow-weak-kdf",
         ],
         pw,
     );
@@ -654,7 +657,14 @@ fn cli_rollback_detection() {
     let saved_v1 = unique_vault();
     std::fs::copy(&vault, &saved_v1).unwrap();
     let mut up_args = vec!["--vault", vs, "upgrade-kdf"];
-    up_args.extend_from_slice(&fast);
+    up_args.extend_from_slice(&[
+        "--kdf-m-cost",
+        "8192",
+        "--kdf-t-cost",
+        "1",
+        "--kdf-p-cost",
+        "1",
+    ]);
     let (code, _, err) = run_env(&home, &up_args, pw);
     assert_eq!(code, Some(0), "upgrade-kdf: {err}");
 
@@ -725,6 +735,7 @@ fn cli_keyfile_2fa_enroll_open_and_recovery() {
             "1",
             "--kdf-p-cost",
             "1",
+            "--allow-weak-kdf",
         ],
         pw,
     );

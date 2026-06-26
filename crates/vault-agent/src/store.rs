@@ -24,7 +24,8 @@ pub fn data_dir() -> Result<PathBuf, String> {
     {
         let base = std::env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
-            .or_else(|| home_dir().ok().map(|h| h.join(".local/share")))?;
+            .or_else(|| home_dir().ok().map(|h| h.join(".local/share")))
+            .ok_or_else(|| "XDG_DATA_HOME or HOME not set".to_string())?;
         Ok(base.join("vault"))
     }
 }
