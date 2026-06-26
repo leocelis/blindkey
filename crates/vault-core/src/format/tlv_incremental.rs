@@ -48,9 +48,7 @@ impl IncrementalTlv {
         if len > self.max_len {
             return Err(Error::BodyMalformed);
         }
-        let total = HEADER_LEN
-            .checked_add(len)
-            .ok_or(Error::BodyMalformed)?;
+        let total = HEADER_LEN.checked_add(len).ok_or(Error::BodyMalformed)?;
         if self.pending.len() < total {
             return Ok(None);
         }

@@ -10,7 +10,7 @@ use crate::format::stanza::{kind, Stanza};
 use crate::memory::DataKey;
 use crate::{Error, Result};
 
-use super::{WRAP_NONCE_LEN, WRAPPED_KEY_LEN};
+use super::{WRAPPED_KEY_LEN, WRAP_NONCE_LEN};
 
 /// HKDF info for TPM hardware wrapping (constraint C15).
 pub const TPM_WRAP_INFO: &[u8] = b"vault-tpm-wrap-v1";

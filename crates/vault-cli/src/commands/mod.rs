@@ -227,9 +227,7 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
         ),
         Command::EnrollTpm => cmd_enroll_tpm(&vault_path(vault_opt)?, opts),
         Command::ReEnrollTpm => cmd_re_enroll_tpm(&vault_path(vault_opt)?, opts),
-        Command::Agent { action } => {
-            crate::agent::dispatch(&vault_path(vault_opt)?, opts, action)
-        }
+        Command::Agent { action } => crate::agent::dispatch(&vault_path(vault_opt)?, opts, action),
         Command::Lock => cmd_lock(),
         Command::Stanzas { action } => cmd_stanzas(&vault_path(vault_opt)?, action, opts),
     }
@@ -298,10 +296,14 @@ fn cmd_init(
     note_saved(&vault); // C16: seed the local anchor at the initial version
     pre_release_notice();
     if let Some(recovery) = printed_recovery {
-        eprintln!("\n   RECOVERY CODE — write it down OFFLINE. Shown once; not stored in plaintext:");
+        eprintln!(
+            "\n   RECOVERY CODE — write it down OFFLINE. Shown once; not stored in plaintext:"
+        );
         eprintln!("       {recovery}\n");
         eprintln!("   Unlock with:  vault --recovery <command>");
-        eprintln!("   (Master password still works. No server reset — lose both secrets = vault lost.)");
+        eprintln!(
+            "   (Master password still works. No server reset — lose both secrets = vault lost.)"
+        );
     }
     eprintln!("Created vault at {}", path.display());
     Ok(())
@@ -691,7 +693,9 @@ fn cmd_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
     eprintln!(
         "\n✅ TPM stanza enrolled — you can unlock without the password when PCR {DEFAULT_PCR_INDEX} matches."
     );
-    eprintln!("   Password unlock still works. After firmware/kernel changes, run `vault re-enroll-tpm`.");
+    eprintln!(
+        "   Password unlock still works. After firmware/kernel changes, run `vault re-enroll-tpm`."
+    );
     Ok(())
 }
 
@@ -964,12 +968,12 @@ fn cmd_rotate_data_key(path: &Path, re_seal_recovery: bool, opts: &OpenOpts) -> 
         .any(|s| s.stanza_type == kind::PW_KEYFILE)
     {
         let kf_path = opts.keyfile.as_ref().ok_or_else(|| {
-            "this vault requires a keyfile — pass `--keyfile <PATH>` for rotate-data-key".to_string()
+            "this vault requires a keyfile — pass `--keyfile <PATH>` for rotate-data-key"
+                .to_string()
         })?;
-        Some(Zeroizing::new(
-            std::fs::read(kf_path)
-                .map_err(|e| format!("cannot read keyfile {}: {e}", kf_path.display()))?,
-        ))
+        Some(Zeroizing::new(std::fs::read(kf_path).map_err(|e| {
+            format!("cannot read keyfile {}: {e}", kf_path.display())
+        })?))
     } else {
         None
     };
@@ -1076,8 +1080,8 @@ fn cmd_enroll_fido2(path: &Path, opts: &OpenOpts) -> CmdResult {
         return Err("this vault already has a FIDO2 stanza enrolled".into());
     }
     eprintln!("Touch your security key to enroll FIDO2 hmac-secret…");
-    let (extra, prf) = vault_hardware::fido2::enroll(vault.vault_id(), None)
-        .map_err(|e| e.to_string())?;
+    let (extra, prf) =
+        vault_hardware::fido2::enroll(vault.vault_id(), None).map_err(|e| e.to_string())?;
     vault
         .add_fido2_stanza(&prf, extra)
         .map_err(|e| e.to_string())?;

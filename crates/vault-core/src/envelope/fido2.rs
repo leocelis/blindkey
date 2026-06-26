@@ -10,7 +10,7 @@ use crate::format::stanza::{kind, Stanza};
 use crate::memory::DataKey;
 use crate::{Error, Result};
 
-use super::{WRAP_NONCE_LEN, WRAPPED_KEY_LEN};
+use super::{WRAPPED_KEY_LEN, WRAP_NONCE_LEN};
 
 /// HKDF info for FIDO2 hardware wrapping (constraint C6 / C14).
 pub const FIDO2_WRAP_INFO: &[u8] = b"vault-hw-wrap-v1";
@@ -67,9 +67,7 @@ impl Fido2Extra {
             return Err(Error::BodyMalformed);
         }
         let rp_start = cred_end + 1;
-        let rp_end = rp_start
-            .checked_add(rp_len)
-            .ok_or(Error::BodyMalformed)?;
+        let rp_end = rp_start.checked_add(rp_len).ok_or(Error::BodyMalformed)?;
         if extra.len() != rp_end + 32 {
             return Err(Error::BodyMalformed);
         }

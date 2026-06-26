@@ -29,10 +29,7 @@ pub fn first_device() -> Result<String, String> {
         .output()
         .map_err(|_| tool_missing())?;
     if !out.status.success() {
-        return Err(format!(
-            "fido2-token -L failed: {}",
-            stderr(&out)
-        ));
+        return Err(format!("fido2-token -L failed: {}", stderr(&out)));
     }
     let text = String::from_utf8_lossy(&out.stdout);
     for line in text.lines() {

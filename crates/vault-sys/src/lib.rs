@@ -77,9 +77,7 @@ pub fn lock_region_errno(ptr: *const u8, len: usize) -> Result<(), i32> {
         if rc == 0 {
             Ok(())
         } else {
-            Err(std::io::Error::last_os_error()
-                .raw_os_error()
-                .unwrap_or(-1))
+            Err(std::io::Error::last_os_error().raw_os_error().unwrap_or(-1))
         }
     }
     #[cfg(not(unix))]
@@ -193,7 +191,10 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[test]
     fn linux_non_dumpable_after_harden() {
-        assert!(disable_core_dumps(), "RLIMIT_CORE + PR_SET_DUMPABLE must succeed");
+        assert!(
+            disable_core_dumps(),
+            "RLIMIT_CORE + PR_SET_DUMPABLE must succeed"
+        );
         // SAFETY: PR_GET_DUMPABLE returns the dumpable flag; no pointers.
         let dumpable = unsafe { libc::prctl(libc::PR_GET_DUMPABLE, 0, 0, 0, 0) };
         assert_eq!(dumpable, 0, "process must be non-dumpable (anti-ptrace B3)");

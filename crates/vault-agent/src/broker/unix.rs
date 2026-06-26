@@ -150,10 +150,7 @@ fn serve_one(session: BrokerSession, mut stream: UnixStream) {
     let req = match parse_request(&line) {
         Ok(r) => r,
         Err(e) => {
-            let _ = write_response(
-                &mut stream,
-                &UseResponse::with_status(UseStatus::Error, e),
-            );
+            let _ = write_response(&mut stream, &UseResponse::with_status(UseStatus::Error, e));
             return;
         }
     };
@@ -186,8 +183,6 @@ pub fn client_use(socket_path: &Path, handle: &str, dest: &str) -> Result<UseRes
         .map_err(|e| e.to_string())?;
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
-    reader
-        .read_line(&mut line)
-        .map_err(|e| e.to_string())?;
+    reader.read_line(&mut line).map_err(|e| e.to_string())?;
     serde_json::from_str(line.trim()).map_err(|e| format!("bad response: {e}"))
 }

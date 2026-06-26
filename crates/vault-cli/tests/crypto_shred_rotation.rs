@@ -116,13 +116,12 @@ fn rotate_data_key_cli_preserves_entries() {
         "rotate-data-key"
     );
     let bytes_after = std::fs::read(&vault).unwrap();
-    assert_ne!(bytes_before, bytes_after, "rotation must rewrite the vault file");
-
-    let (code, out, err) = run_env(
-        &home,
-        &["--vault", vs, "get", "github", "--stdout"],
-        pw,
+    assert_ne!(
+        bytes_before, bytes_after,
+        "rotation must rewrite the vault file"
     );
+
+    let (code, out, err) = run_env(&home, &["--vault", vs, "get", "github", "--stdout"], pw);
     assert_eq!(code, Some(0), "get after rotate: {err}");
     assert!(
         !out.is_empty() || !err.is_empty(),

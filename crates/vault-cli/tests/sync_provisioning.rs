@@ -24,10 +24,7 @@ fn sync_guide_documents_expect_min_version_and_fleet() {
         "od -An -tu8",
         ".state",
     ] {
-        assert!(
-            guide.contains(needle),
-            "sync guide missing: {needle}"
-        );
+        assert!(guide.contains(needle), "sync guide missing: {needle}");
     }
 }
 

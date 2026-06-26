@@ -2,10 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
+use vault_agent::paths;
 use vault_agent::{
     client_use, run_broker, AgentHandle, BrokerConfig, BrokerSession, Destination, HandleStore,
 };
-use vault_agent::paths;
 
 use crate::commands::{open_vault, OpenOpts};
 use crate::unlock_secret;
@@ -19,7 +19,13 @@ pub fn dispatch(vault_path: &Path, opts: &OpenOpts, action: AgentAction) -> Agen
             field,
             dest_env,
             for_cmd,
-        } => cmd_allow(vault_path, &name, &field, &dest_env, Some(for_cmd.as_path())),
+        } => cmd_allow(
+            vault_path,
+            &name,
+            &field,
+            &dest_env,
+            Some(for_cmd.as_path()),
+        ),
         AgentAction::List => cmd_list(),
         AgentAction::Revoke { handle } => cmd_revoke(&handle),
         AgentAction::Run => cmd_run(vault_path, opts),
@@ -59,7 +65,8 @@ fn cmd_allow(
     dest_env: &str,
     for_cmd: Option<&Path>,
 ) -> AgentResult {
-    let cmd = for_cmd.ok_or("usage: vault agent allow NAME --dest-env VAR --for-cmd /path/to/cmd")?;
+    let cmd =
+        for_cmd.ok_or("usage: vault agent allow NAME --dest-env VAR --for-cmd /path/to/cmd")?;
     let dest_id = format!("env:{dest_env}:{}", cmd.to_string_lossy());
     let handle = AgentHandle::new(
         name,
@@ -118,6 +125,9 @@ fn cmd_run(vault_path: &Path, opts: &OpenOpts) -> AgentResult {
 
 fn cmd_use(handle: &str, dest: &str) -> AgentResult {
     let resp = client_use(&paths()?.2, handle, dest)?;
-    println!("{}", serde_json::to_string(&resp).map_err(|e| e.to_string())?);
+    println!(
+        "{}",
+        serde_json::to_string(&resp).map_err(|e| e.to_string())?
+    );
     Ok(())
 }

@@ -9,11 +9,7 @@ pub enum ApprovalOutcome {
 }
 
 /// Prompt on stderr; default deny. Returns Approved when `VAULT_AGENT_AUTO_APPROVE=1` (tests only).
-pub fn prompt_use(
-    entry_title: &str,
-    destination_id: &str,
-    uses_remaining: u32,
-) -> ApprovalOutcome {
+pub fn prompt_use(entry_title: &str, destination_id: &str, uses_remaining: u32) -> ApprovalOutcome {
     if crate::auto_approve_enabled() {
         return ApprovalOutcome::Approved;
     }

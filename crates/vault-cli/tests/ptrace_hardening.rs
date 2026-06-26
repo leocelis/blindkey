@@ -15,11 +15,7 @@ fn read_repo_file(rel: &str) -> String {
 #[test]
 fn vault_sys_documents_ptrace_and_coredump_filter() {
     let lib = read_repo_file("crates/vault-sys/src/lib.rs");
-    for needle in [
-        "PR_SET_DUMPABLE",
-        "coredump_filter",
-        "ptrace",
-    ] {
+    for needle in ["PR_SET_DUMPABLE", "coredump_filter", "ptrace"] {
         assert!(lib.contains(needle), "vault-sys missing: {needle}");
     }
 }
@@ -42,11 +38,7 @@ fn mains_call_harden_process_before_secrets() {
 #[test]
 fn install_documents_ptrace_scope_hardening() {
     let install = read_repo_file("docs/INSTALL.md");
-    for needle in [
-        "ptrace_scope",
-        "PR_SET_DUMPABLE",
-        "non-dumpable",
-    ] {
+    for needle in ["ptrace_scope", "PR_SET_DUMPABLE", "non-dumpable"] {
         assert!(install.contains(needle), "INSTALL.md missing: {needle}");
     }
 }
@@ -54,7 +46,12 @@ fn install_documents_ptrace_scope_hardening() {
 #[test]
 fn ptrace_hardening_research_exists() {
     let research = read_repo_file("research/ptrace_hardening_research.md");
-    for needle in ["PR_SET_DUMPABLE", "coredump_filter", "ptrace_scope", "gap B3"] {
+    for needle in [
+        "PR_SET_DUMPABLE",
+        "coredump_filter",
+        "ptrace_scope",
+        "gap B3",
+    ] {
         assert!(research.contains(needle), "research missing: {needle}");
     }
 }

@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use getrandom::getrandom;
-use zeroize::Zeroizing;
 use vault_core::envelope::tpm::{TpmExtra, MAX_SEALED_BLOB_LEN};
+use zeroize::Zeroizing;
 
 use crate::tpm_policy::PCR_MISMATCH_MESSAGE;
 

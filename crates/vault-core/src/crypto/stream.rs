@@ -105,11 +105,7 @@ impl std::fmt::Debug for StreamDecryptor<'_> {
 
 impl<'a> StreamDecryptor<'a> {
     /// Begin decrypting `ciphertext` with the payload key derived from `data_key` + `nonce_prefix`.
-    pub fn new(
-        data_key: &[u8; 32],
-        nonce_prefix: &[u8; 16],
-        ciphertext: &'a [u8],
-    ) -> Result<Self> {
+    pub fn new(data_key: &[u8; 32], nonce_prefix: &[u8; 16], ciphertext: &'a [u8]) -> Result<Self> {
         let key = Zeroizing::new(payload_key(data_key, nonce_prefix));
         let cipher = ChaCha20Poly1305::new_from_slice(&*key).map_err(|_| Error::Crypto)?;
         Ok(StreamDecryptor {
@@ -136,10 +132,7 @@ impl<'a> StreamDecryptor<'a> {
             .map_err(|_| Error::BodyAuth)?;
         self.rest = &self.rest[take..];
         if !is_last {
-            self.counter = self
-                .counter
-                .checked_add(1)
-                .ok_or(Error::BodyMalformed)?;
+            self.counter = self.counter.checked_add(1).ok_or(Error::BodyMalformed)?;
         }
         Ok(Some(Zeroizing::new(pt)))
     }

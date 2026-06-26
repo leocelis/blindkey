@@ -194,7 +194,9 @@ impl Payload {
                             return Err(Error::BodyMalformed);
                         }
                         inner_key = Some(Protected::new(v.to_vec()));
-                        seal = Some(Arc::new(SealKey::new(&inner_key.as_ref().unwrap().expose())));
+                        seal = Some(Arc::new(SealKey::new(
+                            &inner_key.as_ref().unwrap().expose(),
+                        )));
                     }
                     tag::PAD_MODE => {
                         if let Some(&b) = v.first() {

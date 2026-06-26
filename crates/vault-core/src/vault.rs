@@ -523,12 +523,8 @@ impl Vault {
             return Err(Error::Hardware("FIDO2 stanza already enrolled".into()));
         }
         let dk = Zeroizing::new(*self.data_key.expose_secret());
-        let stanza = envelope::fido2::wrap_fido2_stanza(
-            &dk,
-            prf_output,
-            &self.header.vault_id,
-            &extra,
-        )?;
+        let stanza =
+            envelope::fido2::wrap_fido2_stanza(&dk, prf_output, &self.header.vault_id, &extra)?;
         self.header.stanzas.push(stanza);
         Ok(())
     }
@@ -540,12 +536,7 @@ impl Vault {
         extra: envelope::tpm::TpmExtra,
     ) -> Result<()> {
         let dk = Zeroizing::new(*self.data_key.expose_secret());
-        let stanza = envelope::tpm::wrap_tpm_stanza(
-            &dk,
-            tpm_ikm,
-            &self.header.vault_id,
-            &extra,
-        )?;
+        let stanza = envelope::tpm::wrap_tpm_stanza(&dk, tpm_ikm, &self.header.vault_id, &extra)?;
         if let Some(idx) = self
             .header
             .stanzas
@@ -927,7 +918,16 @@ impl Vault {
                     let kf = opts.keyfile.ok_or_else(|| {
                         Error::Hardware("keyfile required for pw-keyfile vault rotation".into())
                     })?;
-                    envelope::wrap_keyfile_2fa_stanza(new_dk, opts.password, kf, &salt, &vid, m, t, p)?
+                    envelope::wrap_keyfile_2fa_stanza(
+                        new_dk,
+                        opts.password,
+                        kf,
+                        &salt,
+                        &vid,
+                        m,
+                        t,
+                        p,
+                    )?
                 }
                 other => {
                     return Err(Error::Hardware(format!(
@@ -1441,9 +1441,8 @@ mod tests {
             recovery,
         )
         .unwrap();
-        let mut respond = |c: &[u8; 32]| -> crate::Result<Zeroizing<Vec<u8>>> {
-            Ok(mock_yk_response(c))
-        };
+        let mut respond =
+            |c: &[u8; 32]| -> crate::Result<Zeroizing<Vec<u8>>> { Ok(mock_yk_response(c)) };
         assert!(matches!(
             v.rotate_data_key(&mut RotateDataKeyOptions {
                 password: b"masterpw",
