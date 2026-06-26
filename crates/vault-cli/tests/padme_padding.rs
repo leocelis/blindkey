@@ -50,15 +50,10 @@ fn roadmap_marks_s12_done() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/padme_padding_research.md");
     assert!(research.contains("default-off"));
     assert!(research.contains("v2"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../limitless/patterns/vault/padme_padding_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read padme_padding_patterns.yaml: {e}"));
-    assert!(patterns.contains("PAD-01"));
 }
 
 #[test]

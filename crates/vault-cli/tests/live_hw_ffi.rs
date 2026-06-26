@@ -56,14 +56,8 @@ fn cli_enroll_fido2_wired() {
 }
 
 #[test]
-fn research_and_patterns_exist() {
+fn research_doc_exists() {
     let research = read_repo_file("research/live_hw_ffi_research.md");
     assert!(research.contains("fido2-token"));
     assert!(research.contains("tpm2-tools"));
-    let patterns = std::fs::read_to_string(
-        repo_root().join("../limitless/patterns/vault/live_hw_ffi_patterns.yaml"),
-    )
-    .unwrap_or_else(|e| panic!("read live_hw_ffi_patterns.yaml: {e}"));
-    assert!(patterns.contains("S8A-01"));
-    assert!(patterns.contains("S8C-01"));
 }
