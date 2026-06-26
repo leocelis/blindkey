@@ -687,7 +687,7 @@ fn cmd_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
     vault
         .set_tpm_stanza(&ikm, extra)
         .map_err(|e| e.to_string())?;
-    let out = save_vault(&mut vault, password.as_bytes(), &opts)?;
+    let out = save_vault(&mut vault, password.as_bytes(), opts)?;
     write_vault(path, &out)?;
     note_saved(&vault);
     eprintln!(

@@ -22,12 +22,16 @@ pub const MAX_SEALED_BLOB_LEN: usize = 2048;
 /// Public TPM stanza tail fields (C15).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TpmExtra {
+    /// TPM PCR bank selector (v1 uses bank 0).
     pub pcr_bank: u8,
+    /// Bit mask of PCR indices included in the seal policy.
     pub pcr_mask: u32,
+    /// TPM2B sealed blob (bounded by [`MAX_SEALED_BLOB_LEN`]).
     pub sealed_blob: Vec<u8>,
 }
 
 impl TpmExtra {
+    /// Serialize extra bytes (bank, mask, LE blob length, blob).
     pub fn serialize(&self) -> Result<Vec<u8>> {
         if self.sealed_blob.len() > MAX_SEALED_BLOB_LEN {
             return Err(Error::BodyMalformed);
@@ -41,6 +45,7 @@ impl TpmExtra {
         Ok(out)
     }
 
+    /// Parse extra from stanza tail (bounded).
     pub fn parse(extra: &[u8]) -> Result<Self> {
         if extra.len() < 1 + 4 + 2 {
             return Err(Error::BodyMalformed);
@@ -99,6 +104,7 @@ pub fn wrap_tpm_stanza(
     })
 }
 
+/// Parse TPM extra from a stanza record.
 pub fn tpm_extra(stanza: &Stanza) -> Result<TpmExtra> {
     if stanza.stanza_type != kind::TPM {
         return Err(Error::Crypto);

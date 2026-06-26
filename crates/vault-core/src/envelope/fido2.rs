@@ -22,8 +22,11 @@ pub const MAX_RP_ID_LEN: usize = 253;
 /// Public fields stored in the FIDO2 stanza after the wrapped key (C14).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fido2Extra {
+    /// WebAuthn credential id (bounded by [`MAX_CREDENTIAL_ID_LEN`]).
     pub credential_id: Vec<u8>,
+    /// Relying party id string (bounded by [`MAX_RP_ID_LEN`]).
     pub relying_party_id: String,
+    /// SHA-256 of vault-scoped hardware salt (C6 binding).
     pub salt_hash: [u8; 32],
 }
 

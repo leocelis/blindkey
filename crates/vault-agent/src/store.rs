@@ -13,19 +13,19 @@ pub fn data_dir() -> Result<PathBuf, String> {
     #[cfg(target_os = "macos")]
     {
         let home = home_dir()?;
-        return Ok(home.join("Library/Application Support/vault"));
+        Ok(home.join("Library/Application Support/vault"))
     }
     #[cfg(windows)]
     {
         let base = std::env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA not set")?;
-        return Ok(PathBuf::from(base).join("vault"));
+        Ok(PathBuf::from(base).join("vault"))
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         let base = std::env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
             .or_else(|| home_dir().ok().map(|h| h.join(".local/share")))?;
-        return Ok(base.join("vault"));
+        Ok(base.join("vault"))
     }
 }
 

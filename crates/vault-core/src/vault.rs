@@ -48,6 +48,7 @@ pub const YUBIKEY_STALE_WARNING: &str =
     "WARNING: yubikey stanza not refreshed (key absent); insert it and save to restore challenge rotation.";
 
 /// Options for a body-writing save on a YubiKey 2FA vault (constraint C5).
+#[derive(Default)]
 pub struct SaveOptions<'a> {
     /// Master password — required to re-wrap the composite YubiKey stanza when the key is present.
     pub password: Option<&'a [u8]>,
@@ -67,16 +68,6 @@ impl std::fmt::Debug for SaveOptions<'_> {
                 &self.yubikey_respond.is_some().then_some("<fn>"),
             )
             .finish()
-    }
-}
-
-impl Default for SaveOptions<'_> {
-    fn default() -> Self {
-        Self {
-            password: None,
-            yubikey_strict: None,
-            yubikey_respond: None,
-        }
     }
 }
 
