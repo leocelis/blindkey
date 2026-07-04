@@ -96,7 +96,7 @@ impl Payload {
     /// regardless of record order (constraint C19).
     ///
     /// For vault open, prefer [`Self::parse_from_stream_ciphertext`] — it never materializes the
-    /// full outer plaintext in one buffer (card #847 P3).
+    /// full outer plaintext in one buffer .
     pub fn parse(bytes: &[u8]) -> Result<Payload> {
         let mut cur = Cursor::new(bytes);
         let mut inner_key: Option<Protected> = None;
@@ -156,7 +156,7 @@ impl Payload {
     }
 
     /// Open-path parse: decrypt the outer STREAM chunk-by-chunk and assemble the payload without
-    /// ever holding the full decrypted plaintext in one contiguous buffer (card #847 P3 / C19).
+    /// ever holding the full decrypted plaintext in one contiguous buffer (C19).
     pub fn parse_from_stream_ciphertext(
         data_key: &[u8; 32],
         nonce_prefix: &[u8; 16],

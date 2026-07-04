@@ -28,11 +28,13 @@
 | **AI-orchestrated attacker** | Frontier LLM drives recon→exfil; agentic tools | Zero metadata to recon; model-blind secret delivery; no secrets on argv; sanitized output | C17, C18, C27, C28, C31 |
 | **Supply-chain attacker** | Compromises a dependency or the release pipeline | Audited-libs-only; `cargo audit`/`deny` (`vet`*); reproducible + signed releases | C3, C24, C34 |
 | **Hostile-file attacker** | Hands you a crafted vault file | Parser fuzzing; KDF parameter ceiling; bounded allocations | C2, C7–C10, C30 |
+| **Hostile sealed container** | Validly sealed `.vltf` with zip-slip paths or corrupt inner chunks | Inner archive TLV fuzzing; traversal-safe extract (C65); fail-closed staging (C64); uniform errors | C62–C66, C30 |
+| **Passive `.vltf` observer** | Stores the sealed blob on untrusted cloud | Same as credential vault: outer blob size + mtime only; inner paths/sizes/counts inside AEAD (C62) | C61–C66, C17 |
 
 `*` = partially covered today. Further hardening (macOS anti-ptrace, dependency budget,
 live TPM/FIDO2 FFI) is tracked in
 [research/security_coverage_gaps.md](../research/security_coverage_gaps.md) Part 2 — distinct from
-the shipped C1–C60 set (C35–C39 are omni-search, already in intent v1.7.0).
+the shipped C1–C66 set (C35–C39 are omni-search; C61–C66 are sealed file storage, intent v1.8.0).
 
 ## Explicitly out of scope (residual risk)
 

@@ -32,6 +32,7 @@ plan and open questions.
 | [UC-20](UC-20-desktop-gui-hardening.md) | Desktop GUI performance & security hardening (`vault-gui`) | C40–C45; C20, C27, C30, C35, C38 |
 | [UC-21](UC-21-desktop-gaps-closure.md) | Desktop gaps closure — session hygiene, keyfile GUI, trust UX | C46–C54; C27, C35, C44, UC-09 |
 | [UC-22](UC-22-enterprise-readiness.md) | Fleet deploy & release quality gate | C55–C60; C38, C39 |
+| [UC-23](UC-23-sealed-file-storage.md) | Seal any file/folder for storage you don't trust *(Accepted v1.0 · shipped July 2026)* | C61–C66; C1, C2, C7, C11, C27, C30–C32 |
 
 ## Spec lifecycle
 
@@ -41,7 +42,8 @@ plan and open questions.
 
 Most UC specs through CP-7 are **Accepted v0.2 · implemented pre-1.0** as of the 2026-06-25
 constraint sweep. Exceptions: UC-08 and UC-12 (design only, not yet implemented); UC-16 (post-v1
-exploration); UC-13 (checksums + reproducible build shipped; cosign/SLSA deferred).
+exploration); UC-13 (checksums + reproducible build shipped; cosign/SLSA deferred). **UC-23** is
+**Accepted v1.0 · shipped** (July 2026) — sealed `.vltf` containers with C61–C66 verified in-tree.
 
 New constraints discovered while spec-writing are proposed as Part-2 candidates — the
 2026-06-10 pass promoted the first batch as C28–C34 (see

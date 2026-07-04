@@ -3737,6 +3737,7 @@ dependencies = [
  "rfd",
  "vault-clip",
  "vault-core",
+ "vault-hardware",
  "zeroize",
 ]
 

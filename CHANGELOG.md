@@ -7,6 +7,12 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Sealed file storage (UC-23 / S-22, C61–C66):** `.vltf` containers — `vault seal` / `open` /
+  `peek` (incl. `seal -` pipe mode, `--append` merge), `--vault FILE.vltf` stanza
+  enroll/remove/upgrade-kdf/rotate-data-key + keyfile/YubiKey/FIDO2/TPM unlock; GUI drag-and-drop
+  with byte progress/cancel and optional keyfile 2FA at seal time; TUI parity; release throughput
+  bench in `just audit-ready`; spec **Accepted v1.0**. Spec:
+  [docs/specs/UC-23-sealed-file-storage.md](docs/specs/UC-23-sealed-file-storage.md).
 - **KDF floor write policy (C2):** hard-reject below-floor Argon2id on `vault init` and
   `vault upgrade-kdf`; warn-only on open/import. Escape hatch: `vault init --allow-weak-kdf`.
   Research: [research/kdf_floor_policy_research.md](research/kdf_floor_policy_research.md).
@@ -23,6 +29,14 @@ All notable changes to this project are documented here. The format is based on
   Unix-socket broker, TTY approval, env injection, status-only IPC). ADR-0006.
   Guide: [docs/AGENT_BROKER.md](docs/AGENT_BROKER.md).
   Research: [research/agent_broker_research.md](research/agent_broker_research.md).
+
+### Changed
+- **Governance docs flattened to OSS convention:** MAINTAINERS.md is a flat handle list;
+  decision tiers in GOVERNANCE.md phrase authority as **code-owner sign-off**
+  (path-scoped via [CODEOWNERS](.github/CODEOWNERS)), not person-rank labels.
+- **Docs/comments hygiene:** internal work-tracking references removed from public
+  research notes, ADR metadata, and code comments; constraint-count references updated
+  to the current intent (66 constraints, v1.8.0).
 
 ## [1.0.0] - 2026-06-26
 

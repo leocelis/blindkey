@@ -6,7 +6,7 @@
 # Reference: https://ivdframework.dev
 #
 # IVD rules applied in this artifact:
-#   Rule 1 — Intent Before Implementation: 60 constraints, HIGH density.
+#   Rule 1 — Intent Before Implementation: 66 constraints, HIGH density.
 #             Segmented implementation required (see implementation_notes).
 #   Rule 3 — Constraint Tests Are Mandatory: every constraint has a `test:` field.
 #   Rule 4 — Stress-Test Intent: constraint_satisfiability block documents all
@@ -41,12 +41,12 @@ meta:
   intent_type: "feature"        # scope: single deliverable, not system-level
   name: vault
   tagline: "Zero-plaintext · local-first · open-source credential vault"
-  version: "1.7.0"   # 1.6.0: UC-21 C46–C54 · 1.7.0: UC-22 enterprise readiness (C55–C60)
+  version: "1.8.0"   # 1.8.0: UC-23 sealed-file-storage FORWARD constraints (C61–C66, G16) — bind the post-1.0 feature before any code, Gate-0 style; vacuously satisfied until it ships. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
   license: "MIT OR Apache-2.0"
   language: rust
-  ifscale_density: high         # IVD Rule 1: 60 constraints → segmented implementation
-  constraint_count: 60
-  constraint_groups: 15
+  ifscale_density: high         # IVD Rule 1: 66 constraints → segmented implementation
+  constraint_count: 66
+  constraint_groups: 16
   target_platforms:
     - x86_64-unknown-linux-musl
     - aarch64-apple-darwin
@@ -142,6 +142,7 @@ constraint_groups:
   G13: "Desktop GUI shell — performance and presentation hardening (UC-20)"
   G14: "Desktop GUI session hygiene and 2FA parity (UC-21)"
   G15: "Fleet deployment and release quality gate (UC-22)"
+  G16: "Sealed file containers — encrypted file/folder storage for untrusted clouds (UC-23, post-1.0 forward constraints)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 constraints:
@@ -1989,14 +1990,100 @@ constraints:
     test: |
       REVIEW: files exist; README or INSTALL links enterprise-deployment guide.
 
+  # ── G16: Sealed file containers (UC-23, post-1.0) ─────────────────────────
+  # FORWARD constraints (C27 precedent): they bind any sealed-file-container
+  # feature from the moment it exists, and are vacuously satisfied while it does
+  # not. Landed before implementation, Gate-0 style, per docs/specs/UC-23 §6.
+  # Design source: .sdlc/features/sealed-file-storage/patterns.yaml +
+  # research/encrypted_cloud_storage_research.md.
+
+  - id: C61
+    group: G16
+    title: "Sealed containers reuse the vault crypto path — no second crypto stack"
+    description: |
+      IF Vault ships a sealed file container feature (UC-23), it MUST reuse the
+      existing STREAM envelope (C1), KDF policy (C2), header rules (C7), and
+      multi-stanza unlock — no new cryptographic primitives, no parallel KDF path,
+      no separate key or recovery format. A fresh random data key is generated per
+      seal; no deterministic or convergent-encryption mode may exist at any flag.
+    test: |
+      FORWARD (vacuous until UC-23 ships). Then: REVIEW — no new crypto deps in
+      Cargo.toml; container headers parse via the existing stanza machinery.
+      UNIT — sealing identical input twice yields different ciphertexts.
+
+  - id: C62
+    group: G16
+    title: "Zero plaintext metadata in sealed containers"
+    description: |
+      A sealed container MUST expose only: the magic/version header (C7), stanza
+      records, and (padded) total length. All inner metadata — file names, paths,
+      sizes, counts, permissions, mtimes — lives inside the AEAD payload. This is
+      not configurable; there is no "skip filename encryption" mode (the 7-Zip trap).
+    test: |
+      FORWARD. Then: UNIT — ciphertext grep for every inner path segment of a
+      test corpus finds no plaintext trace.
+
+  - id: C63
+    group: G16
+    title: "Bounded-memory streaming seal and open"
+    description: |
+      Seal and open MUST stream with peak memory independent of input size
+      (O(chunk)); plaintext is never spilled to unencrypted temporary files during
+      seal; plaintext chunk buffers are zeroizing (C11); the KDF runs exactly once
+      per operation regardless of file count.
+    test: |
+      FORWARD. Then: INTEGRATION — seal an input larger than available RAM under a
+      fixed RSS ceiling; profile asserts a single Argon2id invocation.
+
+  - id: C64
+    group: G16
+    title: "Fail-closed extraction — no partial plaintext survives auth failure"
+    description: |
+      Any authentication failure during open MUST leave zero partial plaintext on
+      disk: extraction stages under a private directory removed on error; files
+      surface via temp+rename (C32 discipline) only after their final chunk
+      authenticates. Error output MUST NOT vary with failure position (no format
+      oracle). `--stdout` piping (where a write cannot be undone) MUST
+      buffer-and-verify, and refuse above a bounded size threshold.
+    test: |
+      FORWARD. Then: UNIT — chunk-corruption position matrix leaves the extraction
+      root free of partial bytes with byte-identical error text.
+
+  - id: C65
+    group: G16
+    title: "Path-traversal-safe extraction of hostile containers"
+    description: |
+      A validly-sealed container is still untrusted input (UC-10 stance): every
+      inner path MUST be validated before write — absolute paths, `..` components,
+      and symlink-escape targets rejected; no write outside the destination root.
+      The inner archive parser follows C30 rules (bounded reads, length caps, fuzz
+      target from day one).
+    test: |
+      FORWARD. Then: FUZZ/UNIT — zip-slip corpus (`../escape`, `/abs`, symlink
+      chains) creates nothing outside the target root; `file_archive_parse` fuzz
+      target green.
+
+  - id: C66
+    group: G16
+    title: "Size padding default-on for sealed containers"
+    description: |
+      Sealed containers MUST apply Padmé padding (S-12 `PadMode`) by default;
+      exact-size output requires an explicit opt-out flag. (Deliberately stricter
+      than the credential vault's opt-in default: new format, no back-compat
+      burden, and version-retaining hosts turn re-seals into a size-trajectory
+      channel.)
+    test: |
+      FORWARD. Then: UNIT — two inputs in the same Padmé bucket seal to identical
+      lengths by default; only the explicit opt-out yields exact-size output.
+
 # ──────────────────────────────────────────────────────────────────────────────
 constraint_satisfiability:
   # IVD Rule 6 — SATISFIABILITY CHECK
   # Required when 3 or more constraints exist. Documents every identified conflict,
   # its resolution, and binding priority ordering.
   # No constraint may be silently violated when it conflicts with another.
-  density: high  # 60 constraints, 15 groups
-  conflicts_identified: 8
+  density: high  # 66 constraints, 16 groups (C61-C66 forward/vacuous until UC-23 ships)
+  conflicts_identified: 9
   conflicts:
 
     - id: SC1
@@ -2122,9 +2209,29 @@ constraint_satisfiability:
         gate this (it is unkeyed and attacker-recomputable).
       priority: C2_bounds_validation > C8_verbatim_use  # validate bounds, then use the file's values verbatim
 
+    - id: SC9
+      between: [C64, C27]
+      description: |
+        C27's script-friendliness lineage implies pipe-based output (`open --stdout`)
+        for UC-23 sealed containers, but a pipe write cannot be undone if a chunk
+        authentication failure surfaces AFTER earlier chunks were already emitted —
+        violating C64's "no partial plaintext survives auth failure" for the
+        stdout channel.
+      resolution: |
+        C64 wins. `--stdout` MUST buffer the fully-decrypted, fully-authenticated
+        payload before emitting a single byte, and MUST refuse (with guidance
+        toward `open -C dir`) above a bounded size threshold where buffering is
+        no longer tenable. Streaming-to-pipe-before-verification is never offered,
+        at any flag. Threshold calibrated during implementation (IVD Rule 5).
+      priority: C64_fail_closed > C27_pipe_convenience  # forward conflict — binds when UC-23 ships
+
+  joint_satisfaction_test: |
+    Phase A (UC-23): `crates/vault-core/tests/uc23_joint_satisfaction.rs` — seal one
+    hostile+large corpus once; assert C61–C66 on that single artifact (docs/specs/UC-23-sealed-file-storage.md §5.6).
+
   all_constraints_simultaneously_satisfiable: true
   note: |
-    All 60 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
+    All 66 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
     described in vault/research/vault_spec.md. No cryptographic incompatibilities exist
     among the selected primitives (XChaCha20-Poly1305, Argon2id, HKDF-SHA-256, HMAC-SHA-256).
     The eight identified conflicts are resolved by explicit priority ordering above.
@@ -2148,7 +2255,7 @@ constraint_satisfiability:
 # ──────────────────────────────────────────────────────────────────────────────
 implementation_notes:
   segmentation_plan: |
-    IVD Rule 1 — HIGH constraint density (60 constraints) requires segmented
+    IVD Rule 1 — HIGH constraint density (66 constraints) requires segmented
     implementation. Implement one segment, re-read its constraints from disk,
     verify they all pass, then proceed to the next segment. Never implement
     across segments without verifying the preceding segment first.
@@ -2202,8 +2309,14 @@ implementation_notes:
       Implement and verify: C55, C56, C57, C58, C59, C60
       Re-read C55–C60 from disk before each sub-segment.
 
+    SEGMENT 12 — Sealed file containers (G16, UC-23, post-1.0)
+      Implement and verify: C61, C62, C63, C64, C65, C66
+      Re-read C61–C66 from disk before each sub-segment (IVD Rule 1 — 6 constraints).
+      Run joint_satisfaction_test on one hostile+large artifact before declaring Phase A done.
+      Gate: intent amendment merged (Gate-0) before any code in this segment.
+
     IVD Rule 2 — POST-IMPLEMENTATION AUDIT: Re-read this entire file from disk
-    (not from memory). For each of the 60 constraints, diff the implementation
+    (not from memory). For each constraint (C1–C66), diff the implementation
     against the constraint and report: PASS / FAIL / NEEDS_REVIEW.
     Do not declare the implementation complete until every constraint is PASS
     or NEEDS_REVIEW with written justification. Undeclared FAILs are not acceptable.

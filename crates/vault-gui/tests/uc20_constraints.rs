@@ -16,8 +16,10 @@ fn read_workspace_file(rel: &str) -> String {
 }
 
 fn read_gui_main() -> String {
-    std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/main.rs"))
-        .expect("vault-gui main.rs")
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
+    let main = std::fs::read_to_string(base.join("main.rs")).expect("main.rs");
+    let sealed = std::fs::read_to_string(base.join("sealed_gui.rs")).unwrap_or_default();
+    format!("{main}\n{sealed}")
 }
 
 /// C41 — glow pinned; persistence feature absent from workspace eframe dep.
@@ -66,8 +68,8 @@ fn c40_reactive_repaint_invariants() {
         .filter(|l| l.contains("request_repaint"))
         .collect();
     assert!(
-        repaint_sites.len() <= 3,
-        "expected at most 3 request_repaint* sites (auto-lock, reveal, focus): {repaint_sites:?}"
+        repaint_sites.len() <= 4,
+        "expected bounded request_repaint_after sites (auto-lock, reveal, otp, sealed poll): {repaint_sites:?}"
     );
     assert!(
         repaint_sites

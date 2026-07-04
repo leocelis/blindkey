@@ -41,30 +41,96 @@ fn chunk_nonce(counter: u64, is_last: bool) -> [u8; 12] {
 
 /// Encrypt `plaintext` as a STREAM of sealed 64 KiB chunks (constraint C1).
 pub fn encrypt(data_key: &[u8; 32], nonce_prefix: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
-    let key = Zeroizing::new(payload_key(data_key, nonce_prefix));
-    let cipher = ChaCha20Poly1305::new_from_slice(&*key).map_err(|_| Error::Crypto)?;
+    let mut enc = StreamEncryptor::new(data_key, nonce_prefix)?;
+    enc.push(plaintext)?;
+    enc.finish()
+}
 
-    // Chunk the plaintext; append a final empty chunk when the length is empty or an exact multiple
-    // of the chunk size, so the last-chunk marker is always present (age behavior — kills truncation
-    // ambiguity).
-    let mut chunks: Vec<&[u8]> = plaintext.chunks(STREAM_CHUNK_SIZE).collect();
-    // `% == 0` (not `u64::is_multiple_of`, which is newer than our 1.82 source floor — the core
-    // stays buildable on 1.82 even though the workspace toolchain is now 1.96).
-    #[allow(clippy::manual_is_multiple_of)]
-    if plaintext.is_empty() || plaintext.len() % STREAM_CHUNK_SIZE == 0 {
-        chunks.push(&[]);
+/// Incremental STREAM encryptor — accepts arbitrary-size plaintext chunks (UC-23 / C63).
+pub struct StreamEncryptor {
+    cipher: chacha20poly1305::ChaCha20Poly1305,
+    pending: Vec<u8>,
+    out: Vec<u8>,
+    counter: u64,
+    finished: bool,
+    plaintext_len: usize,
+}
+
+impl std::fmt::Debug for StreamEncryptor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamEncryptor")
+            .field("pending_len", &self.pending.len())
+            .field("out_len", &self.out.len())
+            .field("counter", &self.counter)
+            .field("plaintext_len", &self.plaintext_len)
+            .field("finished", &self.finished)
+            .finish_non_exhaustive()
+    }
+}
+
+impl StreamEncryptor {
+    /// Begin encrypting with the payload key derived from `data_key` + `nonce_prefix`.
+    pub fn new(data_key: &[u8; 32], nonce_prefix: &[u8; 16]) -> Result<Self> {
+        let key = Zeroizing::new(payload_key(data_key, nonce_prefix));
+        let cipher = ChaCha20Poly1305::new_from_slice(&*key).map_err(|_| Error::Crypto)?;
+        Ok(Self {
+            cipher,
+            pending: Vec::new(),
+            out: Vec::new(),
+            counter: 0,
+            finished: false,
+            plaintext_len: 0,
+        })
     }
 
-    let last = chunks.len() - 1;
-    let mut out = Vec::with_capacity(plaintext.len() + chunks.len() * TAG_LEN);
-    for (i, chunk) in chunks.iter().enumerate() {
-        let nonce = chunk_nonce(i as u64, i == last);
-        let sealed = cipher
-            .encrypt(Nonce::from_slice(&nonce), *chunk)
+    /// Total plaintext bytes accepted so far (before padding).
+    pub fn plaintext_len(&self) -> usize {
+        self.plaintext_len
+    }
+
+    /// Append plaintext; seals full 64 KiB chunks eagerly.
+    pub fn push(&mut self, data: &[u8]) -> Result<()> {
+        if self.finished {
+            return Err(Error::Crypto);
+        }
+        self.plaintext_len += data.len();
+        self.pending.extend_from_slice(data);
+        while self.pending.len() >= STREAM_CHUNK_SIZE {
+            let chunk: Vec<u8> = self.pending.drain(..STREAM_CHUNK_SIZE).collect();
+            self.seal_one(&chunk, false)?;
+        }
+        Ok(())
+    }
+
+    fn seal_one(&mut self, chunk: &[u8], is_last: bool) -> Result<()> {
+        let nonce = chunk_nonce(self.counter, is_last);
+        let sealed = self
+            .cipher
+            .encrypt(Nonce::from_slice(&nonce), chunk)
             .map_err(|_| Error::Crypto)?;
-        out.extend_from_slice(&sealed);
+        self.out.extend_from_slice(&sealed);
+        if !is_last {
+            self.counter = self.counter.checked_add(1).ok_or(Error::BodyMalformed)?;
+        }
+        Ok(())
     }
-    Ok(out)
+
+    /// Seal any remainder and the age final-chunk marker; returns STREAM ciphertext.
+    pub fn finish(mut self) -> Result<Vec<u8>> {
+        if self.finished {
+            return Err(Error::Crypto);
+        }
+        self.finished = true;
+        if self.pending.is_empty() {
+            if self.plaintext_len == 0 || self.plaintext_len.is_multiple_of(STREAM_CHUNK_SIZE) {
+                self.seal_one(&[], true)?;
+            }
+        } else {
+            let tail = std::mem::take(&mut self.pending);
+            self.seal_one(&tail, true)?;
+        }
+        Ok(self.out)
+    }
 }
 
 /// Decrypt a STREAM produced by [`encrypt`] (constraint C1).
@@ -73,7 +139,7 @@ pub fn encrypt(data_key: &[u8; 32], nonce_prefix: &[u8; 16], plaintext: &[u8]) -
 /// [`Error::BodyAuth`] and no partial plaintext is returned. Output is zeroized on drop.
 ///
 /// Prefer [`decrypt_streaming`] when opening a vault — it avoids retaining the full plaintext
-/// buffer (card #847 P3 / C19 in-memory posture).
+/// buffer (C19 in-memory posture).
 pub fn decrypt(
     data_key: &[u8; 32],
     nonce_prefix: &[u8; 16],
@@ -142,7 +208,7 @@ fn sealed_full() -> usize {
     STREAM_CHUNK_SIZE + TAG_LEN
 }
 
-/// Decrypt the outer STREAM and parse the payload incrementally (card #847 P3).
+/// Decrypt the outer STREAM and parse the payload incrementally .
 pub fn decrypt_streaming<F>(
     data_key: &[u8; 32],
     nonce_prefix: &[u8; 16],
@@ -170,6 +236,19 @@ mod tests {
         let pt: Vec<u8> = (0..len).map(|i| (i % 251) as u8).collect();
         let ct = encrypt(&DK, &NP, &pt).unwrap();
         assert_eq!(&decrypt(&DK, &NP, &ct).unwrap()[..], &pt[..], "len={len}");
+    }
+
+    #[test]
+    fn stream_encryptor_matches_encrypt() {
+        let pt: Vec<u8> = (0..STREAM_CHUNK_SIZE + 17)
+            .map(|i| (i % 251) as u8)
+            .collect();
+        let a = encrypt(&DK, &NP, &pt).unwrap();
+        let mut enc = StreamEncryptor::new(&DK, &NP).unwrap();
+        enc.push(&pt[..STREAM_CHUNK_SIZE / 2]).unwrap();
+        enc.push(&pt[STREAM_CHUNK_SIZE / 2..]).unwrap();
+        let b = enc.finish().unwrap();
+        assert_eq!(a, b);
     }
 
     #[test]

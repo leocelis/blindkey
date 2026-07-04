@@ -22,6 +22,8 @@ Cargo.lock.bak
 # Vault runtime artifacts — NEVER commit a real vault or its local state
 *.vlt
 *.vlt.bak
+*.vltf
+*.vltf.bak
 *.state
 .vault.toml
 # OS / editor

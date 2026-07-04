@@ -8,4 +8,11 @@ just fuzz                  # smoke-run header_parse (30s)
 cargo +nightly fuzz run header_parse
 ```
 
-Targets live in `fuzz/fuzz_targets/`. Smoke locally: `just fuzz` (requires `cargo-fuzz`).
+Targets live in `fuzz/fuzz_targets/`:
+
+| Target | Parser |
+|--------|--------|
+| `header_parse` | Vault header TLV |
+| `file_archive_parse` | UC-23 inner file-archive TLV (C65/C30) |
+
+Smoke locally: `just fuzz` (requires `cargo-fuzz`).

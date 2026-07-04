@@ -16,7 +16,7 @@
 use super::cursor::Cursor;
 use super::stanza::{self, Stanza};
 use crate::crypto::validate_kdf_params;
-use crate::{Error, Result, FORMAT_VERSION, MAGIC};
+use crate::{ContainerKind, Error, Result, FORMAT_VERSION};
 
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
@@ -50,6 +50,8 @@ pub struct KdfParams {
 /// The parsed plaintext header. Contains no secret material, so it may derive `Debug`/`Clone`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
+    /// Container magic — [`MAGIC`] or [`crate::MAGIC_VLTF`] (UC-23 §3.1).
+    pub magic: [u8; 4],
     /// On-disk format version (constraint C7).
     pub format_version: u16,
     /// Random per-vault id; the HKDF domain-separation salt for stanza derivations (C5/C6/C14).
@@ -70,10 +72,15 @@ pub struct Header {
 }
 
 impl Header {
+    /// Container kind derived from the magic prefix.
+    pub fn kind(&self) -> ContainerKind {
+        ContainerKind::from_magic(self.magic).unwrap_or(ContainerKind::Vault)
+    }
+
     /// The byte span the integrity tags cover: everything from `magic` through the last stanza.
     fn auth_span(&self) -> Vec<u8> {
         let mut out = Vec::new();
-        out.extend_from_slice(&MAGIC);
+        out.extend_from_slice(&self.magic);
         out.extend_from_slice(&self.format_version.to_le_bytes());
         out.extend_from_slice(&self.vault_id);
         out.push(self.kdf.algorithm);
@@ -153,16 +160,21 @@ impl Header {
 
     /// Parse and structurally validate a header from untrusted bytes.
     ///
-    /// Performs the keyless steps of the C9 verification order: bounds-checked structural read
-    /// (constraint C30) → magic/version (C7) → SHA-256 corruption check (C9 step 1) → KDF ceiling
-    /// (C2, step 2). The keyed `header_hmac` (step 4) is verified later via [`Header::verify_hmac`]
-    /// once a stanza has been unwrapped to the data key (the steps that require the crypto core).
+    /// When `expected` is [`Some`], rejects files whose magic does not match (UC-23 kind mismatch).
     pub fn parse(bytes: &[u8]) -> Result<Header> {
+        Self::parse_with_kind(bytes, None)
+    }
+
+    /// Parse a header, optionally requiring a specific [`ContainerKind`].
+    pub fn parse_with_kind(bytes: &[u8], expected: Option<ContainerKind>) -> Result<Header> {
         let mut cur = Cursor::new(bytes);
 
         let magic = cur.take_array::<4>()?;
-        if magic != MAGIC {
-            return Err(Error::NotAVault);
+        let kind = ContainerKind::from_magic(magic).ok_or(Error::NotAVault)?;
+        if let Some(want) = expected {
+            if kind != want {
+                return Err(Error::WrongContainerKind);
+            }
         }
         let format_version = cur.read_u16_le()?;
         if format_version > FORMAT_VERSION {
@@ -201,6 +213,7 @@ impl Header {
         validate_kdf_params(m_cost, t_cost, p_cost)?;
 
         Ok(Header {
+            magic,
             format_version,
             vault_id,
             kdf: KdfParams {
@@ -227,6 +240,7 @@ mod tests {
 
     fn sample_header() -> Header {
         let mut h = Header {
+            magic: crate::MAGIC,
             format_version: FORMAT_VERSION,
             vault_id: [0x11; 16],
             kdf: KdfParams {
@@ -268,6 +282,28 @@ mod tests {
         h.seal(&[0xAB; 32]);
         let parsed = Header::parse(&h.serialize()).unwrap();
         assert_eq!(parsed.kdf.m_cost, 131_072);
+    }
+
+    #[test]
+    fn vltf_magic_round_trip() {
+        let mut h = sample_header();
+        h.magic = crate::MAGIC_VLTF;
+        h.seal(&[0xAB; 32]);
+        let parsed =
+            Header::parse_with_kind(&h.serialize(), Some(ContainerKind::SealedFile)).unwrap();
+        assert_eq!(parsed.magic, crate::MAGIC_VLTF);
+        assert_eq!(parsed, h);
+    }
+
+    #[test]
+    fn wrong_kind_rejected() {
+        let mut h = sample_header();
+        h.magic = crate::MAGIC_VLTF;
+        h.seal(&[0xAB; 32]);
+        assert!(matches!(
+            Header::parse_with_kind(&h.serialize(), Some(ContainerKind::Vault)),
+            Err(Error::WrongContainerKind)
+        ));
     }
 
     #[test]

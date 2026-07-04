@@ -37,7 +37,7 @@ CP-5/CP-6 closed. Maintainer: signed tag + GitHub Release per [RELEASE.md](docs/
 **To ship `1.0.0` (per [RELEASE.md](docs/RELEASE.md)):**
 
 1. ~~**Format freeze**~~ — ✅ **Done 2026-06-26** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)).
-2. ~~**Repo prep**~~ — ✅ workspace `1.0.0`, CHANGELOG, post-1.0 copy (2026-06-26). **Leo-only:** signed tag + GitHub Release.
+2. ~~**Repo prep**~~ — ✅ workspace `1.0.0`, CHANGELOG, post-1.0 copy (2026-06-26). **Requires release-signing access** (see [docs/RELEASE.md](docs/RELEASE.md)): signed tag + GitHub Release.
 3. ~~Gate 0 intent amendments~~ — ✅ (ADR-0003, ADR-0004, intent v1.4.0).
 
 **Explicitly not required for v1.0:** third-party audit ([THIRD_PARTY_AUDIT.md](docs/THIRD_PARTY_AUDIT.md)), live libfido2/TPM FFI (S-8a/S-8c, optional), SwiftUI shell (post-v1).
@@ -133,7 +133,7 @@ lane can build against from that point on.
 | S-9 | **Disclosure ops** — publish age intake key, triage runbook, severity modifier table | [UC-15](docs/specs/UC-15-vulnerability-reporting.md) | nothing | Process work, zero code |
 | S-10 | 🟡 **Auto-lock & config** — `~/.vault.toml` schema, idle timer | [UC-06](docs/specs/UC-06-entry-management.md) | CP-3 | **GUI idle auto-lock + lock-on-minimize DONE** (configurable timeout in `~/.vault/config`). Pending: full `~/.vault.toml` + CLI-session auto-lock |
 | S-11 | **Fuzz corpus & CI fuzz budget** — seed corpora from real vault files, OSS-Fuzz application | [UC-10](docs/specs/UC-10-hostile-file-parsing.md) | CP-1 | Grows with every parser |
-| S-12 | ✅ **Padmé padding** (PURBs) — optional size-leak reduction, **default off** | [UC-07 §3.2](docs/specs/UC-07-untrusted-storage-sync.md) · [guide](docs/guides/size-padding-padme.md) | CP-4 | **DONE** (card #847 exploration); v2 default-on deferred |
+| S-12 | ✅ **Padmé padding** (PURBs) — optional size-leak reduction, **default off** | [UC-07 §3.2](docs/specs/UC-07-untrusted-storage-sync.md) · [guide](docs/guides/size-padding-padme.md) | CP-4 | **DONE**; v2 default-on deferred |
 | S-13 | 🟡 **Agent interface** — handle broker, `vault agent`, OS approval gate | [UC-16](docs/specs/UC-16-agent-interface-future.md) | post-v1 MCP | **SCAFFOLD** (`vault-agent` + `vault agent`); status-only IPC (C27) |
 | S-14 | **User guide & website docs** | all specs | CP-5 | Quickstart, sync guide, threat-model-for-humans |
 | S-15 | ✅ **Quick-capture `import --format raw`** — lenient parser, entropy/prefix classifier, masked interactive review | [UC-17](docs/specs/UC-17-quick-capture-raw-import.md) | CP-1 (Entry model) | Shipped |
@@ -143,6 +143,7 @@ lane can build against from that point on.
 | S-20 | ✅ **Desktop gaps closure** — reveal timeout, keyfile GUI, pre-1.0 banner, C46–C54 | [UC-21](docs/specs/UC-21-desktop-gaps-closure.md) | S-19 | Session hygiene + 2FA GUI parity |
 | S-21 | ✅ **Fleet deploy & quality gate** — env paths, release benches, C55–C60 | [UC-22](docs/specs/UC-22-enterprise-readiness.md) | S-20 | CP-7 automated gate |
 | S-18 | **SwiftUI macOS shell via `uniffi`** — Touch ID + Secure Enclave (C5), native menus | [UC-18](docs/specs/UC-18-native-ui.md) | CP-4 API + S-8d (keychain stanza) | **post-v1**; needs the SEP-API spike + ADR |
+| S-22 | ✅ **Sealed file storage** — `vault seal/open/peek`: any file/folder → one `.vltf` blob for untrusted clouds; zero plaintext metadata, Padmé default-on, streaming bounded-memory, fail-closed extraction | [UC-23](docs/specs/UC-23-sealed-file-storage.md) | v1.0 core + C61–C66 | **Shipped** (July 2026). CLI + GUI/TUI + stanza parity on `.vltf`. |
 
 ---
 
@@ -182,4 +183,6 @@ Vault's audience protects more than passwords — files, `.env`s, code, database
 secrets their AI tools touch. Expanding from "credential vault" to "developer secret vault"
 (file/blob encryption, secret injection into running apps without exposing plaintext to an agent)
 is the north star, scoped deliberately *after* the credential core is solid at 1.0.
-S-13 is the first concrete step in that direction.
+S-13 (agent interface) and **S-22 (sealed file storage, [UC-23](docs/specs/UC-23-sealed-file-storage.md)
+— now specced: research → patterns → PRD → forward constraints C61–C66 in intent v1.8.0 draft)**
+are the first concrete steps in that direction.

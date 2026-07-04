@@ -50,7 +50,7 @@ developer who is nervous about AI exposure can actually adopt it.**
 | In-memory secrets | **`zeroize` + `mlock`** | Often left in plaintext |
 | Whole-file rollback by a sync backend | **Detected** (monotonic counter) | Undetected |
 | AI-era hardening | **CSPRNG generation + model-blind delivery** | Not designed for it |
-| How you verify the claims | **60 constraints** with distributed tests ([index](docs/CONSTRAINT_INDEX.md)) | Trust us |
+| How you verify the claims | **66 constraints** with distributed tests ([index](docs/CONSTRAINT_INDEX.md)) | Trust us |
 
 ## Install
 
@@ -111,7 +111,7 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 
 ## Project status
 
-- ✅ Research + 60 constraint intent (v1.7.0) + CP-7 sweep (60/60 PASS)
+- ✅ Research + 66-constraint intent (v1.8.0) + CP-7 sweep (60/60 PASS on the v1.0 set)
 - ✅ CLI, TUI, desktop GUI on shared `vault-core`
 - ✅ Quality gate: local `just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml) on push
 - ✅ **v1.0.0** — first stable release; format v1 frozen ([ADR-0005](docs/adr/0005-format-v1-freeze.md))

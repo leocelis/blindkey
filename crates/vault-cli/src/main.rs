@@ -212,6 +212,48 @@ enum Command {
         #[command(subcommand)]
         action: crate::agent::AgentAction,
     },
+    /// Seal files or folders into one `.vltf` container (UC-23).
+    Seal {
+        /// File or directory paths to seal (sorted deterministically).
+        paths: Vec<PathBuf>,
+        /// Output container path (default: `<first-stem>.vltf`).
+        #[arg(short, long, value_name = "FILE")]
+        output: Option<PathBuf>,
+        /// Disable Padmé size-padding (default: on — C66).
+        #[arg(long)]
+        no_pad: bool,
+        /// Allow Argon2id params below the enforced floor (tests/scripts only).
+        #[arg(long, hide = true)]
+        allow_weak_kdf: bool,
+        /// Argon2id memory cost in KiB (advanced; default 64 MiB).
+        #[arg(long, hide = true, default_value_t = 65_536)]
+        kdf_m_cost: u32,
+        /// Argon2id time cost (advanced; default 3).
+        #[arg(long, hide = true, default_value_t = 3)]
+        kdf_t_cost: u32,
+        /// Argon2id parallelism (advanced; default 4).
+        #[arg(long, hide = true, default_value_t = 4)]
+        kdf_p_cost: u32,
+        /// Merge new paths into an existing `.vltf` (requires `-o` pointing at the container).
+        #[arg(long)]
+        append: bool,
+    },
+    /// Extract a sealed `.vltf` container to a directory (UC-23).
+    Open {
+        /// Sealed container file.
+        file: PathBuf,
+        /// Destination directory (default: current directory).
+        #[arg(short = 'C', value_name = "DIR")]
+        dest: Option<PathBuf>,
+        /// Write a single small file to stdout (size-capped; warned opt-in — SC9/C27).
+        #[arg(long)]
+        stdout: bool,
+    },
+    /// List inner paths and sizes after unlock — never file contents (UC-23 / C27).
+    Peek {
+        /// Sealed container file.
+        file: PathBuf,
+    },
     /// Internal: detached clipboard auto-clear helper. Reads the secret on stdin; not for direct
     /// use (constraint C13 / UC-04).
     #[command(hide = true)]

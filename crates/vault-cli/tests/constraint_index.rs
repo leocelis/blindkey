@@ -1,8 +1,8 @@
 //! Constraint index sanity checks (IVD Rule 3).
 //!
-//! See [`docs/CONSTRAINT_INDEX.md`](../../docs/CONSTRAINT_INDEX.md) for the C1–C60 map.
+//! See [`docs/CONSTRAINT_INDEX.md`](../../docs/CONSTRAINT_INDEX.md) for the C1–C66 map.
 
-/// CP-7 sweep status per constraint (2026-06-25).
+/// CP-7 sweep status per constraint (2026-06-25) — implemented set only.
 const CP7_SWEEP: &[(&str, &str)] = &[
     ("C1", "PASS"),
     ("C2", "PASS"),
@@ -64,21 +64,31 @@ const CP7_SWEEP: &[(&str, &str)] = &[
     ("C58", "PASS"),
     ("C59", "PASS"),
     ("C60", "PASS"),
+    ("C61", "PASS"),
+    ("C62", "PASS"),
+    ("C63", "PASS"),
+    ("C64", "PASS"),
+    ("C65", "PASS"),
+    ("C66", "PASS"),
 ];
+
+const UC23_IDS: &[&str] = &["C61", "C62", "C63", "C64", "C65", "C66"];
 
 #[test]
 fn constraint_index_documentation_exists() {
     let index =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/CONSTRAINT_INDEX.md");
     let text = std::fs::read_to_string(&index).expect("read docs/CONSTRAINT_INDEX.md");
-    assert!(text.contains("v1.7.0"));
+    assert!(text.contains("v1.8.0"));
+    assert!(text.contains("66 constraints"));
     assert!(text.contains("C60"));
+    assert!(text.contains("C66"));
     assert!(text.contains("CP-7 IVD Rule 2 sweep"));
 }
 
 #[test]
-fn cp7_sweep_lists_all_sixty_constraints() {
-    assert_eq!(CP7_SWEEP.len(), 60);
+fn cp7_sweep_lists_all_sixty_six_constraints() {
+    assert_eq!(CP7_SWEEP.len(), 66);
 
     let index =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/CONSTRAINT_INDEX.md");
@@ -89,7 +99,7 @@ fn cp7_sweep_lists_all_sixty_constraints() {
         .iter()
         .filter(|(_, s)| *s == "NEEDS_REVIEW")
         .count();
-    assert_eq!(pass, 60);
+    assert_eq!(pass, 66);
     assert_eq!(needs_review, 0);
 
     for (id, status) in CP7_SWEEP {
@@ -110,6 +120,32 @@ fn cp7_sweep_lists_all_sixty_constraints() {
 }
 
 #[test]
+fn uc23_constraints_listed_as_pass() {
+    let index =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/CONSTRAINT_INDEX.md");
+    let text = std::fs::read_to_string(&index).expect("read docs/CONSTRAINT_INDEX.md");
+    assert!(
+        text.contains("66 PASS"),
+        "CONSTRAINT_INDEX must report 66/66 PASS"
+    );
+    for id in UC23_IDS {
+        let needle = format!("| {id} |");
+        let row_start = text
+            .find(&needle)
+            .unwrap_or_else(|| panic!("CONSTRAINT_INDEX.md missing row for {id}"));
+        let row_end = text[row_start..]
+            .find('\n')
+            .map(|i| row_start + i)
+            .unwrap_or(text.len());
+        let row = &text[row_start..row_end];
+        assert!(
+            row.contains("| PASS |"),
+            "UC-23 {id} must be PASS after implementation: {row}"
+        );
+    }
+}
+
+#[test]
 fn distributed_test_suites_exist() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     for rel in [
@@ -120,10 +156,13 @@ fn distributed_test_suites_exist() {
         "crates/vault-clip/src/lib.rs",
         "crates/vault-core/tests/robustness.rs",
         "crates/vault-core/tests/constraint_gaps.rs",
+        "crates/vault-core/tests/uc23_joint_satisfaction.rs",
+        "crates/vault-core/tests/sealed_constraints.rs",
         "crates/vault-hardware/tests/constraint_hardware.rs",
         "crates/vault-gui/tests/uc20_constraints.rs",
         "crates/vault-gui/tests/uc21_constraints.rs",
         "crates/vault-gui/tests/uc22_constraints.rs",
+        "crates/vault-cli/tests/uc23_design_alignment.rs",
         "vault_intent.yaml",
         "docs/CONSTRAINT_INDEX.md",
     ] {

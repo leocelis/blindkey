@@ -17,6 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 vault-core = { path = "../vault-core" }
+vault-hardware = { path = "../vault-hardware", version = "1.0.0" }
 vault-clip = { path = "../vault-clip" }
 eframe = { workspace = true }   # UC-20: glow pinned in workspace; no persistence (C41)
 rfd = { workspace = true }

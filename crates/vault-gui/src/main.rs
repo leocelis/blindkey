@@ -5,7 +5,7 @@
 //!   • **type to search** your entries,
 //!   • **copy** a password to the clipboard *model-blind* (the secret is shown shadowed, never
 //!     rendered; the clipboard auto-clears — C13/C27),
-//!   • show **TOTP / 2FA codes in-app only** (live countdown; never copied to clipboard — card #847),
+//!   • show **TOTP / 2FA codes in-app only** (live countdown; never copied to clipboard —),
 //!   • **add / edit / change / delete** entries.
 //!
 //! Every byte that touches a secret stays inside `vault-core`; this binary only renders metadata,
@@ -17,6 +17,7 @@ mod clip;
 mod gui_config;
 mod keyfile_gui;
 mod list_virtualize;
+mod sealed_gui;
 mod search_cache;
 
 use gui_config::{GuiConfig, REVEAL_TIMEOUT_SECS};
@@ -190,6 +191,9 @@ struct VaultApp {
     entries_generation: u64,
     display_items: Vec<(usize, String, Vec<u32>)>,
     display_total: usize,
+
+    /// UC-23 sealed file seal/open/peek (Phase C).
+    sealed: sealed_gui::SealedGui,
 }
 
 impl VaultApp {
@@ -227,6 +231,7 @@ impl VaultApp {
             entries_generation: 0,
             display_items: Vec::new(),
             display_total: 0,
+            sealed: sealed_gui::SealedGui::new(),
         }
     }
 
@@ -239,6 +244,9 @@ impl VaultApp {
     /// Lock the vault when the idle timeout elapses or the window is minimized (UC-06). Returns
     /// `true` if it locked. Also schedules the next idle check so the timer fires while idle.
     fn enforce_auto_lock(&mut self, ctx: &egui::Context) {
+        if self.sealed.job_running() {
+            return;
+        }
         // Any input this frame counts as activity.
         let active = ctx.input(|i| {
             i.pointer.is_moving()
@@ -296,6 +304,9 @@ impl VaultApp {
 
     /// Lock when the main window loses focus if the user enabled it (C47).
     fn enforce_focus_lock(&mut self, ctx: &egui::Context) -> bool {
+        if self.sealed.job_running() {
+            return false;
+        }
         if !self.gui_config.lock_on_blur {
             return false;
         }
@@ -308,7 +319,7 @@ impl VaultApp {
         false
     }
 
-    /// Keep the in-app TOTP countdown fresh (card #847 — never clipboard).
+    /// Keep the in-app TOTP countdown fresh (never copied to clipboard).
     fn enforce_otp_live_refresh(&self, ctx: &egui::Context) {
         let Some(idx) = self.selected else {
             return;
@@ -787,7 +798,34 @@ impl VaultApp {
     }
 
     fn handle_dropped_files(&mut self, ctx: &egui::Context) {
+        if self.sealed.job_running() {
+            return;
+        }
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
+        if dropped.is_empty() {
+            return;
+        }
+        // Unlocked + single `.txt` → keys import (legacy path).
+        if self.vault.is_some() && dropped.len() == 1 {
+            if let Some(path) = &dropped[0].path {
+                if path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|e| e.eq_ignore_ascii_case("txt"))
+                {
+                    if let Ok(text) = std::fs::read_to_string(path) {
+                        self.load_import(&Zeroizing::new(text));
+                        return;
+                    }
+                }
+            }
+        }
+        if self.sealed.handle_drops(&dropped) {
+            return;
+        }
+        if self.vault.is_none() {
+            return;
+        }
         let Some(file) = dropped
             .into_iter()
             .find(|f| f.path.is_some() || f.bytes.is_some())
@@ -827,6 +865,8 @@ impl VaultApp {
                     "Enter your master password to unlock."
                 });
                 ui.add_space(20.0);
+                ui.weak("Drop a file or folder to seal · drop a .vltf to open");
+                ui.add_space(12.0);
 
                 let mut submit = false;
                 if needs_keyfile {
@@ -1111,7 +1151,7 @@ impl VaultApp {
                 ui.label(&self.status);
             } else {
                 ui.label(format!(
-                    "{total} entries · ↑/↓ select · Enter copies · drop a keys.txt to import"
+                    "{total} entries · ↑/↓ select · Enter copies · drop files to seal or .vltf to open"
                 ));
             }
             ui.add_space(2.0);
@@ -1739,6 +1779,18 @@ impl VaultApp {
 
 impl eframe::App for VaultApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.sealed.poll_worker(ctx);
+        if let Some(msg) = self.sealed.take_status() {
+            self.status = msg;
+            self.error = None;
+        }
+        if let Some(err) = self.sealed.take_error() {
+            self.error = Some(err);
+        }
+
+        self.handle_dropped_files(ctx);
+        self.sealed.windows(ctx);
+
         if self.vault.is_some() {
             self.enforce_auto_lock(ctx);
             let _ = self.enforce_focus_lock(ctx);
@@ -1746,7 +1798,6 @@ impl eframe::App for VaultApp {
         if self.vault.is_some() {
             self.enforce_reveal_timeout(ctx);
             self.enforce_otp_live_refresh(ctx);
-            self.handle_dropped_files(ctx);
             self.unlocked_screen(ctx);
             self.editor_window(ctx);
             self.import_window(ctx);
