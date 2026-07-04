@@ -1,4 +1,4 @@
-# Post-quantum posture — Research (card #847 P2)
+# Post-quantum posture — Research
 
 > **Task:** Publish honest PQ posture + crypto-agility statement (gap E1).
 

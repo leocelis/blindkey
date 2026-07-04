@@ -48,7 +48,7 @@ Install vet once: `cargo install cargo-vet --locked` (project toolchain via `. s
 
 ## IVD constraint index
 
-Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) (60 constraints, v1.7.0).
+Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) (66 constraints, v1.8.0).
 
 Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed across crate suites.
 

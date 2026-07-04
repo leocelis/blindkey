@@ -1,6 +1,5 @@
-//! GUI in-app TOTP regression (card #847 P3).
+//! GUI in-app TOTP regression .
 //!
-//! Patterns: `limitless/patterns/vault/gui_totp_in_app_patterns.yaml`
 
 use std::path::PathBuf;
 

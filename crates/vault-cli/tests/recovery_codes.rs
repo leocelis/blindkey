@@ -1,6 +1,5 @@
-//! Recovery codes at init — gap C3 regression (card #847 P2).
+//! Recovery codes at init — gap C3 regression .
 //!
-//! Patterns: `limitless/patterns/vault/recovery_codes_patterns.yaml`
 
 use std::io::Write;
 use std::path::{Path, PathBuf};

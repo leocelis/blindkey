@@ -1,6 +1,5 @@
-//! ptrace / live-memory hardening — doc + startup regression (card #847 P2).
+//! ptrace / live-memory hardening — doc + startup regression .
 //!
-//! Patterns: `limitless/patterns/vault/ptrace_hardening_patterns.yaml`
 
 use std::path::PathBuf;
 

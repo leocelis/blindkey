@@ -1,4 +1,4 @@
-# cargo-vet — supply-chain vetting in release gate (card #847 P2)
+# cargo-vet — supply-chain vetting in release gate
 
 > **Task:** Add `cargo vet` to `just audit-ready`, pin vet exemptions in-repo (M9 gap D2).
 
@@ -11,7 +11,7 @@ pass audit/deny.
 **cargo-vet** adds a third layer: every dependency must be **audited** (local or imported) or
 **explicitly exempted** with a pinned version + criteria (`safe-to-deploy` / `safe-to-run`).
 
-## Decision (card #847)
+## Decision
 
 | Choice | Rationale |
 |--------|-----------|

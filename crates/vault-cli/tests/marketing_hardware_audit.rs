@@ -1,6 +1,5 @@
-//! Marketing hardware honesty regression (card #847 P2).
+//! Marketing hardware honesty regression .
 //!
-//! Patterns: `limitless/patterns/vault/marketing_hardware_patterns.yaml`
 
 use std::path::PathBuf;
 

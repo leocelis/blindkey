@@ -1,6 +1,5 @@
-//! Padmé padding exploration regression (card #847 P3, S-12).
+//! Padmé padding exploration regression.
 //!
-//! Patterns: `limitless/patterns/vault/padme_padding_patterns.yaml`
 
 use std::path::PathBuf;
 

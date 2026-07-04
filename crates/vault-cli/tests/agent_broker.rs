@@ -1,6 +1,5 @@
-//! Agent broker scaffold regression tests (card #847 P1).
+//! Agent broker scaffold regression tests .
 //!
-//! Patterns: `limitless/patterns/vault/agent_broker_patterns.yaml`
 
 use std::path::PathBuf;
 

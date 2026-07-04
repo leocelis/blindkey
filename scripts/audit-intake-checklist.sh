@@ -27,7 +27,7 @@ ok() {
   echo "OK: $*"
 }
 
-echo "==> Third-party audit intake checklist (card #847 P1)"
+echo "==> Third-party audit intake checklist "
 
 # TA-01: format freeze ADR
 grep -q "Status:\*\* Accepted" docs/adr/0005-format-v1-freeze.md \

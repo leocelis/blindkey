@@ -1,6 +1,5 @@
-//! Format v1 freeze regression tests (ADR-0005, card #847 P0).
+//! Format v1 freeze regression tests (ADR-0005).
 //!
-//! Patterns: `limitless/patterns/vault/format_freeze_patterns.yaml`
 
 use std::path::PathBuf;
 

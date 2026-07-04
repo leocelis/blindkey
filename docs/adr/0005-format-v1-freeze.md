@@ -4,7 +4,6 @@
 - **Date:** 2026-06-26
 - **Deciders:** maintainers (see [GOVERNANCE.md](../../GOVERNANCE.md))
 - **Research:** [research/format_freeze_research.md](../../research/format_freeze_research.md)
-- **Card:** Trello #847 — P0 format freeze
 
 ## Context
 
@@ -29,7 +28,7 @@ future 1.x releases without a breaking migration.
 3. **User-facing docs** distinguish two independent facts:
    - **Format:** v1 is stable (this ADR).
    - **Software maturity:** Vault remains pre-1.0 and not independently audited until the
-     `1.0.0` release ceremony and optional third-party audit (card #847).
+     `1.0.0` release ceremony and optional third-party audit.
 4. **Backward compatibility:** vault files written at `format_version = 1` on any
    `0.1.0-alpha.*` release MUST remain openable by subsequent 1.x releases without migration.
 
@@ -52,4 +51,3 @@ future 1.x releases without a breaking migration.
 
 - Constraint **C7** — [vault_intent.yaml](../../vault_intent.yaml)
 - [FILE_FORMAT.md](../FILE_FORMAT.md) — human-readable v1 spec
-- Patterns: `limitless/patterns/vault/format_freeze_patterns.yaml`

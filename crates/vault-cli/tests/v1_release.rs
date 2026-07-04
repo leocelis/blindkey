@@ -1,6 +1,5 @@
-//! v1.0.0 release regression tests (card #847 P0 item 2).
+//! v1.0.0 release regression tests.
 //!
-//! Patterns: `limitless/patterns/vault/v1_release_patterns.yaml`
 
 use std::path::PathBuf;
 use std::process::Command;

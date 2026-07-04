@@ -1,6 +1,5 @@
-//! YubiKey strict default regression tests (card #847 P1).
+//! YubiKey strict default regression tests .
 //!
-//! Patterns: `limitless/patterns/vault/yubikey_strict_default_patterns.yaml`
 
 use std::path::PathBuf;
 

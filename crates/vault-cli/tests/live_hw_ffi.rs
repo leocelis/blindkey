@@ -1,6 +1,5 @@
-//! Live FIDO2 + TPM hardware regression (card #847 P3, S-8a/S-8c).
+//! Live FIDO2 + TPM hardware regression.
 //!
-//! Patterns: `limitless/patterns/vault/live_hw_ffi_patterns.yaml`
 
 use std::path::PathBuf;
 

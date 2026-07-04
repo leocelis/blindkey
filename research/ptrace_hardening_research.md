@@ -1,4 +1,4 @@
-# ptrace / live-memory hardening — Research (card #847 P2)
+# ptrace / live-memory hardening — Research
 
 > **Task:** Close gap B3 — same-uid `ptrace` / `/proc/<pid>/mem` scrape of unlocked secrets.
 

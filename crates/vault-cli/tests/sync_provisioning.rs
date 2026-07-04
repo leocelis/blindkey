@@ -1,6 +1,5 @@
-//! Sync guide — expect-min-version + fleet provisioning doc regression (card #847 P1).
+//! Sync guide — expect-min-version + fleet provisioning doc regression .
 //!
-//! Patterns: `limitless/patterns/vault/sync_provisioning_patterns.yaml`
 
 use std::path::PathBuf;
 

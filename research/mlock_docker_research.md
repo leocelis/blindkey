@@ -1,4 +1,4 @@
-# mlock / Docker graceful degradation — Research (card #847 P2)
+# mlock / Docker graceful degradation — Research
 
 > **Task:** INSTALL.md documents C12 mlock degradation in containers; recommend host-native for production.
 

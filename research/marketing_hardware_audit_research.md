@@ -1,4 +1,4 @@
-# Marketing hardware claims — Research (card #847 P2)
+# Marketing hardware claims — Research
 
 > **Task:** Remove/soften hardware security claims until S-8a (libfido2) + S-8c (TPM FFI) ship.
 

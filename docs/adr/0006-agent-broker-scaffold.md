@@ -3,7 +3,6 @@
 - **Status:** Accepted (scaffold)
 - **Date:** 2026-06-26
 - **Research:** [research/agent_broker_research.md](../research/agent_broker_research.md)
-- **Card:** Trello #847 — P1 S-13 agent broker
 
 ## Context
 

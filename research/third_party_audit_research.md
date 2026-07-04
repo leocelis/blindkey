@@ -1,7 +1,7 @@
-# Third-Party Audit Commission — Research (card #847 P1)
+# Third-Party Audit Commission — Research
 
 > **Task:** Commission scoped third-party security audit post format freeze.
-> **Agent-deliverable:** intake package so Leo can send an RFP; **Leo-only:** vendor selection, NDA, payment, kickoff.
+> **Agent-deliverable:** intake package ready for an RFP; **maintainer-only:** vendor selection, NDA, payment, kickoff.
 
 ## Why now
 

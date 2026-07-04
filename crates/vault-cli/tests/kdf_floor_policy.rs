@@ -1,6 +1,5 @@
-//! KDF floor policy regression tests (card #847 P1, constraint C2).
+//! KDF floor policy regression tests.
 //!
-//! Patterns: `limitless/patterns/vault/kdf_floor_policy_patterns.yaml`
 
 use std::io::Write;
 use std::path::Path;

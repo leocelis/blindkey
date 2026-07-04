@@ -1,8 +1,8 @@
-# YubiKey strict default — Research (card #847 P1)
+# YubiKey strict default — Research
 
 > **Task:** Default `yubikey_strict` for new 2FA enrollments; graceful mode docs only.
 
-## Problem (card #847 gap)
+## Problem
 
 Composite YubiKey 2FA vaults store a **fixed challenge** in the stanza. On body-writing saves the
 core rotates `master_seed` but, without a refresh step, the composite stanza keeps the same

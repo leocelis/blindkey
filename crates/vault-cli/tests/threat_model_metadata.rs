@@ -1,6 +1,5 @@
-//! THREAT_MODEL sync metadata leak doc regression (card #847 P2, C17).
+//! THREAT_MODEL sync metadata leak doc regression.
 //!
-//! Patterns: `limitless/patterns/vault/metadata_leak_patterns.yaml`
 
 use std::path::PathBuf;
 

@@ -1,6 +1,5 @@
-//! cargo-vet supply-chain gate — pinned exemptions + audit-ready (card #847 P2).
+//! cargo-vet supply-chain gate — pinned exemptions + audit-ready .
 //!
-//! Patterns: `limitless/patterns/vault/cargo_vet_patterns.yaml`
 
 use std::path::PathBuf;
 

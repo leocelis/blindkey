@@ -1,6 +1,5 @@
-//! Post-quantum posture doc regression (gap E1, card #847 P2).
+//! Post-quantum posture doc regression (gap E1).
 //!
-//! Patterns: `limitless/patterns/vault/pq_posture_patterns.yaml`
 
 use std::path::PathBuf;
 

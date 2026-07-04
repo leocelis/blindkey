@@ -1,8 +1,8 @@
-# S-13 Agent Broker — Research (card #847 P1)
+# S-13 Agent Broker — Research
 
 > **Task:** First concrete step toward UC-16 — handle broker, `vault_use`, OS approval gate.
 
-## Problem (card #847 gap)
+## Problem
 
 **Malware / AI agent with shell while unlocked:** C27 stops *incidental* capture (stdout/clipboard
 defaults) but a hostile same-user agent can run `vault get --stdout`. Card recommends **S-13 agent

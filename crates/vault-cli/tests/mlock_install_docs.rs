@@ -1,6 +1,5 @@
-//! mlock / Docker INSTALL doc regression (card #847 P2, C12).
+//! mlock / Docker INSTALL doc regression.
 //!
-//! Patterns: `limitless/patterns/vault/mlock_degradation_patterns.yaml`
 
 use std::path::PathBuf;
 

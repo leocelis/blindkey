@@ -1,8 +1,8 @@
-# KDF Floor Policy — Research (card #847 P1)
+# KDF Floor Policy — Research
 
 > **Task:** Hard-reject below-floor Argon2id on `init`; warn-only on `open` + `upgrade-kdf` nudge.
 
-## Problem (card #847 gap)
+## Problem
 
 Today `validate_kdf_params` returns `KdfStrength::BelowFloor` on open — CLI prints a warning but proceeds. New vaults can be created with `--kdf-m-cost 8192` (test default), which is **below** the OWASP floor (m ≥ 19 456 KiB, t ≥ 2, p ≥ 1).
 
