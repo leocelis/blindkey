@@ -1,4 +1,4 @@
-//! Incremental TLV parser for STREAM-decrypted plaintext chunks (security-gap review P3).
+//! Incremental TLV parser for STREAM-decrypted plaintext chunks .
 //!
 //! Feeds authenticated plaintext in arbitrary chunk sizes without requiring the full payload in
 //! one contiguous buffer first.

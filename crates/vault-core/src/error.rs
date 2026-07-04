@@ -18,6 +18,14 @@ pub enum Error {
     #[error("not a vault file")]
     NotAVault,
 
+    /// The file uses the wrong container magic for this operation (UC-23 §3.1).
+    #[error("wrong container type for this command")]
+    WrongContainerKind,
+
+    /// A sealed container could not be opened — uniform message (C64, no format oracle).
+    #[error("sealed container could not be opened")]
+    SealedOpenFailed,
+
     /// The file was created by a newer, unsupported format version (constraint C7).
     #[error("vault was created by a newer version of this tool; please upgrade")]
     NewerVersion,

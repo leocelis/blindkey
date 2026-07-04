@@ -1,0 +1,3 @@
+Sprint notes (synthetic): rotate the FAKE Stripe key after the demo;
+db password lives in config/.env (also fake). This tree exists to test
+that none of these filenames or contents are visible in a sealed .vltf.

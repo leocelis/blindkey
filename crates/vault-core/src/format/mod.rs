@@ -10,6 +10,7 @@
 pub mod block_stream;
 mod cursor;
 pub mod entry;
+pub mod file_archive;
 pub mod header;
 mod inner_stream;
 pub mod payload;

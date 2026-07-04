@@ -9,11 +9,12 @@
 #![forbid(unsafe_code)]
 
 mod clip;
+mod sealed;
 
 use std::io::Read;
 use std::path::PathBuf;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::{Modifier, Style};
@@ -28,9 +29,46 @@ const CLIPBOARD_TIMEOUT_SECS: u64 = 30;
 #[derive(Parser)]
 #[command(name = "vault-tui", version, about = "Vault — terminal UI")]
 struct Cli {
-    /// Vault file (default: `$HOME/.vault/vault.vlt`).
-    #[arg(long)]
+    /// Vault file for browse mode (default: `$HOME/.vault/vault.vlt`).
+    #[arg(long, global = true)]
     vault: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Option<SealedCommand>,
+}
+
+/// UC-23 sealed-file commands (parity with `vault seal` / `open` / `peek`).
+#[derive(Subcommand)]
+enum SealedCommand {
+    /// Seal paths into one `.vltf` container.
+    Seal {
+        paths: Vec<PathBuf>,
+        #[arg(short, long, value_name = "FILE")]
+        output: Option<PathBuf>,
+        #[arg(long)]
+        no_pad: bool,
+        #[arg(long, hide = true)]
+        allow_weak_kdf: bool,
+        #[arg(long, hide = true, default_value_t = 65_536)]
+        kdf_m_cost: u32,
+        #[arg(long, hide = true, default_value_t = 3)]
+        kdf_t_cost: u32,
+        #[arg(long, hide = true, default_value_t = 4)]
+        kdf_p_cost: u32,
+        /// Merge new paths into an existing `.vltf` (requires `-o` pointing at the container).
+        #[arg(long)]
+        append: bool,
+    },
+    /// Extract a sealed container to a directory.
+    Open {
+        file: PathBuf,
+        #[arg(short = 'C', value_name = "DIR")]
+        dest: Option<PathBuf>,
+        #[arg(long)]
+        stdout: bool,
+    },
+    /// List inner paths after unlock (metadata only).
+    Peek { file: PathBuf },
 }
 
 fn main() -> std::process::ExitCode {
@@ -46,6 +84,33 @@ fn main() -> std::process::ExitCode {
 fn real_main() -> Result<(), String> {
     vault_core::memory::harden_process(); // C25: disable core dumps before touching secrets
     let cli = Cli::parse();
+
+    if let Some(cmd) = cli.command {
+        return match cmd {
+            SealedCommand::Seal {
+                paths,
+                output,
+                no_pad,
+                allow_weak_kdf,
+                kdf_m_cost,
+                kdf_t_cost,
+                kdf_p_cost,
+                append,
+            } => sealed::cmd_seal(
+                paths,
+                output,
+                no_pad,
+                allow_weak_kdf,
+                kdf_m_cost,
+                kdf_t_cost,
+                kdf_p_cost,
+                append,
+            ),
+            SealedCommand::Open { file, dest, stdout } => sealed::cmd_open(file, dest, stdout),
+            SealedCommand::Peek { file } => sealed::cmd_peek(file),
+        };
+    }
+
     let path = vault_path(cli.vault)?;
     let bytes = std::fs::read(&path)
         .map_err(|_| format!("no vault at {} — run `vault init` first", path.display()))?;

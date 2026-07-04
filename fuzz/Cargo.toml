@@ -37,6 +37,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "file_archive_parse"
+path = "fuzz_targets/file_archive_parse.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "vault_open"
 path = "fuzz_targets/vault_open.rs"
 test = false

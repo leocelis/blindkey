@@ -18,6 +18,8 @@ use crate::export::{self, EXPORT_CONFIRM, EXPORT_WARNING};
 use crate::unlock_secret::{self, UnlockSecretOpts};
 use crate::Command;
 
+mod sealed;
+
 type CmdResult = Result<(), String>;
 type SaveResult = Result<Vec<u8>, String>;
 
@@ -55,7 +57,7 @@ fn copy_secret_to_clipboard(secret: &[u8], timeout: u64, label: &str) -> CmdResu
     Ok(())
 }
 
-/// Shown on init/import/open paths — honest unaudited posture (third-party audit optional per security-gap review P1).
+/// Shown on init/import/open paths — honest unaudited posture (third-party audit optional per).
 /// On-disk format v1 is stable (ADR-0005); this notice covers audit/backup only.
 pub const PRE_RELEASE_NOTICE: &str =
     "note: Vault has not had an independent third-party security audit — \
@@ -230,6 +232,33 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
         Command::Agent { action } => crate::agent::dispatch(&vault_path(vault_opt)?, opts, action),
         Command::Lock => cmd_lock(),
         Command::Stanzas { action } => cmd_stanzas(&vault_path(vault_opt)?, action, opts),
+        Command::Seal {
+            paths,
+            output,
+            no_pad,
+            allow_weak_kdf,
+            kdf_m_cost,
+            kdf_t_cost,
+            kdf_p_cost,
+            append,
+        } => {
+            use vault_core::pad::PadMode;
+            use vault_core::sealed::SealOptions;
+            let seal_opts = SealOptions {
+                m_cost: kdf_m_cost,
+                t_cost: kdf_t_cost,
+                p_cost: kdf_p_cost,
+                allow_weak_kdf,
+                pad_mode: if no_pad {
+                    PadMode::None
+                } else {
+                    PadMode::Padme
+                },
+            };
+            sealed::cmd_seal(paths, output, append, seal_opts, opts)
+        }
+        Command::Open { file, dest, stdout } => sealed::cmd_open(file, dest, stdout, opts),
+        Command::Peek { file } => sealed::cmd_peek(file, opts),
     }
 }
 
@@ -674,11 +703,38 @@ fn cmd_gen_passphrase(n: usize, wordlist: Option<&Path>) -> CmdResult {
 /// TPM enroll — seal OR stanza to PCR 7 via tpm2-tools (constraint C15 / S-8c).
 fn cmd_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
     use vault_core::envelope::tpm::DEFAULT_PCR_INDEX;
+    use vault_core::sealed::SealedContainer;
+
     if !vault_hardware::tpm::available() {
         return Err(
             "tpm2-tools not found or TPM unavailable — install tpm2-tools and ensure a TPM 2.0 device"
                 .to_string(),
         );
+    }
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        if SealedContainer::has_tpm_stanza(&bytes) {
+            return Err(
+                "this sealed container already has a TPM stanza — run `vault re-enroll-tpm` after PCR drift"
+                    .into(),
+            );
+        }
+        let (mut container, original, _password) = open_sealed_for_edit(path, opts)?;
+        eprintln!("Sealing TPM stanza to PCR {DEFAULT_PCR_INDEX} (Secure Boot state)…");
+        let (ikm, extra) =
+            vault_hardware::tpm::seal(DEFAULT_PCR_INDEX).map_err(|e| e.to_string())?;
+        container
+            .set_tpm_stanza(&ikm, extra)
+            .map_err(|e| e.to_string())?;
+        write_sealed_preserving(path, &container, &original)?;
+        eprintln!(
+            "\n✅ TPM stanza enrolled on {} — unlock without password when PCR {DEFAULT_PCR_INDEX} matches.",
+            path.display()
+        );
+        eprintln!(
+            "   Password unlock still works. After firmware/kernel changes, run `vault re-enroll-tpm`."
+        );
+        return Ok(());
     }
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
@@ -702,8 +758,28 @@ fn cmd_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
 /// TPM re-enroll after PCR drift (constraint C15).
 fn cmd_re_enroll_tpm(path: &Path, opts: &OpenOpts) -> CmdResult {
     use vault_core::envelope::tpm::DEFAULT_PCR_INDEX;
+    use vault_core::sealed::SealedContainer;
+
     if !vault_hardware::tpm::available() {
         return Err(vault_hardware::tpm_policy::PCR_MISMATCH_MESSAGE.to_string());
+    }
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        if !SealedContainer::has_tpm_stanza(&bytes) {
+            return Err(
+                "this sealed container has no TPM stanza — run `vault enroll-tpm` first".into(),
+            );
+        }
+        let (mut container, original, _password) = open_sealed_for_edit(path, opts)?;
+        eprintln!("Re-sealing TPM stanza to current PCR {DEFAULT_PCR_INDEX}…");
+        let (ikm, extra) =
+            vault_hardware::tpm::seal(DEFAULT_PCR_INDEX).map_err(|e| e.to_string())?;
+        container
+            .set_tpm_stanza(&ikm, extra)
+            .map_err(|e| e.to_string())?;
+        write_sealed_preserving(path, &container, &original)?;
+        eprintln!("✅ TPM stanza re-sealed on sealed container.");
+        return Ok(());
     }
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
@@ -731,6 +807,21 @@ fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> Cm
 
     match action {
         crate::StanzasAction::List => {
+            let bytes = read_vault(path)?;
+            if bytes.len() >= 4 && bytes[0..4] == vault_core::MAGIC_VLTF {
+                use vault_core::format::Header;
+                use vault_core::ContainerKind;
+                let header = Header::parse_with_kind(&bytes, Some(ContainerKind::SealedFile))
+                    .map_err(|e| e.to_string())?;
+                if header.stanzas.is_empty() {
+                    println!("(no stanzas)");
+                    return Ok(());
+                }
+                for s in &header.stanzas {
+                    println!("{} ({})", kind_name(s.stanza_type), s.stanza_type);
+                }
+                return Ok(());
+            }
             let password = unlock_secret::read_master_password(false, &opts.unlock)?;
             let vault = open_vault(path, password.as_bytes(), opts)?;
             if vault.stanzas().is_empty() {
@@ -768,6 +859,18 @@ fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> Cm
         crate::StanzasAction::Remove { stanza_type } => {
             let t = parse_kind_name(&stanza_type)
                 .ok_or_else(|| usage_err(format!("unknown stanza type {stanza_type:?}")))?;
+            let bytes = read_vault(path)?;
+            if is_sealed_file(&bytes) {
+                let (mut container, original, _password) = open_sealed_for_edit(path, opts)?;
+                container.remove_stanza_type(t).map_err(|e| e.to_string())?;
+                write_sealed_preserving(path, &container, &original)?;
+                eprintln!("Removed {:?} stanza.", kind_name(t));
+                eprintln!(
+                    "hint: re-seal or rotate factors if a second factor was compromised — the \
+                     inner archive body was not re-encrypted."
+                );
+                return Ok(());
+            }
             let password = unlock_secret::read_master_password(false, &opts.unlock)?;
             let mut vault = open_vault(path, password.as_bytes(), opts)?;
             vault.remove_stanza_type(t).map_err(|e| e.to_string())?;
@@ -952,6 +1055,65 @@ fn cmd_rotate_data_key(path: &Path, re_seal_recovery: bool, opts: &OpenOpts) -> 
     use vault_core::format::stanza::kind;
     use vault_core::{Error, RotateDataKeyOptions};
 
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        let (mut container, original, password) = open_sealed_for_edit(path, opts)?;
+
+        let needs_recovery = container.has_recovery_stanza();
+        let recovery = if needs_recovery {
+            Some(read_recovery_code_for_rotation(re_seal_recovery)?)
+        } else {
+            None
+        };
+
+        let keyfile: Option<Zeroizing<Vec<u8>>> = if container
+            .stanzas()
+            .iter()
+            .any(|s| s.stanza_type == kind::PW_KEYFILE)
+        {
+            let kf_path = opts.keyfile.as_ref().ok_or_else(|| {
+                "this sealed container requires a keyfile — pass `--keyfile <PATH>` for \
+                 rotate-data-key"
+                    .to_string()
+            })?;
+            Some(Zeroizing::new(std::fs::read(kf_path).map_err(|e| {
+                format!("cannot read keyfile {}: {e}", kf_path.display())
+            })?))
+        } else {
+            None
+        };
+
+        eprintln!("Rotating data key — re-encrypting inner archive…");
+        let new_bytes = if container.has_yubikey_2fa() {
+            eprintln!("Touch your YubiKey to re-seal the 2FA stanza…");
+            let mut respond = |challenge: &[u8; 32]| -> Result<Zeroizing<Vec<u8>>, Error> {
+                vault_hardware::yubikey::challenge_response(challenge).map_err(Error::Hardware)
+            };
+            let mut rotate_opts = RotateDataKeyOptions {
+                password: password.as_bytes(),
+                recovery_code: recovery.as_deref().map(|s| s.as_bytes()),
+                keyfile: keyfile.as_deref().map(|k| k.as_slice()),
+                yubikey_respond: Some(&mut respond),
+            };
+            container.rotate_data_key(&original, &mut rotate_opts)
+        } else {
+            let mut rotate_opts = RotateDataKeyOptions {
+                password: password.as_bytes(),
+                recovery_code: recovery.as_deref().map(|s| s.as_bytes()),
+                keyfile: keyfile.as_deref().map(|k| k.as_slice()),
+                yubikey_respond: None,
+            };
+            container.rotate_data_key(&original, &mut rotate_opts)
+        }
+        .map_err(|e| e.to_string())?;
+        write_vault(path, &new_bytes)?;
+        eprintln!(
+            "Data key rotated on sealed container. Old exfiltrated copies stay sealed under the \
+             previous key only if you stop syncing them — see docs/guides/deletion-and-rotation.md."
+        );
+        return Ok(());
+    }
+
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
 
@@ -1017,6 +1179,17 @@ fn cmd_rotate_data_key(path: &Path, re_seal_recovery: bool, opts: &OpenOpts) -> 
 
 fn cmd_upgrade_kdf(path: &Path, m: u32, t: u32, p: u32, opts: &OpenOpts) -> CmdResult {
     vault_core::crypto::reject_kdf_below_floor(m, t, p).map_err(|e| e.to_string())?;
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        let (mut container, original, password) = open_sealed_for_edit(path, opts)?;
+        eprintln!("Re-deriving with Argon2id (m={m} KiB, t={t}, p={p})…");
+        container
+            .change_kdf(password.as_bytes(), m, t, p)
+            .map_err(|e| e.to_string())?;
+        write_sealed_preserving(path, &container, &original)?;
+        eprintln!("Upgraded KDF parameters (inner archive unchanged).");
+        return Ok(());
+    }
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
     eprintln!("Re-deriving with Argon2id (m={m} KiB, t={t}, p={p})…");
@@ -1064,11 +1237,33 @@ fn cmd_enroll(
 }
 
 fn cmd_enroll_fido2(path: &Path, opts: &OpenOpts) -> CmdResult {
+    use vault_core::sealed::SealedContainer;
+
     if !vault_hardware::fido2::available() {
         return Err(
             "fido2-token not found — install libfido2-tools (see docs/guides/hardware-factor-status.md)"
                 .to_string(),
         );
+    }
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        if SealedContainer::has_fido2_stanza(&bytes) {
+            return Err("this sealed container already has a FIDO2 stanza enrolled".into());
+        }
+        let (mut container, original, _password) = open_sealed_for_edit(path, opts)?;
+        eprintln!("Touch your security key to enroll FIDO2 hmac-secret…");
+        let (extra, prf) =
+            vault_hardware::fido2::enroll(container.vault_id(), None).map_err(|e| e.to_string())?;
+        container
+            .add_fido2_stanza(&prf, extra)
+            .map_err(|e| e.to_string())?;
+        write_sealed_preserving(path, &container, &original)?;
+        eprintln!(
+            "\n✅ FIDO2 stanza enrolled on {} — touch the same key to unlock without typing the password.",
+            path.display()
+        );
+        eprintln!("   Password unlock still works (OR envelope). Inner archive unchanged.");
+        return Ok(());
     }
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
@@ -1111,6 +1306,38 @@ fn cmd_enroll_keyfile(path: &Path, keyfile_path: Option<&Path>, opts: &OpenOpts)
     };
     if keyfile.is_empty() {
         return Err("keyfile is empty".to_string());
+    }
+
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        let (mut container, original, password) = open_sealed_for_edit(path, opts)?;
+        if container.is_2fa() {
+            return Err("this sealed container already has a second factor enrolled".to_string());
+        }
+        let recovery = recovery_code()?;
+        container
+            .enroll_keyfile_2fa(password.as_bytes(), &keyfile, recovery.as_bytes())
+            .map_err(|e| e.to_string())?;
+        write_sealed_preserving(path, &container, &original)?;
+        eprintln!(
+            "\n✅ Keyfile enrolled on {} — unlock requires password AND {}.\n",
+            path.display(),
+            kf_path.display()
+        );
+        eprintln!(
+            "   RECOVERY CODE — store it OFFLINE; it unlocks WITHOUT the keyfile if it's lost:\n"
+        );
+        eprintln!("       {recovery}\n");
+        eprintln!(
+            "   Unlock with:  vault --vault {} --keyfile {} open …",
+            path.display(),
+            kf_path.display()
+        );
+        eprintln!(
+            "   Or recovery:  vault --vault {} --recovery open …",
+            path.display()
+        );
+        return Ok(());
     }
 
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
@@ -1174,6 +1401,50 @@ fn cmd_enroll_yubikey(path: &Path, graceful_yubikey: bool, opts: &OpenOpts) -> C
                 .to_string(),
         );
     }
+
+    let bytes = read_vault(path)?;
+    if is_sealed_file(&bytes) {
+        if std::io::stdin().is_terminal()
+            && !confirm(
+                "This programs slot 2 of your YubiKey (OVERWRITING it) and will require the key on \
+                 every unlock. Continue?",
+            )?
+        {
+            return Err("aborted".to_string());
+        }
+        eprintln!("Programming slot 2 — touch the key when it blinks…");
+        yubikey::program_chalresp_slot2()?;
+        let mut challenge = [0u8; 32];
+        getrandom::getrandom(&mut challenge).map_err(|e| e.to_string())?;
+        eprintln!("Touch your YubiKey again to finish enrollment…");
+        let hw_response = yubikey::challenge_response(&challenge)?;
+        let (mut container, original, password) = open_sealed_for_edit(path, opts)?;
+        if container.is_2fa() {
+            return Err("this sealed container already has a second factor enrolled".to_string());
+        }
+        let recovery = recovery_code()?;
+        container
+            .enroll_yubikey_2fa(
+                password.as_bytes(),
+                &hw_response,
+                &challenge,
+                recovery.as_bytes(),
+            )
+            .map_err(|e| e.to_string())?;
+        write_sealed_preserving(path, &container, &original)?;
+        eprintln!(
+            "\n✅ YubiKey enrolled on {} — unlock requires password AND the key.\n",
+            path.display()
+        );
+        eprintln!("   RECOVERY CODE — store it OFFLINE:\n");
+        eprintln!("       {recovery}\n");
+        eprintln!(
+            "   Unlock with:  vault --vault {} --recovery open …",
+            path.display()
+        );
+        return Ok(());
+    }
+
     // Unlock first: the data key must be in memory to re-wrap it under the new 2FA stanza.
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
@@ -1328,6 +1599,84 @@ fn read_vault(path: &Path) -> Result<Vec<u8>, String> {
         .map_err(|_| format!("no vault at {} — run `vault init` first", path.display()))
 }
 
+fn is_sealed_file(bytes: &[u8]) -> bool {
+    bytes.len() >= 4 && bytes[0..4] == vault_core::MAGIC_VLTF
+}
+
+fn sealed_unlock<'a>(
+    bytes: &[u8],
+    password: &'a [u8],
+    opts: &OpenOpts,
+    keyfile_store: &'a mut Option<Zeroizing<Vec<u8>>>,
+) -> Result<vault_core::sealed::SealedUnlock<'a>, String> {
+    use vault_core::sealed::{SealedContainer, SealedUnlock};
+    if SealedContainer::requires_keyfile(bytes) && !opts.recovery {
+        let kf_path = opts.keyfile.as_ref().ok_or_else(|| {
+            "this container requires a keyfile — pass `--keyfile <PATH>` (or `--recovery` to use \
+             the recovery code)"
+                .to_string()
+        })?;
+        let kf = Zeroizing::new(
+            std::fs::read(kf_path)
+                .map_err(|e| format!("cannot read keyfile {}: {e}", kf_path.display()))?,
+        );
+        *keyfile_store = Some(kf);
+        Ok(SealedUnlock {
+            password,
+            keyfile: keyfile_store.as_ref().map(|v| v.as_slice()),
+        })
+    } else {
+        Ok(SealedUnlock::password_only(password))
+    }
+}
+
+pub(crate) fn open_sealed_for_edit(
+    path: &Path,
+    opts: &OpenOpts,
+) -> Result<
+    (
+        vault_core::sealed::SealedContainer,
+        Vec<u8>,
+        Zeroizing<String>,
+    ),
+    String,
+> {
+    use vault_core::sealed::SealedContainer;
+    let bytes = read_vault(path)?;
+    let password = unlock_secret::read_master_password(false, &opts.unlock)?;
+    eprintln!("Deriving key (Argon2id)…");
+    let mut keyfile_store = None;
+    let unlock = sealed_unlock(
+        bytes.as_slice(),
+        password.as_bytes(),
+        opts,
+        &mut keyfile_store,
+    )?;
+    let container = if SealedContainer::requires_yubikey(&bytes) && !opts.recovery {
+        eprintln!("Touch your YubiKey…");
+        let mut respond = |challenge: &[u8; 32]| -> Result<Zeroizing<Vec<u8>>, vault_core::Error> {
+            vault_hardware::yubikey::challenge_response(challenge)
+                .map_err(vault_core::Error::Hardware)
+        };
+        SealedContainer::open_with(&bytes, &unlock, Some(&mut respond))
+            .map_err(|e| e.to_string())?
+    } else {
+        SealedContainer::open(&bytes, &unlock).map_err(|e| e.to_string())?
+    };
+    Ok((container, bytes, password))
+}
+
+pub(crate) fn write_sealed_preserving(
+    path: &Path,
+    container: &vault_core::sealed::SealedContainer,
+    original: &[u8],
+) -> Result<(), String> {
+    let out = container
+        .save_preserving_body(original)
+        .map_err(|e| e.to_string())?;
+    write_vault(path, &out)
+}
+
 /// Read + unlock the vault, warning if its KDF is below the recommended floor (constraint C2), then
 /// run the rollback guard (constraint C16 — may `exit(2)` if the user won't accept a regression).
 pub(crate) fn open_vault(path: &Path, password: &[u8], opts: &OpenOpts) -> Result<Vault, String> {
@@ -1473,7 +1822,7 @@ fn note_saved(vault: &Vault) {
 }
 
 /// Atomic write: temp file (0600 on Unix) in the same dir → fsync → rename over the target.
-fn write_vault(path: &Path, bytes: &[u8]) -> CmdResult {
+pub(crate) fn write_vault(path: &Path, bytes: &[u8]) -> CmdResult {
     if let Some(dir) = path.parent() {
         if !dir.as_os_str().is_empty() {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;

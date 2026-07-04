@@ -1,6 +1,10 @@
 # Constraint test index (IVD Rule 3)
 
-Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) — **60 constraints**, **15 groups**, intent **v1.7.0**.
+Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) — **66 constraints**, **16 groups**, intent **v1.8.0**.
+C61–C66 (G16, [UC-23 sealed file storage](specs/UC-23-sealed-file-storage.md)) ship in **S-22**
+(Phase A–C). The CP-7 sweep below is **66/66 PASS** at the automated gate; C63 RSS ceiling
+on Linux release tests (`c63_rss_ceiling_large_on_disk_seal`); throughput bench via
+`VAULT_SEAL_BENCH_MIN_MIB_S` in `audit-readiness.sh`.
 
 Tests are **distributed** across crate suites (not a single monolithic file). Run everything with:
 
@@ -11,7 +15,7 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 
 ## CP-7 IVD Rule 2 sweep (2026-06-25)
 
-**Summary:** 60 PASS · 0 NEEDS_REVIEW · 0 FAIL
+**Summary:** 66 PASS · 0 NEEDS_REVIEW · 0 FAIL
 
 | ID | Title (short) | Status | Evidence |
 |----|---------------|--------|----------|
@@ -75,8 +79,14 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C58 | C38 bench release-only | PASS | `search.rs` debug early-return |
 | C59 | N=5000 search under 200 ms | PASS | `latency_at_five_thousand` release test |
 | C60 | Enterprise posture docs | PASS | `ENTERPRISE_POSTURE.md`, deployment guide |
+| C61 | Sealed containers: one crypto path | PASS | `sealed.rs`, `sealed_constraints.rs` (`c61_*`), `uc23_joint_satisfaction.rs` |
+| C62 | Sealed containers: zero plaintext metadata | PASS | `sealed_constraints.rs` (`c62_*`), `uc23_joint_satisfaction.rs` |
+| C63 | Sealed containers: bounded-memory streaming | PASS | `sealed.rs` streaming seal/extract; `sealed_constraints.rs` (`c63_*`, incl. RSS ceiling + cancel abort) |
+| C64 | Sealed containers: fail-closed extraction | PASS | `sealed_constraints.rs` (`c64_*`), `uc23_joint_satisfaction.rs`, `.vltf-partial/` staging |
+| C65 | Sealed containers: traversal-safe extraction | PASS | `file_archive.rs`, `sealed_constraints.rs` (`c65_*`), `fuzz/file_archive_parse` |
+| C66 | Sealed containers: Padmé default-on | PASS | `sealed_constraints.rs` (`c66_*`), `uc23_joint_satisfaction.rs`, CLI `--no-pad` |
 
-**1.0.0 tag:** all 60 constraints PASS at automated gate; libfido2/TPM FFI optional M7; tag after first CP-6 release run.
+**1.0.0 tag:** all 66 constraints PASS at automated gate; libfido2/TPM FFI optional M7; tag after first CP-6 release run.
 
 ## Where constraints are verified
 
@@ -99,6 +109,7 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C40–C45 | `crates/vault-gui/tests/uc20_constraints.rs` | Desktop hardening |
 | C46–C54 | `crates/vault-gui/tests/uc21_constraints.rs` | Session hygiene + keyfile GUI |
 | C55–C60 | `crates/vault-gui/tests/uc22_constraints.rs`, `scripts/audit-readiness.sh` | Fleet deploy + quality gate |
+| C61–C66 | `crates/vault-core/tests/uc23_joint_satisfaction.rs`, `sealed_constraints.rs`, CLI/GUI/TUI UC-23 suites | UC-23 sealed file storage per [spec §5](specs/UC-23-sealed-file-storage.md) |
 
 ## Manual review
 

@@ -41,6 +41,10 @@ pub fn read_record<'a>(cur: &mut Cursor<'a>, max_len: usize) -> Result<Option<(u
     if len > max_len {
         return Err(Error::BodyMalformed);
     }
+    if cur.remaining() < len {
+        // Incremental parsers (UC-23 file archive) may receive partial records.
+        return Ok(None);
+    }
     let value = cur.take(len).map_err(|_| Error::BodyMalformed)?;
     Ok(Some((tag, value)))
 }
@@ -95,16 +99,13 @@ mod tests {
     }
 
     #[test]
-    fn len_within_cap_but_past_eof_rejected() {
+    fn len_within_cap_but_past_eof_is_incomplete_not_fatal() {
         let mut buf = Vec::new();
         buf.extend_from_slice(&0x0002u16.to_le_bytes());
         buf.extend_from_slice(&100u32.to_le_bytes());
         buf.extend_from_slice(&[0u8; 10]);
         let mut cur = Cursor::new(&buf);
-        assert!(matches!(
-            read_record(&mut cur, MAX_FIELD_LEN),
-            Err(Error::BodyMalformed)
-        ));
+        assert_eq!(read_record(&mut cur, MAX_FIELD_LEN).unwrap(), None);
     }
 
     #[test]

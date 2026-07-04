@@ -53,11 +53,40 @@ YubiKey 2FA vaults default to **strict** at enrollment (`vault enroll yubikey`).
 | `vault enroll keyfile <PATH>` | Required-both keyfile 2FA (no hardware). |
 | `vault enroll-tpm` | TPM stanza enrollment (mock/dev path; live TPM FFI deferred). |
 | `vault re-enroll-tpm` | Re-seal TPM stanza after firmware/kernel update (mock/dev). |
-| `vault stanzas list` | Show enrolled stanza types (no secrets). |
+| `vault stanzas list` | Show enrolled stanza types (no secrets). Works on `.vlt` and `.vltf` headers. |
 | `vault stanzas add TYPE` | Enrollment guidance (delegates to `vault enroll …`). |
 | `vault stanzas remove TYPE` | Remove a non-password stanza (requires unlock). |
 
 See [AGENT_BROKER.md](AGENT_BROKER.md) for the S-13 scaffold workflow.
+
+## Sealed file containers (UC-23 — `.vltf`)
+
+Password-protected **opaque file archives** for cloud sync (Cryptomator-style). Reuses the v1
+header + stanza envelope + STREAM body (constraints **C61–C66**). Padmé padding is **on by default**.
+
+| Command | Description |
+|---------|-------------|
+| `vault seal PATH… [-o OUT.vltf] [--no-pad]` | Seal one or more files/directories into a new `.vltf` (refuses overwrite). |
+| `vault seal PATH… -o OUT.vltf --append` | Merge new paths into an existing `.vltf` (full re-encrypt; unlock required). |
+| `vault seal - [-o OUT.vltf]` | Seal stdin as inner path `-` (passphrase via TTY / fd / `VAULT_PASSWORD_FILE`; not `--password-stdin`). |
+| `vault open ARCHIVE.vltf [-C DIR]` | Extract all entries under `DIR` (default: cwd). Staging dir `.vltf-partial/` until complete. |
+| `vault open ARCHIVE.vltf --stdout` | Decrypt a **single** small file to stdout (stderr warning; 64 MiB cap — SC9). |
+| `vault peek ARCHIVE.vltf` | List inner paths and sizes only (no file bodies). |
+| `vault --vault FILE.vltf enroll keyfile\|yubikey\|fido2 …` | Add stanzas to a sealed container (header re-wrap only; inner archive unchanged). |
+| `vault --vault FILE.vltf enroll-tpm` / `re-enroll-tpm` | TPM OR stanza on `.vltf` (same PCR-7 policy as `.vlt`). |
+| `vault --vault FILE.vltf upgrade-kdf …` | Re-wrap password stanza at new Argon2id params (inner archive unchanged). |
+| `vault --vault FILE.vltf rotate-data-key` | Fresh data key + full inner re-encrypt (password/keyfile/YubiKey stanzas only; drop FIDO2/TPM first). |
+| `vault --vault FILE.vltf stanzas remove TYPE` | Remove a non-password stanza from `.vltf` (requires unlock). |
+
+**Unlock flags** (same as vault commands): `--password-stdin`, `--password-file PATH`,
+`--keyfile PATH`, `--recovery` — keyfile/YubiKey stanzas use the same UC-09 paths as `.vlt`.
+
+**KDF tuning:** `--allow-weak-kdf`, `--kdf-m-cost`, `--kdf-t-cost`, `--kdf-p-cost` (same names as init).
+
+**Exit codes:** wrong password / tamper → **5** (`auth:` on stderr). Usage errors → **1**.
+Open/extract failure after auth → uniform message `sealed container could not be opened` (C64).
+
+Spec: [UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md).
 
 ## Not yet implemented
 

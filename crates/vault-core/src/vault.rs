@@ -151,6 +151,7 @@ impl Vault {
         )?;
 
         let header = Header {
+            magic: crate::MAGIC,
             format_version: FORMAT_VERSION,
             vault_id,
             kdf: KdfParams {
@@ -295,6 +296,9 @@ impl Vault {
         F: FnOnce(&Header) -> Result<DataKey>,
     {
         let header = Header::parse(bytes)?;
+        if header.kind() != crate::ContainerKind::Vault {
+            return Err(Error::WrongContainerKind);
+        }
         let data_key = unwrap(&header)?;
         header.verify_hmac(data_key.expose_secret())?;
         let body = &bytes[header.on_disk_len()..];
@@ -318,6 +322,9 @@ impl Vault {
         keyfile: Option<&[u8]>,
     ) -> Result<Vault> {
         let header = Header::parse(bytes)?;
+        if header.kind() != crate::ContainerKind::Vault {
+            return Err(Error::WrongContainerKind);
+        }
         let data_key = Self::unwrap_data_key(&header, password, hw, keyfile)?;
 
         // C9 step 4: the factor is now proven valid, so a header HMAC mismatch is real tampering.
@@ -325,7 +332,7 @@ impl Vault {
 
         let body = &bytes[header.on_disk_len()..];
         let stream_ct = block_stream::read(data_key.expose_secret(), &header.master_seed, body)?;
-        // Streaming open: no full outer plaintext buffer (security-gap review P3 / C19).
+        // Streaming open: no full outer plaintext buffer (C19).
         let payload = Payload::parse_from_stream_ciphertext(
             data_key.expose_secret(),
             &header.nonce_prefix,

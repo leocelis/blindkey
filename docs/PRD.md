@@ -1,7 +1,7 @@
 # Vault — Product Requirements Document (PRD)
 
 > **Status:** Accepted v0.2 · June 2026 · **v1.0.0** (CLI + desktop app; format v1 frozen per ADR-0005)
-> **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (60 testable constraints, v1.7.0),
+> **Sources of truth:** [`vault_intent.yaml`](../vault_intent.yaml) (66 constraints — 60 implemented + 6 forward for UC-23, v1.8.0),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),
 > [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md).
@@ -268,6 +268,23 @@ Fleet deployment hooks (`VAULT_VAULT_PATH`, `VAULT_CONFIG_DIR`, `VAULT_LOCK_ON_B
 `just audit-ready` release gate, release-only search benches (C38/C59), and honest posture
 docs (no SOC2/SSO/team vaults in v1).
 See [spec UC-22](specs/UC-22-enterprise-readiness.md).
+
+### UC-23 · Seal any file or folder for storage you don't trust
+**Persona:** P1, P2 · **Constraints:** proposed C61–C66; reuses C1, C2, C7, C11, C27, C30, C31, C32 · **Status:** Draft (post-1.0, first "bigger vision" feature)
+
+A developer has a folder — `.env` files, deploy keys, a client's contracts, a whole project —
+that needs to live on Dropbox, Drive, S3, or a git remote they don't trust. `vault seal <folder>`
+(or drag-and-drop onto the window) produces one sealed `.vltf` blob; they upload it however they
+already upload things. `vault open` restores it; `vault peek` lists the inner tree after unlock.
+Everything about the contents — **names, paths, sizes, counts, timestamps — is inside the
+ciphertext** (C62), the output is size-padded by default (C66, Padmé), and unlock uses the same
+passphrase/keyfile/YubiKey stanzas as the vault itself. Sealing is a **streaming, bounded-memory
+pipeline** (C63) — a 20 GB folder seals on a small laptop at hundreds of MiB/s — and extraction
+is fail-closed (C64) and traversal-safe against hostile containers (C65). One crypto path: the
+existing STREAM envelope, no new primitives (C61). **Deliberately not a synced folder**: the
+sealed-archive model is the strongest metadata posture in the ecosystem survey and avoids the
+FUSE/mobile platform swamp; live sync remains a non-goal.
+See [spec UC-23](specs/UC-23-sealed-file-storage.md).
 
 ## 6. Out of scope for v1 (non-goals)
 

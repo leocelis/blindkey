@@ -4,6 +4,7 @@ Start here based on what you need:
 
 | I want to… | Read |
 |------------|------|
+| Seal files for untrusted cloud storage | [CLI.md](CLI.md) (`vault seal` / `open` / `peek`) · [specs/UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md) |
 | Install or build | [INSTALL.md](INSTALL.md) |
 | Use the CLI | [CLI.md](CLI.md) |
 | Try a sample import | [../samples/README.md](../samples/README.md) |
