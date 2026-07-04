@@ -1,6 +1,5 @@
-//! v1.0.0 release regression tests (security-gap review P0 item 2).
+//! v1.0.0 release regression tests.
 //!
-//! Patterns: `internal/patterns/vault/v1_release_patterns.yaml`
 
 use std::path::PathBuf;
 use std::process::Command;

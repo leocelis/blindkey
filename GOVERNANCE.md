@@ -11,20 +11,20 @@ community grows.
 2. **Decide before you build.** Significant design decisions are agreed (as a constraint or an ADR)
    *before* implementation.
 3. **Everything verifiable.** Claims are backed by tests; decisions are backed by written rationale.
-4. **Eyes beyond the maintainers.** Two-maintainer sign-off is the same two people; we treat that
-   honestly as a floor, not as independent review. Crypto and format changes actively solicit
-   external (non-maintainer) review as the community grows. **v1.0** requires the CP-7
+4. **Eyes beyond the code owner.** Sign-off from the code owner defined in CODEOWNERS is
+   not independent review by itself. Crypto and format changes actively solicit external
+   review as the community grows. **v1.0** requires the CP-7
    release quality gate (`just audit-ready` + IVD Rule 2 sweep) — see [ROADMAP.md](ROADMAP.md) M10.
 
 ## Decision tiers
 
 | Change type | Process |
 |-------------|---------|
-| Docs, tests, refactors, non-security bugfixes | **Lazy consensus** — one maintainer approval, 24h for objections |
-| New features / new constraints | Discussion → constraint added to `vault_intent.yaml` (with test) → one maintainer approval |
-| **Cryptography, file format, KDF, release integrity** | **Two-maintainer sign-off required** (see CODEOWNERS) + an [ADR](docs/adr/) |
-| Breaking format changes | Two-maintainer sign-off + ADR + `format_version` bump + migration plan |
-| Adding/removing a maintainer | Unanimous maintainer agreement |
+| Docs, tests, refactors, non-security bugfixes | **Lazy consensus** — one approval, 24h for objections |
+| New features / new constraints | Discussion → constraint added to `vault_intent.yaml` (with test) → one approval |
+| **Cryptography, file format, KDF, release integrity** | **Code-owner sign-off required** (see CODEOWNERS) + an [ADR](docs/adr/); external review solicited per Principle 4 |
+| Breaking format changes | Code-owner sign-off + ADR + `format_version` bump + migration plan |
+| Adding/removing a maintainer | Code owner's decision |
 
 ## Architecture Decision Records
 
@@ -33,4 +33,4 @@ to change a decision, write a new ADR that supersedes it.
 
 ## Changes to this document
 
-Governance changes require two-maintainer sign-off and a CHANGELOG entry.
+Governance changes require code-owner sign-off and a CHANGELOG entry.

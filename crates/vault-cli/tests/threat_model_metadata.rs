@@ -1,6 +1,5 @@
-//! THREAT_MODEL sync metadata leak doc regression (security-gap review P2, C17).
+//! THREAT_MODEL sync metadata leak doc regression.
 //!
-//! Patterns: `internal/patterns/vault/metadata_leak_patterns.yaml`
 
 use std::path::PathBuf;
 

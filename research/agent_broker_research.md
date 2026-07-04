@@ -1,8 +1,8 @@
-# S-13 Agent Broker — Research (security-gap review P1)
+# S-13 Agent Broker — Research
 
 > **Task:** First concrete step toward UC-16 — handle broker, `vault_use`, OS approval gate.
 
-## Problem (security-gap review gap)
+## Problem
 
 **Malware / AI agent with shell while unlocked:** C27 stops *incidental* capture (stdout/clipboard
 defaults) but a hostile same-user agent can run `vault get --stdout`. Card recommends **S-13 agent

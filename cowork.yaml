@@ -1,6 +1,6 @@
 # cowork.yaml — Two-maintainer / two-agent collaboration protocol
 #
-# Audience: the AI agents (and humans) working on this repo. Both maintainers develop
+# Audience: the AI agents (and humans) working on this repo. Each lane develops
 # with an AI coding agent; this file is the contract that keeps the two lanes from
 # colliding and keeps main always green. Agents MUST read this file at session start
 # (the repo CLAUDE.md points here).
@@ -64,14 +64,15 @@ ownership:
   "fuzz/":                         lane_A
   "crates/vault-cli/":             lane_B
   "crates/vault-hardware/":        lane_B   # implementation; design review by lane A
-  "docs/specs/":                   shared_read_only   # changes via PR + both maintainers
+  "docs/specs/":                   shared_read_only   # changes via PR + code-owner approval
   "docs/":                         lane_B_default
   "research/":                     shared_read_only
   "scripts/":                      lane_A
   "docs/CONSTRAINT_INDEX.md":  "update when adding constraint tests"
 
 locked_files:
-  # Changes here REQUIRE a PR approved by BOTH maintainers (GOVERNANCE two-maintainer tier).
+  # Changes here REQUIRE code-owner approval (GOVERNANCE code-owner-sign-off tier, see
+  # CODEOWNERS). Changes always go via PR; an ADR is added where GOVERNANCE requires one.
   - vault_intent.yaml
   - docs/FILE_FORMAT.md
   - docs/THREAT_MODEL.md
@@ -145,10 +146,10 @@ pr_checklist:
   - "`just ci` green; no new clippy allows without justification"
   - "CHANGELOG.md line added"
   - "Review tier respected: lazy consensus (docs/tests) · code-owner (vault-core,
-     workflows) · two-maintainer (crypto, format, intent, SECURITY.md)"
+     workflows) · code-owner sign-off + ADR (crypto, format, intent, SECURITY.md)"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 6. Sync points (from ROADMAP.md — both maintainers required, in order)
+# 6. Sync points (from ROADMAP.md — code-owner sign-off required, in order)
 # ──────────────────────────────────────────────────────────────────────────────
 sync_points:
   - "SP1: Gate 0 intent amendments signed off (G0.1–G0.6) — blocks all CP work"

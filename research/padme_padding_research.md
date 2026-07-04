@@ -1,4 +1,4 @@
-# Padmé size-padding exploration — Research (security-gap review P3, S-12)
+# Padmé size-padding exploration — Research (S-12)
 
 > **Task:** Evaluate PURBs/Padmé for sync size-leak reduction; ship optional, default-off.
 
@@ -17,7 +17,7 @@ significance remain, at ≤ ~12 % overhead (decreasing with size).
 | Does it hide mtime/frequency? | **No** — size channel only |
 | v2 default-on? | **Deferred** — needs constraint promotion + adversary model (UC-07 §7 open Q4) |
 
-## Implementation (shipped pre–security-gap review)
+## Implementation (shipped pre-1.0)
 
 - `vault-core/src/pad.rs` — `padme()`, `PadMode`, unit tests
 - `Vault::padding()` / `set_padding()` — sticky policy, re-save applies bucket

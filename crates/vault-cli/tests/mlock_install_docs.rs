@@ -1,6 +1,5 @@
-//! mlock / Docker INSTALL doc regression (security-gap review P2, C12).
+//! mlock / Docker INSTALL doc regression.
 //!
-//! Patterns: `internal/patterns/vault/mlock_degradation_patterns.yaml`
 
 use std::path::PathBuf;
 

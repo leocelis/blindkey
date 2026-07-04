@@ -1,5 +1,6 @@
 # Code ownership — the code owner's review is required to merge.
-# Leo (@leocelis) is the code owner for security-critical paths; Juan (@jgm972) co-reviews docs/CLI.
+# Scoped by path, not by person: each line below names whoever is required
+# to review that path today.
 /crates/vault-core/     @leocelis
 /docs/THREAT_MODEL.md   @leocelis
 /SECURITY.md            @leocelis

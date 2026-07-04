@@ -1,4 +1,4 @@
-# cargo-vet config — Vault supply-chain vetting (gap D2, security-gap review).
+# cargo-vet config — Vault supply-chain vetting (gap D2).
 # Exemptions are version-pinned bootstrap entries. After Cargo.lock changes run
 # `cargo vet` (must pass) or `cargo vet regenerate-exemptions` (review diff).
 # Prefer audit entries in audits.toml for crypto-adjacent crates over time (C3).

@@ -1,6 +1,5 @@
-//! Format v1 freeze regression tests (ADR-0005, security-gap review P0).
+//! Format v1 freeze regression tests (ADR-0005).
 //!
-//! Patterns: `internal/patterns/vault/format_freeze_patterns.yaml`
 
 use std::path::PathBuf;
 

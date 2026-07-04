@@ -1,6 +1,5 @@
-//! ptrace / live-memory hardening — doc + startup regression (security-gap review P2).
+//! ptrace / live-memory hardening — doc + startup regression .
 //!
-//! Patterns: `internal/patterns/vault/ptrace_hardening_patterns.yaml`
 
 use std::path::PathBuf;
 

@@ -3,10 +3,9 @@
 > **Audience:** maintainers commissioning an external review.
 > **Status:** ready to send RFP after `v1.0.0` tag (format freeze ✅, CP-7 gate ✅).
 > **Research:** [research/third_party_audit_research.md](../research/third_party_audit_research.md)
-> **Patterns:** `internal/patterns/vault/third_party_audit_patterns.yaml`
 
 Vault v1.0 does **not** require a third-party audit to ship ([THIRD_PARTY_AUDIT.md](THIRD_PARTY_AUDIT.md)).
-This pack exists so Leo can commission one **before enterprise marketing** (security-gap review P1).
+This pack exists so the audit can be commissioned **before enterprise marketing**.
 
 ---
 
@@ -95,7 +94,7 @@ just fuzz               # optional; requires cargo-fuzz + nightly
 
 ---
 
-## 6. Leo checklist (commission execution)
+## 6. Commissioning checklist (execution)
 
 - [ ] Run `./scripts/audit-intake-checklist.sh --gate` on release commit
 - [ ] Record commit hash: `git rev-parse HEAD`

@@ -1,6 +1,5 @@
-//! Third-party audit commission pack regression tests (security-gap review P1).
+//! Third-party audit commission pack regression tests .
 //!
-//! Patterns: `internal/patterns/vault/third_party_audit_patterns.yaml`
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -20,7 +19,7 @@ fn audit_commission_doc_has_rfp_sections() {
         "Scope statement",
         "In scope",
         "Out of scope",
-        "Leo checklist",
+        "Commissioning checklist",
         "Expected deliverables",
     ] {
         assert!(

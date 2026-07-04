@@ -1,6 +1,5 @@
-//! Crypto-shredding + rotate-data-key regression (security-gap review P2, gap C2).
+//! Crypto-shredding + rotate-data-key regression.
 //!
-//! Patterns: `internal/patterns/vault/crypto_shred_rotation_patterns.yaml`
 
 use std::io::Write;
 use std::path::{Path, PathBuf};

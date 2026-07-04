@@ -1,4 +1,4 @@
-# Crypto-shredding & data-key rotation — Research (security-gap review P2)
+# Crypto-shredding & data-key rotation — Research
 
 > **Task:** Define honest deletion semantics + ship `vault rotate-data-key` (gap C2).
 

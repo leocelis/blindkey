@@ -1,6 +1,5 @@
-//! GUI in-app TOTP regression (security-gap review P3).
+//! GUI in-app TOTP regression .
 //!
-//! Patterns: `internal/patterns/vault/gui_totp_in_app_patterns.yaml`
 
 use std::path::PathBuf;
 

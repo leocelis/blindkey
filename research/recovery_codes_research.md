@@ -1,4 +1,4 @@
-# Recovery codes at init — Research (security-gap review P2)
+# Recovery codes at init — Research
 
 > **Task:** Optional offline recovery-code stanza at `vault init` (gap C3).
 

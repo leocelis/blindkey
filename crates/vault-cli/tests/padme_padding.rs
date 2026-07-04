@@ -1,6 +1,5 @@
-//! Padmé padding exploration regression (security-gap review P3, S-12).
+//! Padmé padding exploration regression.
 //!
-//! Patterns: `internal/patterns/vault/padme_padding_patterns.yaml`
 
 use std::path::PathBuf;
 

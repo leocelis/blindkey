@@ -1,9 +1,9 @@
-# Sync guide — `--expect-min-version` + fleet provisioning (security-gap review P1)
+# Sync guide — `--expect-min-version` + fleet provisioning
 
 > **Task:** Document `vault open --expect-min-version N` and a fleet provisioning example in
 > `docs/guides/sync-to-untrusted-storage.md`.
 
-## Problem (security-gap review gap)
+## Problem
 
 C16 rollback detection relies on a **local, non-synced anchor**. On a **fresh machine** (no anchor
 yet), any valid vault version is accepted — trust-on-first-use (TOFU). An attacker who serves an

@@ -1,7 +1,6 @@
 # Format Freeze Research — security-gap review P0 (June 2026)
 
 > **Purpose:** Research backing ADR-0005 and the format-v1 freeze declaration.
-> **Card:** Trello (internal ref) · checklist item 1.
 
 ## Question
 
@@ -33,7 +32,7 @@ Per `GOVERNANCE.md` breaking-format tier:
 
 | Still true after freeze | Why |
 |-------------------------|-----|
-| Software is **pre-1.0 / not independently audited** | Audit is P1 on security-gap review, separate from format |
+| Software is **pre-1.0 / not independently audited** | Audit is optional, separate from format |
 | **`1.0.0` tag not yet cut** | Checklist item 2 (release ceremony) |
 | Gate 0 intent amendments pending sign-off | Process item (checklist P3) |
 | API / CLI surface may evolve | Format freeze ≠ API freeze |

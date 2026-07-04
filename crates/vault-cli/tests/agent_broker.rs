@@ -1,6 +1,5 @@
-//! Agent broker scaffold regression tests (security-gap review P1).
+//! Agent broker scaffold regression tests .
 //!
-//! Patterns: `internal/patterns/vault/agent_broker_patterns.yaml`
 
 use std::path::PathBuf;
 

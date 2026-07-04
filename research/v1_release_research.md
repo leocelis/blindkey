@@ -1,6 +1,5 @@
 # v1.0.0 Release Research — security-gap review P0 item 2 (June 2026)
 
-> **Card:** Trello (internal ref) · checklist: Tag v1.0.0
 > **Prerequisite:** Format v1 frozen (ADR-0005) ✅
 
 ## What this task requires
@@ -26,7 +25,7 @@ Per `docs/RELEASE.md` and the checklist:
 
 **Drop:** “pre-1.0” / “pre-alpha” banner language in README and install paths.
 
-**Keep:** honest “not independently third-party audited” — external audit is security-gap review P1, optional per `THIRD_PARTY_AUDIT.md`.
+**Keep:** honest “not independently third-party audited” — external audit is optional per `THIRD_PARTY_AUDIT.md`.
 
 | Surface | Before | After 1.0.0 |
 |---------|--------|-------------|
@@ -44,9 +43,9 @@ Per `docs/RELEASE.md` and the checklist:
 
 **Out of scope (avoid mass churn):** UC spec headers still saying “implemented pre-1.0” — historical; update on next spec pass.
 
-## Leo-only steps (not automated here)
+## Release-signer steps (not automated here)
 
-Per `GOVERNANCE.md` / internal governance Leo-only actions:
+Per `GOVERNANCE.md`, these require release-signing access:
 
 ```sh
 git tag -s v1.0.0 -m "v1.0.0"

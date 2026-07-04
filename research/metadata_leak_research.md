@@ -1,4 +1,4 @@
-# Sync metadata leak — Research (security-gap review P2)
+# Sync metadata leak — Research
 
 > **Task:** THREAT_MODEL documents file-size / mtime metadata as accepted residual (C17).
 
@@ -6,7 +6,7 @@
 
 C17 mandates a single opaque blob — no per-entry plaintext paths, names, or counts. Intent
 explicitly states the **residual** channel: total file size + modification timestamp (C17
-rationale line 934). THREAT_MODEL had a 3-line stub; security-gap review requires a complete, honest
+rationale line 934). THREAT_MODEL had a 3-line stub; this review requires a complete, honest
 statement cross-linked to UC-07 and user guides.
 
 ## What the backend learns (accepted, not a bug)

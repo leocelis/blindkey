@@ -1,4 +1,4 @@
-# Post-quantum posture — Research (security-gap review P2)
+# Post-quantum posture — Research
 
 > **Task:** Publish honest PQ posture + crypto-agility statement (gap E1).
 

@@ -1,4 +1,4 @@
-# Streaming payload parse — Research (security-gap review P3)
+# Streaming payload parse — Research
 
 > **Task:** Protected fields never in a contiguous full-payload plaintext buffer during open.
 

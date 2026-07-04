@@ -1,6 +1,5 @@
-//! Sync guide — expect-min-version + fleet provisioning doc regression (security-gap review P1).
+//! Sync guide — expect-min-version + fleet provisioning doc regression .
 //!
-//! Patterns: `internal/patterns/vault/sync_provisioning_patterns.yaml`
 
 use std::path::PathBuf;
 

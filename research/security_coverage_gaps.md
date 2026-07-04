@@ -55,7 +55,7 @@ data-integrity, distribution trust, and project governance* — exactly the cate
 | C3 | Recovery from forgotten password / all-factors-lost | C5 (multi-stanza) | **ADDRESSED** *(init + 2FA recovery)* | Med |
 | D1 | Reproducible builds + signed releases (SLSA / sigstore) | C20 (build), C24 (audit) | **PROMOTED → C34** | High |
 | D2 | Dependency vetting depth (cargo-vet, SBOM, dep budget) | C3, C24 (audit/deny) | **PARTIAL** *(vet ADDRESSED; dep budget open)* | Med |
-| E1 | Post-quantum posture + crypto-agility statement | C7 (versioned format) | **ADDRESSED** *(2026-06-26, security-gap review)* | Low-Med |
+| E1 | Post-quantum posture + crypto-agility statement | C7 (versioned format) | **ADDRESSED** *(2026-06-26)* | Low-Med |
 | E2 | Unicode normalization of the master password | C2 (KDF) | **PROMOTED → C2 (NFC)** | Med |
 | F1 | Coordinated vulnerability disclosure policy (SECURITY.md) | C24 (OSS) | **ADDRESSED** (SECURITY.md shipped) | High (governance) |
 | F2 | Formal threat model document (STRIDE / attack trees) | research taxonomy | **ADDRESSED** (docs/THREAT_MODEL.md) | Med |
@@ -163,7 +163,7 @@ The crypto can be flawless while the secret leaks out the side.
 ### B3 — Live process-memory read via ptrace/debugger — **PARTIAL (Linux ADDRESSED; macOS deferred)**
 - **Attack:** C25 disables **core dumps**, but a same-uid process can still `ptrace`-attach (or
   read `/proc/<pid>/mem`) to scrape unlocked keys from the running vault.
-- **Addressed (2026-06-26, security-gap review):** Linux `PR_SET_DUMPABLE` + `coredump_filter=0` in
+- **Addressed (2026-06-26):** Linux `PR_SET_DUMPABLE` + `coredump_filter=0` in
   `vault-sys`; `harden_process()` at CLI/TUI/GUI startup; `ptrace_scope` documented in INSTALL.md.
 - **Remaining:** macOS `PT_DENY_ATTACH` deferred (low value, breaks debugging); root/kernel
   attacker while unlocked is out of scope (THREAT_MODEL).
@@ -184,13 +184,13 @@ one bad write loses *everything*.
   advisory `flock` for the session; keep the previous generation as `vault.vlt.bak` until the new
   one verifies. This is data-loss prevention as much as security.
 
-### C2 — Secure deletion / crypto-shredding semantics — **ADDRESSED (2026-06-26, security-gap review)**
+### C2 — Secure deletion / crypto-shredding semantics — **ADDRESSED (2026-06-26)**
 - **Policy:** `vault rm` crypto-shreds in the new blob; no physical/sync-history erase promise.
 - **Shipped:** `vault rotate-data-key`, `Vault::rotate_data_key`, guide
   `docs/guides/deletion-and-rotation.md`.
 - **Honest limit:** old exfiltrated blobs remain decryptable until removed from sync/backups.
 
-### C3 — Recovery from forgotten password / all factors lost — **ADDRESSED (2026-06-26, security-gap review)**
+### C3 — Recovery from forgotten password / all factors lost — **ADDRESSED (2026-06-26)**
 - **Shipped:** optional recovery-code stanza at `vault init` (`--with-recovery-code` / TTY confirm);
   `Vault::add_recovery_stanza`; OR-unlock tries all password stanzas; guide
   `docs/guides/recovery-codes.md`.
@@ -220,7 +220,7 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
 ### D2 — Dependency vetting depth — **PARTIAL (cargo-vet in gate; dep budget open)**
 - **Gap:** `cargo audit` catches *known* advisories; it does not vet *unreviewed* code or shrink
   the trusted surface.
-- **Addressed (2026-06-26, security-gap review):** `cargo vet` in `just audit-ready` / `just audit`;
+- **Addressed (2026-06-26):** `cargo vet` in `just audit-ready` / `just audit`;
   `supply-chain/config.toml` pins versioned exemptions; `cargo vet` must pass before release.
 - **Remaining:** dependency budget cap; optional mozilla audit imports to shrink exemptions.
 - **Proposed direction (C39):** emit CycloneDX **SBOM** per release; justify each crypto-adjacent dep.
@@ -229,14 +229,14 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
 
 ## 6 — Theme E: Cryptographic Agility & Longevity
 
-### E1 — Post-quantum posture + agility statement — **ADDRESSED (2026-06-26, security-gap review)**
+### E1 — Post-quantum posture + agility statement — **ADDRESSED (2026-06-26)**
 - **Symmetric core** (XChaCha20-Poly1305, Argon2id, HMAC/HKDF-SHA-256): Grover-resilient —
   ~128-bit effective security from 256-bit keys; adequate for password-vault lifetime.
 - **Optional asymmetric stanzas** (FIDO2 P-256, Secure Enclave secp256r1): store-now-decrypt-later
   in principle; wrap data key only; password stanza always remains (C5).
 - **Shipped:** `docs/guides/post-quantum-posture.md` (canonical); expanded `CRYPTO.md`,
-  `FILE_FORMAT.md` (agility table), `THREAT_MODEL.md` (residual); patterns
-  `internal/patterns/vault/pq_posture_patterns.yaml`; regression `pq_posture.rs`.
+  `FILE_FORMAT.md` (agility table), `THREAT_MODEL.md` (residual);
+  regression `pq_posture.rs`.
 - **Deferred to v2:** hybrid-PQ wrap (e.g. ML-KEM) per ADR-0005; no NIST PQ marketing claims in v1.
 
 ### E2 — Unicode normalization of the master password — **ADDRESSED (C2 NFC)**
@@ -260,7 +260,7 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
 - **Gap:** the research has a threat *taxonomy*; a maintained `THREAT_MODEL.md` (STRIDE or attack
   trees) was missing.
 - **Shipped:** adversary table, residual-risk list, STRIDE map, cross-links to specs/guides.
-- **Verified (2026-06-26, security-gap review):** accepted sync metadata (file size, mtime, save frequency)
+- **Verified (2026-06-26):** accepted sync metadata (file size, mtime, save frequency)
   documented per C17; patterns `metadata_leak_patterns.yaml`; regression `threat_model_metadata.rs`.
   trees, explicit **in-scope / out-of-scope** adversaries, and the residual-risk list) makes the
   guarantees auditable and sets expectations (e.g. "evil-maid with hardware TPM bus access is

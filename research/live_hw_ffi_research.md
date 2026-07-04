@@ -1,4 +1,4 @@
-# Live FIDO2 + TPM hardware paths — Research (security-gap review P3, S-8a/S-8c)
+# Live FIDO2 + TPM hardware paths — Research (S-8a/S-8c)
 
 > **Task:** Replace mock-only FIDO2/TPM with production device paths.
 

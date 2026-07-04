@@ -1,6 +1,5 @@
-//! YubiKey strict default regression tests (security-gap review P1).
+//! YubiKey strict default regression tests .
 //!
-//! Patterns: `internal/patterns/vault/yubikey_strict_default_patterns.yaml`
 
 use std::path::PathBuf;
 

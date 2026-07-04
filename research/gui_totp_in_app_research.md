@@ -1,4 +1,4 @@
-# GUI in-app TOTP display — Research (security-gap review P3)
+# GUI in-app TOTP display — Research
 
 > **Task:** In-app TOTP/code path that never touches the clipboard (high-risk 2FA codes).
 

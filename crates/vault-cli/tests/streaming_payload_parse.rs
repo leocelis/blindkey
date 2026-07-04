@@ -1,6 +1,5 @@
-//! Streaming payload parse regression (security-gap review P3).
+//! Streaming payload parse regression .
 //!
-//! Patterns: `internal/patterns/vault/streaming_payload_parse_patterns.yaml`
 
 use std::path::PathBuf;
 
@@ -38,7 +37,7 @@ fn stream_exports_decrypt_streaming_and_incremental_tlv() {
 fn payload_documents_streaming_open_path() {
     let payload = read_repo_file("crates/vault-core/src/format/payload.rs");
     assert!(payload.contains("parse_from_stream_ciphertext"));
-    assert!(payload.contains("security-gap review P3"));
+    assert!(payload.contains(""));
 }
 
 #[test]

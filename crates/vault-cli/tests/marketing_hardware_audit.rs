@@ -1,6 +1,5 @@
-//! Marketing hardware honesty regression (security-gap review P2).
+//! Marketing hardware honesty regression .
 //!
-//! Patterns: `internal/patterns/vault/marketing_hardware_patterns.yaml`
 
 use std::path::PathBuf;
 

@@ -1,6 +1,5 @@
-//! Post-quantum posture doc regression (gap E1, security-gap review P2).
+//! Post-quantum posture doc regression (gap E1).
 //!
-//! Patterns: `internal/patterns/vault/pq_posture_patterns.yaml`
 
 use std::path::PathBuf;
 

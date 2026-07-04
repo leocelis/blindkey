@@ -1,6 +1,5 @@
-//! KDF floor policy regression tests (security-gap review P1, constraint C2).
+//! KDF floor policy regression tests.
 //!
-//! Patterns: `internal/patterns/vault/kdf_floor_policy_patterns.yaml`
 
 use std::io::Write;
 use std::path::Path;

@@ -1,6 +1,5 @@
-//! cargo-vet supply-chain gate — pinned exemptions + audit-ready (security-gap review P2).
+//! cargo-vet supply-chain gate — pinned exemptions + audit-ready .
 //!
-//! Patterns: `internal/patterns/vault/cargo_vet_patterns.yaml`
 
 use std::path::PathBuf;
 
