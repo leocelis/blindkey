@@ -6,7 +6,7 @@
 
 ## 1. Scope
 
-Prepare Vault for **fleet deployment and release discipline** without falsely claiming SOC2/team-vault
+Prepare Blindkey for **fleet deployment and release discipline** without falsely claiming SOC2/team-vault
 certification. Implements the **release quality gate**, **deployment env hooks**, **release-scale
 search benches**, and **honest enterprise posture documentation**.
 
@@ -14,7 +14,7 @@ search benches**, and **honest enterprise posture documentation**.
 
 - `docs/AUDIT_READINESS.md` + `scripts/audit-readiness.sh`
 - `docs/ENTERPRISE_POSTURE.md` + `docs/guides/enterprise-deployment.md`
-- Env-based deployment: `VAULT_VAULT_PATH`, `VAULT_CONFIG_DIR`, `VAULT_LOCK_ON_BLUR`
+- Env-based deployment: `BLINDKEY_VAULT_PATH`, `BLINDKEY_CONFIG_DIR`, `BLINDKEY_LOCK_ON_BLUR`
 - C38/C59 release-only search benchmarks
 - `just audit-ready` task
 
@@ -33,8 +33,8 @@ search benches**, and **honest enterprise posture documentation**.
 ### 2.1 Audit readiness (C55, C56)
 
 `scripts/audit-readiness.sh`:
-1. `cargo test -p vault-core --release search::tests::latency_under_budget_at_scale`
-2. `cargo test -p vault-core --release search::tests::latency_at_five_thousand`
+1. `cargo test -p blindkey-core --release search::tests::latency_under_budget_at_scale`
+2. `cargo test -p blindkey-core --release search::tests::latency_at_five_thousand`
 3. `cargo clippy --all-targets -- -D warnings`
 4. `cargo audit` + `cargo deny check` (if installed)
 
@@ -42,9 +42,9 @@ search benches**, and **honest enterprise posture documentation**.
 
 | Env | Effect |
 |-----|--------|
-| `VAULT_VAULT_PATH` | Override `~/.vault/vault.vlt` |
-| `VAULT_CONFIG_DIR` | Override `~/.vault/` config directory |
-| `VAULT_LOCK_ON_BLUR=1` | Force `lock_on_blur` in GUI config |
+| `BLINDKEY_VAULT_PATH` | Override `~/.blindkey/vault.vlt` |
+| `BLINDKEY_CONFIG_DIR` | Override `~/.blindkey/` config directory |
+| `BLINDKEY_LOCK_ON_BLUR=1` | Force `lock_on_blur` in GUI config |
 
 ### 2.3 Search scale (C58, C59)
 

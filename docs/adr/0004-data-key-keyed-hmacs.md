@@ -60,7 +60,7 @@ payload work. The header HMAC authenticates what the stanza tag does not cover (
 
 - Password rotation is a true header-only rewrite: the entire body — ciphertext **and** block
   HMACs — stays byte-identical (C4's test now asserts exactly this).
-- `vault upgrade-kdf` is explicitly a full body-writing save (G0.3) — it was never a header-only
+- `blindkey upgrade-kdf` is explicitly a full body-writing save (G0.3) — it was never a header-only
   op once these rules exist, and the version bump closes its rollback blind spot.
 - `error.rs` carries two variants (`HeaderAuth`, `HeaderTampered`); exit code 5 covers the
   ambiguous stanza-step failure (C21 map).

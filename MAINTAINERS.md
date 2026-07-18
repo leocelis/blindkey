@@ -1,6 +1,6 @@
 # Maintainers
 
-Vault is maintained by:
+Blindkey is maintained by:
 
 | GitHub | Security contact |
 |--------|------------------|
@@ -12,7 +12,7 @@ here — see [GOVERNANCE.md](GOVERNANCE.md) for how that maps to decision tiers.
 
 ## Responsibilities
 
-- Changes to `crates/vault-core/`, the file format, the threat model, `SECURITY.md`, and
+- Changes to `crates/blindkey-core/`, the file format, the threat model, `SECURITY.md`, and
   release scripts require review from the code owner (see [`.github/CODEOWNERS`](.github/CODEOWNERS)).
 - Security reports are triaged per [SECURITY.md](SECURITY.md).
 - Releases are built with SHA-256 checksums (see

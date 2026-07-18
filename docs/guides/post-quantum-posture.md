@@ -1,15 +1,15 @@
 # Post-quantum posture
 
-> **Gap E1** — what Vault v1 promises about quantum-era threats and how we can evolve.
+> **Gap E1** — what Blindkey v1 promises about quantum-era threats and how we can evolve.
 
 ## Short answer
 
-Vault's **symmetric** cryptography (XChaCha20-Poly1305, Argon2id, HMAC/HKDF-SHA-256) is
+Blindkey's **symmetric** cryptography (XChaCha20-Poly1305, Argon2id, HMAC/HKDF-SHA-256) is
 **post-quantum adequate** for a password vault: Grover's algorithm at most halves effective key
 strength, so 256-bit keys retain roughly **128-bit** security — sufficient for decades of
 offline guessing resistance when Argon2id parameters are healthy.
 
-Vault does **not** claim NIST PQ certification and does **not** ship ML-KEM or hybrid wraps in v1.
+Blindkey does **not** claim NIST PQ certification and does **not** ship ML-KEM or hybrid wraps in v1.
 
 ## Optional hardware stanzas (lower practical risk)
 
@@ -17,7 +17,7 @@ Some optional unlock paths use **classical elliptic-curve** machinery (e.g. FIDO
 Secure Enclave secp256r1). A future cryptographically relevant quantum computer could, in
 principle, decrypt **old captures** of those wraps (store-now-decrypt-later).
 
-In Vault v1:
+In Blindkey v1:
 
 - Those stanzas only wrap the **256-bit data key** — not entry plaintext directly.
 - The **password stanza always remains** (C5 OR model); hardware is never the sole path.

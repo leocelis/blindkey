@@ -1,8 +1,8 @@
-# UC-10 — Open a Stale or Hostile Vault File Safely
+# UC-10 — Open a Stale or Hostile Blindkey File Safely
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-10 · **Constraints:** C2, C7, C8, C9 · **C2 ceiling** (was gap A1) · **C28** ANSI sanitization (was gap A2) — both promoted 2026-06-10
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
@@ -36,7 +36,7 @@ reaches a terminal unescaped.
   into the admin's clipboard — the precedent class (CWE-150) for C28.
 - **age / rage** ([C2SP spec](https://github.com/C2SP/C2SP/blob/main/age.md),
   [str4d/rage](https://github.com/str4d/rage)): a header grammar with explicit size discipline;
-  rage's parser is fuzzed — the bar `vault-core`'s parser matches.
+  rage's parser is fuzzed — the bar `blindkey-core`'s parser matches.
 - **cargo-fuzz / libFuzzer, OSS-Fuzz**: the harness model already scaffolded in
   [`fuzz/fuzz_targets/`](../../fuzz/fuzz_targets/) (`header_parse`, `stanza_parse`, `block_stream`).
 
@@ -53,7 +53,7 @@ reaches a terminal unescaped.
 
 ### 3.1 Parser hardening strategy
 
-Normative bounds (constants already in `vault-core`):
+Normative bounds (constants already in `blindkey-core`):
 
 | Field | Bound | Source |
 |---|---|---|
@@ -108,7 +108,7 @@ is keyless and attacker-computable) is stopped by step 6 preceding step 7.
 ### 3.3 KDF parameter ceiling (C2, promoted from gap A1)
 
 Proposed normative values — already staged as constants in
-`crates/vault-core/src/crypto/mod.rs`:
+`crates/blindkey-core/src/crypto/mod.rs`:
 
 | Parameter | Floor (C2) | Ceiling (C2) | Ceiling rationale |
 |---|---|---|---|
@@ -124,7 +124,7 @@ allocator sees the number. Error text (constant in `error.rs`, exact C2 string):
 
 Below-floor (stale, not hostile) keeps C2's distinct path: stderr WARNING containing
 `below minimum recommended`, an interactive confirmation before deriving, and an upgrade offer
-(`vault upgrade-kdf`, UC-11) after successful unlock. Never silent (C2).
+(`blindkey upgrade-kdf`, UC-11) after successful unlock. Never silent (C2).
 
 ### 3.4 Ambiguous-error policy
 
@@ -164,11 +164,11 @@ pub fn sanitize_for_terminal(s: &str) -> Cow<'_, str>;
 
 - **Visible escaping over stripping**: the user *sees* that a field contains `<U+001B>` — silent
   stripping would hide evidence of tampering.
-- Applied at the CLI presentation layer to: `vault ls` output, `vault get` field display, `edit`
+- Applied at the CLI presentation layer to: `blindkey ls` output, `blindkey get` field display, `edit`
   previews, error messages echoing names/paths — and to `get --stdout` **only when stdout is a
   TTY**. When stdout is a pipe (the script case, UC-5), bytes pass through exactly, because scripts
   need the literal secret and no terminal is present to attack.
-- `vault-core` never formats untrusted bytes into its error strings (error variants carry no
+- `blindkey-core` never formats untrusted bytes into its error strings (error variants carry no
   attacker bytes except the io path, sanitized by the CLI).
 
 ### 3.6 Fuzzing strategy

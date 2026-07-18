@@ -4,7 +4,7 @@
 > **Status:** ready to send RFP after `v1.0.0` tag (format freeze ✅, CP-7 gate ✅).
 > **Research:** [research/third_party_audit_research.md](../research/third_party_audit_research.md)
 
-Vault v1.0 does **not** require a third-party audit to ship ([THIRD_PARTY_AUDIT.md](THIRD_PARTY_AUDIT.md)).
+Blindkey v1.0 does **not** require a third-party audit to ship ([THIRD_PARTY_AUDIT.md](THIRD_PARTY_AUDIT.md)).
 This pack exists so the audit can be commissioned **before enterprise marketing**.
 
 ---
@@ -24,20 +24,20 @@ All checks must pass on the **exact git commit** you give the auditor (tag `v1.0
 
 ## 2. Scope statement (paste into RFP)
 
-**Product:** Vault — local-first, zero-plaintext credential vault (Rust). Model-blind secret delivery for the AI-era threat model.
+**Product:** Blindkey — local-first, zero-plaintext credential vault (Rust). Model-blind secret delivery for the AI-era threat model.
 
-**Review goal:** Find exploitable flaws in the security-critical path before wide production adoption. Map findings to constraint IDs in [`vault_intent.yaml`](../vault_intent.yaml) or documented residual risks in [`THREAT_MODEL.md`](THREAT_MODEL.md).
+**Review goal:** Find exploitable flaws in the security-critical path before wide production adoption. Map findings to constraint IDs in [`blindkey_intent.yaml`](../blindkey_intent.yaml) or documented residual risks in [`THREAT_MODEL.md`](THREAT_MODEL.md).
 
 ### In scope
 
 | # | Area | Start here |
 |---|------|------------|
-| 1 | On-disk format & hostile-input parsers | [`FILE_FORMAT.md`](FILE_FORMAT.md), `crates/vault-core/src/format/`, `fuzz/` |
-| 2 | KDF, envelope, stanzas | [`CRYPTO.md`](CRYPTO.md), `crates/vault-core/src/crypto/`, `envelope/` |
-| 3 | Memory & runtime hardening | [`specs/UC-14-runtime-hardening.md`](specs/UC-14-runtime-hardening.md), `vault-sys` |
-| 4 | Model-blind delivery & argv hygiene | [`specs/UC-04-model-blind-retrieval.md`](specs/UC-04-model-blind-retrieval.md), `vault-cli`, `vault-clip` |
-| 5 | Hardware factor boundary (mock + subprocess paths) | [`specs/UC-09-hardware-factors.md`](specs/UC-09-hardware-factors.md), `vault-hardware` |
-| 6 | Desktop shell boundary | `crates/vault-gui/` — must not implement crypto |
+| 1 | On-disk format & hostile-input parsers | [`FILE_FORMAT.md`](FILE_FORMAT.md), `crates/blindkey-core/src/format/`, `fuzz/` |
+| 2 | KDF, envelope, stanzas | [`CRYPTO.md`](CRYPTO.md), `crates/blindkey-core/src/crypto/`, `envelope/` |
+| 3 | Memory & runtime hardening | [`specs/UC-14-runtime-hardening.md`](specs/UC-14-runtime-hardening.md), `blindkey-sys` |
+| 4 | Model-blind delivery & argv hygiene | [`specs/UC-04-model-blind-retrieval.md`](specs/UC-04-model-blind-retrieval.md), `blindkey-cli`, `blindkey-clip` |
+| 5 | Hardware factor boundary (mock + subprocess paths) | [`specs/UC-09-hardware-factors.md`](specs/UC-09-hardware-factors.md), `blindkey-hardware` |
+| 6 | Desktop shell boundary | `crates/blindkey-gui/` — must not implement crypto |
 | 7 | Release integrity | [`VERIFYING_RELEASES.md`](VERIFYING_RELEASES.md), `scripts/reproducible-build.sh`, C34 |
 
 ### Out of scope
@@ -53,7 +53,7 @@ All checks must pass on the **exact git commit** you give the auditor (tag `v1.0
 
 Provide read access to the tagged repo plus this reading order:
 
-1. [`vault_intent.yaml`](../vault_intent.yaml) — 60 falsifiable constraints
+1. [`blindkey_intent.yaml`](../blindkey_intent.yaml) — 60 falsifiable constraints
 2. [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — test map
 3. [`THREAT_MODEL.md`](THREAT_MODEL.md) — in/out of scope adversaries
 4. [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md) — Part 2 backlog (known partials)
@@ -113,7 +113,7 @@ just fuzz               # optional; requires cargo-fuzz + nightly
 
 Follow [`specs/UC-15-vulnerability-reporting.md`](specs/UC-15-vulnerability-reporting.md):
 
-- Private intake: [GitHub Security Advisories](https://github.com/leocelis/vault/security/advisories/new)
+- Private intake: [GitHub Security Advisories](https://github.com/leocelis/blindkey/security/advisories/new)
 - CVE request for qualifying issues
 - Update [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) if new constraints or test gaps emerge
 

@@ -2,15 +2,15 @@
 
 > **Tech spec** · Implemented · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-20 · **New constraints:** C40–C45; touches C20, C27, C30, C35, C38, C13
-> **Extends:** [UC-18](UC-18-native-ui.md) P2 (`vault-gui`) · **Shipped baseline:** `crates/vault-gui`
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> **Extends:** [UC-18](UC-18-native-ui.md) P2 (`blindkey-gui`) · **Shipped baseline:** `crates/blindkey-gui`
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-`vault-gui` (egui/eframe) is **shipped** and covers unlock, import, fuzzy omni-search, copy,
+`blindkey-gui` (egui/eframe) is **shipped** and covers unlock, import, fuzzy omni-search, copy,
 edit, and auto-lock ([UC-18](UC-18-native-ui.md) P2). This spec hardens that shell so it stays
 **secure on weak machines and fast on any hardware** — without moving crypto, format, or delivery
-logic out of `vault-core`.
+logic out of `blindkey-core`.
 
 Goals:
 
@@ -47,9 +47,9 @@ Non-goals: rewriting UC-18's FFI-ready core API; changing fuzzy matcher or frece
 
 | Module | Pattern already implemented |
 |---|---|
-| `vault-gui/src/main.rs` | `Action` dispatch, search precompute block, `enforce_auto_lock`, `highlight_title`, shadowed password |
-| `vault-gui/src/clip.rs` | stdin clipboard copy, clear-iff-unchanged thread |
-| `vault-core::search` | UC-19 fuzzy match; GUI calls `Vault::find` |
+| `blindkey-gui/src/main.rs` | `Action` dispatch, search precompute block, `enforce_auto_lock`, `highlight_title`, shadowed password |
+| `blindkey-gui/src/clip.rs` | stdin clipboard copy, clear-iff-unchanged thread |
+| `blindkey-core::search` | UC-19 fuzzy match; GUI calls `Blindkey::find` |
 
 ## 3. Proposed design
 
@@ -64,7 +64,7 @@ switch to wgpu (heavier on weak hardware per §2.1).
 eframe = { version = "0.29", default-features = false, features = ["glow", "wayland", "x11"] }
 ```
 
-`vault-gui/Cargo.toml` inherits via `{ workspace = true }`. **Do not** enable `persistence`.
+`blindkey-gui/Cargo.toml` inherits via `{ workspace = true }`. **Do not** enable `persistence`.
 
 **Upgrade matrix** (eframe ≥0.34 — document in `docs/INSTALL.md` GUI section, implement when bumped):
 
@@ -138,7 +138,7 @@ is bounded to ~20–30 rows.
 
 | ID | Gap | Fix |
 |---|---|---|
-| VG-S5 | eframe `persistence` | Assert absent in `vault-gui/Cargo.toml` features; add `#[test] fn eframe_has_no_persistence_feature()` reading `cargo tree` or manifest |
+| VG-S5 | eframe `persistence` | Assert absent in `blindkey-gui/Cargo.toml` features; add `#[test] fn eframe_has_no_persistence_feature()` reading `cargo tree` or manifest |
 | VG-S6 | AccessKit may read password `TextEdit` | Editor password field: `egui::TextEdit::singleline(&mut pw).password(true)`; unlock field already masked; manual VoiceOver/NVDA spot-check — label reads "Password", not value |
 | VG-S9 | Control chars in titles | Already `one_line` / `highlight_title`; add test vector with `\x1b[31m` in imported title |
 | VG-R2 | Linux rfd | Add **Desktop app (Linux)** subsection to `docs/INSTALL.md`: `xdg-desktop-portal-gtk` or `-kde`, `zenity` |
@@ -154,7 +154,7 @@ update()
   ├─ handle_dropped_files(ctx)
   ├─ unlocked_screen(ctx)     // cache search → virtualized list → collect Actions
   ├─ modals (editor, import, rollback, audit)
-  └─ dispatch Actions           // vault-core save / clip — never inside Ui closures
+  └─ dispatch Actions           // blindkey-core save / clip — never inside Ui closures
 ```
 
 ## 4. Alternatives considered
@@ -191,7 +191,7 @@ update()
   `ps` sample). Grep `update()` — no bare `request_repaint()` without guard.
 - **T2 (C40):** `auto_lock_secs = 60` — exactly one repaint scheduling path uses
   `request_repaint_after(Duration::from_secs(1))`.
-- **T3 (C41):** `cargo tree -p vault-gui -i eframe` shows `glow`; `persistence` feature absent.
+- **T3 (C41):** `cargo tree -p blindkey-gui -i eframe` shows `glow`; `persistence` feature absent.
 - **T4 (cache):** Unit test on `SearchCache` logic: same query + unchanged entries → `find` not
   called (mock or call counter); query edit → recompute.
 - **T5 (C30):** Import entry with ANSI in title; list row shows flattened spaces, no escape sequences.
@@ -204,7 +204,7 @@ update()
 
 ## 7. Open questions
 
-1. **Intent amendment timing:** C40–C45 promoted in `vault_intent.yaml` v1.5.0 (spec-first);
+1. **Intent amendment timing:** C40–C45 promoted in `blindkey_intent.yaml` v1.5.0 (spec-first);
    implementation PR requires second-maintainer sign-off per GOVERNANCE before merge.
 2. **LIST_VIRTUALIZE_THRESHOLD:** 500 is the patterns default; tune after profiling on 2000-entry fixture?
 3. **eframe 0.29 → 0.34 bump:** Separate ROADMAP sidequest after this UC, using §3.1 matrix?
@@ -215,9 +215,9 @@ update()
 | Segment | Files | Patterns |
 |---|---|---|
 | S1 Renderer pin | `Cargo.toml`, `docs/INSTALL.md` | VG-P3, VG-S5, VG-P4 doc |
-| S2 Search cache | `vault-gui/src/main.rs`, `vault-gui/src/search_cache.rs` (if split) | VG-P5, VG-A3 |
-| S3 List virtualization | `vault-gui/src/main.rs` | VG-P6 |
-| S4 Security + tests | `vault-gui/src/main.rs`, `vault-gui/tests/`, `docs/INSTALL.md` | VG-S6, C44–C45, VG-R2 |
-| S5 Validate | `crates/vault-gui/tests/uc20_constraints.rs` | IVD Rule 2 table |
+| S2 Search cache | `blindkey-gui/src/main.rs`, `blindkey-gui/src/search_cache.rs` (if split) | VG-P5, VG-A3 |
+| S3 List virtualization | `blindkey-gui/src/main.rs` | VG-P6 |
+| S4 Security + tests | `blindkey-gui/src/main.rs`, `blindkey-gui/tests/`, `docs/INSTALL.md` | VG-S6, C44–C45, VG-R2 |
+| S5 Validate | `crates/blindkey-gui/tests/uc20_constraints.rs` | IVD Rule 2 table |
 
 Each segment: re-read constraints from disk → implement → verify → next.

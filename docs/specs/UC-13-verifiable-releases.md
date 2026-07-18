@@ -2,7 +2,7 @@
 
 > **Tech spec** · Accepted v0.2 · partially implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-13 · **Constraints:** C24, C23, C3; milestone M8; coverage-gaps D1/D2
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
@@ -118,13 +118,13 @@ tooling. `cargo-sbom`/`cargo-cyclonedx` were considered (see §4).
 ### 3.6 crates.io publishing trust
 
 - **Who can publish:** crate owners only — restricted to the maintainers
-  ([MAINTAINERS.md](../../MAINTAINERS.md)); reserve the `vault-cli`/`vault-core` names early.
+  ([MAINTAINERS.md](../../MAINTAINERS.md)); reserve the `blindkey-cli`/`blindkey-core` names early.
 - **Publish path:** manual `cargo publish --locked` from a maintainer machine after
   `just audit-ready` passes — see [CRATES_IO_TRUSTED_PUBLISHING.md](../CRATES_IO_TRUSTED_PUBLISHING.md).
 - **The provenance gap, stated honestly:** crates.io does **not** yet attach or verify
   cryptographic provenance/signatures on crate files — RFC 3691 lists sigstore-style provenance
   as a *future possibility*, and the cargo/sigstore RFC ([rfcs#3403](https://github.com/rust-lang/rfcs/pull/3403))
-  is unmerged. So `cargo install vault-cli` is trust-on-registry. Mitigations we control:
+  is unmerged. So `cargo install blindkey-cli` is trust-on-registry. Mitigations we control:
   trusted-publishing (constrains *who/where* publishes), `--locked` publishes from the tagged
   commit, and documenting that the *verifiable* path is the signed GitHub release artifact;
   `cargo install` is the convenient path (C20), not the maximally-verified one.

@@ -1,0 +1,31 @@
+[package]
+name = "blindkey-cli"
+description = "Vault — a zero-plaintext, local-first credential vault for the AI era. The `vault` binary."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+# Installed as `cargo install blindkey-cli`; the binary is named `vault` (constraint C20, C21).
+[[bin]]
+name = "blindkey"
+path = "src/main.rs"
+
+[dependencies]
+blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
+# The YubiKey 2FA path shells out to `ykman` (std subprocess), so this is a cheap, always-on dep.
+blindkey-hardware = { path = "../blindkey-hardware", version = "1.0.0" }
+blindkey-clip = { path = "../blindkey-clip", version = "1.0.0" }
+blindkey-agent = { path = "../blindkey-agent", version = "1.0.0" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+getrandom.workspace = true
+rpassword.workspace = true
+zeroize.workspace = true
+secrecy.workspace = true

@@ -1,4 +1,4 @@
-# UI Architecture for a Local-First Credential Vault — Options, Security, Native Integration
+# UI Architecture for a Local-First Credential Blindkey — Options, Security, Native Integration
 
 > **Status:** Research (June 2026). Companion to [`vault_spec.md`](vault_spec.md). Informs PRD
 > UC-18 and [`docs/specs/UC-18-native-ui.md`](../docs/specs/UC-18-native-ui.md).
@@ -6,7 +6,7 @@
 > `~ reported` = stated by a named source, retrieved via summary · `? open` = projected or
 > single-source.
 >
-> **Scope:** how a *graphical or terminal* front-end should sit on top of the Rust `vault-core`
+> **Scope:** how a *graphical or terminal* front-end should sit on top of the Rust `blindkey-core`
 > security boundary without weakening it. Not about the crypto (that is `vault_spec.md`); about the
 > presentation layer and the trust boundary between it and the core.
 
@@ -14,7 +14,7 @@
 
 ## 0 — Executive summary
 
-A vault UI is a **thin client over `vault-core`**, never a re-implementation. Three facts from the
+A vault UI is a **thin client over `blindkey-core`**, never a re-implementation. Three facts from the
 existing intent pick the technology more than aesthetics do:
 
 1. **C20** mandates a single statically-linked binary with *no runtime dependencies (no JVM, no
@@ -29,7 +29,7 @@ existing intent pick the technology more than aesthetics do:
 The recommendation that falls out: **one audited Rust core, thin per-platform shells** — the
 architecture Signal (`libsignal`) and Mozilla (Firefox via UniFFI) already run in production. Ship a
 `ratatui` TUI first (pure Rust, C20-exact), add an `egui` window for non-terminal users, and expose
-`vault-core` over a stable FFI (`uniffi`) so a native **SwiftUI** shell can deliver best-in-class
+`blindkey-core` over a stable FFI (`uniffi`) so a native **SwiftUI** shell can deliver best-in-class
 macOS integration (Touch ID, Secure Enclave) without forking the security core. Tauri is a viable
 "designed, web-styled app" escape hatch but adds a webview trust boundary and is not C20-clean.
 
@@ -37,10 +37,10 @@ macOS integration (Touch ID, Secure Enclave) without forking the security core. 
 
 ## 1 — The decisive security principle: the secret-display boundary
 
-Every option can call `vault-core` and receive a secret. The question that ranks them is **where the
+Every option can call `blindkey-core` and receive a secret. The question that ranks them is **where the
 plaintext goes after that**:
 
-- ✓ verified (by construction): the secure path is **copy, not display** — `vault get` → OS
+- ✓ verified (by construction): the secure path is **copy, not display** — `blindkey get` → OS
   clipboard (UC-04), the secret never rendered, auto-cleared after a timeout (C13). Any UI inherits
   this for free by calling the same path.
 - The weak point in *every* toolkit is an on-screen **reveal**: the bytes must enter a render buffer
@@ -56,7 +56,7 @@ plaintext goes after that**:
     nor zeroize. Acceptable *only* if secrets never enter the webview at all (metadata-only UI;
     reveal/copy done in Rust).
 - **Design rule for all UIs (candidate constraint, see §8):** the UI process holds **no long-lived
-  plaintext** — it calls `vault-core` per operation; default action is clipboard copy; on-screen
+  plaintext** — it calls `blindkey-core` per operation; default action is clipboard copy; on-screen
   reveal is opt-in, auth-gated, time-boxed, and drawn to a buffer cleared on hide. This is C27's
   spirit extended from "LLM-readable channels" to "presentation surfaces."
 
@@ -78,7 +78,7 @@ plaintext goes after that**:
 
 - ✓ verified: Tauri uses **OS-native WebViews** (WebView2 / WKWebView / WebKitGTK) instead of
   bundling Chromium — **~5–15 MB** binaries, **~30–40 MB** idle RAM, and as of 2.x it targets
-  desktop **and** iOS/Android. Rust backend; the existing `vault-core` is the backend.
+  desktop **and** iOS/Android. Rust backend; the existing `blindkey-core` is the backend.
 - Caveats: (a) it is *not* a single static binary and adds a webview dependency, so it is off-spec
   vs C20 even if far better than Electron; (b) cross-platform webviews introduce *behavioral*
   variance; (c) the hard rule from §1 applies — **secrets must never cross into the webview**;
@@ -123,11 +123,11 @@ This is not novel; it is how the most security-sensitive apps already ship:
   packaged as an **XCFramework**, and surfaced through an idiomatic Swift API layer (a low-level C
   FFI module + a high-level Swift wrapper).
 
-Applied to Vault:
+Applied to Blindkey:
 
 ```
               ┌──────────────────────────────────────────────┐
-              │  vault-core (Rust, #![forbid(unsafe_code)])    │  ← the one audited boundary
+              │  blindkey-core (Rust, #![forbid(unsafe_code)])    │  ← the one audited boundary
               │  crypto · format · memory(mlock/zeroize) ·     │
               │  envelope · rollback · model-blind delivery    │
               └──────────────────────────────────────────────┘
@@ -138,9 +138,9 @@ Applied to Vault:
             (macOS)       (all OSes)     (all OSes)      backend, opt)
 ```
 
-- Rust-native shells (`ratatui`, `egui`) link `vault-core` as a normal crate — **zero FFI**, secrets
+- Rust-native shells (`ratatui`, `egui`) link `blindkey-core` as a normal crate — **zero FFI**, secrets
   never leave Rust.
-- The **SwiftUI** shell links `vault-core` via **uniffi**-generated bindings (XCFramework). The FFI
+- The **SwiftUI** shell links `blindkey-core` via **uniffi**-generated bindings (XCFramework). The FFI
   surface returns *structured data and secret-handles*, and performs reveal/copy **inside Rust** so
   plaintext is not marshalled into Swift heap strings any longer than a single delivery call.
 
@@ -164,7 +164,7 @@ Key takeaways:
   with the password stanza always present (C5 OR-model: losing biometrics never locks you out).
 - ~ caveat: the most direct crate for SEP-guarded keys (`keychain-services`) self-describes as
   **experimental** — treat as a spike, and prefer the SwiftUI shell calling `LocalAuthentication` +
-  `SecKey` natively for the Mac build, with `vault-core` holding the resulting wrap secret. Confirm
+  `SecKey` natively for the Mac build, with `blindkey-core` holding the resulting wrap secret. Confirm
   the exact crate/API set before committing (UC-18 §7).
 - Native *look-and-feel* (menus, Share sheet, Spotlight-style quick-open) is the one thing pure-Rust
   shells only approximate — the reason a SwiftUI shell exists at all.
@@ -178,7 +178,7 @@ Key takeaways:
   Electron 200–300 MB.
 - The honest point: **the only user-visible latency is Argon2id**, and it is *intentional* — C22
   targets <500 ms unlock as a security floor. No toolkit changes that; the KDF dominates rendering
-  by orders of magnitude. "Fast UI" is therefore already solved in `vault-core`; the UI's job is to
+  by orders of magnitude. "Fast UI" is therefore already solved in `blindkey-core`; the UI's job is to
   not *add* latency (Electron does; native toolkits do not).
 
 ---
@@ -194,7 +194,7 @@ Key takeaways:
 5. **Cross-cutting rule:** copy-not-display by default; reveal is opt-in, auth-gated, time-boxed;
    the UI process holds no long-lived plaintext (§1).
 
-**The one decision that touches current work:** at the CP-4 sync point, make the `vault-core` public
+**The one decision that touches current work:** at the CP-4 sync point, make the `blindkey-core` public
 API **UI-agnostic *and* FFI-friendly** (uniffi-shaped: return structured data + secret-handles,
 perform delivery in-core, never print). Get this right once and TUI, egui, SwiftUI, and a possible
 Tauri backend are all thin clients on a single frozen, audited core.
@@ -207,7 +207,7 @@ Tauri backend are all thin clients on a single frozen, audited core.
   UI surface (TUI/GUI/native shell)"**: copy-not-display default, no long-lived plaintext in the UI
   process, reveal auth-gated and time-boxed. Minimal, non-weakening, no number collision.
 - **`non_goals` GUI line** should be clarified from "GUI is a future layer" to name the architecture:
-  *shared Rust `vault-core` + thin per-platform shells over a stable FFI*; UI remains post-v1.
+  *shared Rust `blindkey-core` + thin per-platform shells over a stable FFI*; UI remains post-v1.
 - **Candidate presentation-layer constraint** (for the maintainers to ratify with a number alongside
   the other Part-2 — C35+ — candidates): the secret-display boundary rule of §1, made testable.
 

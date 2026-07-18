@@ -18,11 +18,11 @@ body:
     attributes:
       label: Security considerations
       description: |
-        How does this affect the threat model or the constraints in vault_intent.yaml?
+        How does this affect the threat model or the constraints in blindkey_intent.yaml?
         Could it introduce a plaintext leak, a new attack surface, or weaken a guarantee?
   - type: checkboxes
     id: alignment
     attributes:
       label: Alignment
       options:
-        - label: This is consistent with the project's non-goals (see ROADMAP.md / vault_intent.yaml)
+        - label: This is consistent with the project's non-goals (see ROADMAP.md / blindkey_intent.yaml)

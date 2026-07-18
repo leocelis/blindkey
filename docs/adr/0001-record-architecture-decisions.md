@@ -5,7 +5,7 @@
 
 ## Context
 
-Vault makes hard-to-reverse decisions (cryptographic primitives, on-disk format) that future
+Blindkey makes hard-to-reverse decisions (cryptographic primitives, on-disk format) that future
 contributors will need to understand and that must not be silently changed. We need a durable,
 low-ceremony record of *why* each decision was made.
 
@@ -21,5 +21,5 @@ two-maintainer sign-off (see [GOVERNANCE.md](../../GOVERNANCE.md)).
 ## Consequences
 
 - The reasoning behind security-critical choices is preserved and reviewable.
-- Constraints in [vault_intent.yaml](../../vault_intent.yaml) reference ADRs for deeper rationale.
+- Constraints in [blindkey_intent.yaml](../../blindkey_intent.yaml) reference ADRs for deeper rationale.
 - Slightly more process for big decisions — intentional, given the domain.

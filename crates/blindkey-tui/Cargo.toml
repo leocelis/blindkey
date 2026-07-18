@@ -1,0 +1,25 @@
+[package]
+name = "blindkey-tui"
+description = "Vault — a fast terminal UI over the blindkey-core security boundary (UC-18 shell)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+# Installed as `blindkey-tui`; a thin shell — all secret-touching logic stays in blindkey-core.
+[[bin]]
+name = "blindkey-tui"
+path = "src/main.rs"
+
+[dependencies]
+blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+ratatui.workspace = true
+crossterm.workspace = true
+clap.workspace = true
+rpassword.workspace = true
+zeroize.workspace = true

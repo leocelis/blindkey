@@ -1,17 +1,17 @@
 # Vault — Cargo workspace.
-# The security core (`vault-core`) is a separate library from the CLI so it can be audited,
+# The security core (`blindkey-core`) is a separate library from the CLI so it can be audited,
 # fuzzed, and reused independently. Hardware factors live behind an optional crate.
 [workspace]
 resolver = "2"
 members = [
-    "crates/vault-core",
-    "crates/vault-cli",
-    "crates/vault-tui",
-    "crates/vault-gui",
-    "crates/vault-sys",
-    "crates/vault-hardware",
-    "crates/vault-clip",
-    "crates/vault-agent",
+    "crates/blindkey-core",
+    "crates/blindkey-cli",
+    "crates/blindkey-tui",
+    "crates/blindkey-gui",
+    "crates/blindkey-sys",
+    "crates/blindkey-hardware",
+    "crates/blindkey-clip",
+    "crates/blindkey-agent",
 ]
 
 [workspace.package]
@@ -44,7 +44,7 @@ nucleo-matcher   = "0.3"        # C35-C38 fuzzy omni-search: offline, Unicode-co
 # --- Memory hardening ---
 zeroize          = { version = "1", features = ["derive"] }   # C11
 secrecy          = "0.8"        # C11 secret wrappers
-# --- OS hardening FFI (the only place `unsafe` lives — vault-sys) ---
+# --- OS hardening FFI (the only place `unsafe` lives — blindkey-sys) ---
 libc             = "0.2"        # C12/C25 mlock + setrlimit (unix)
 # --- CLI / support ---
 clap             = { version = "4", features = ["derive"] }   # C21 CLI

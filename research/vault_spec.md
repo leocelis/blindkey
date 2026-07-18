@@ -1,4 +1,4 @@
-# Open-Source Local-First Credential Vault — Security Research Spec
+# Open-Source Local-First Credential Blindkey — Security Research Spec
 
 > **Status:** Multiple rounds of deep research complete, with adversarial multi-pass verification on all load-bearing claims.
 > All nine dimensions covered. All four previously-open questions answered.
@@ -503,7 +503,7 @@ On every vault save:
   2. Encrypt counter inside AEAD payload (cannot be forged without data key)
   3. Optionally: tpm2_nvincrement (if TPM available)
 
-On every vault open:
+On every blindkey open:
   1. Decrypt payload, read counter
   2. Compare against locally-stored last-seen counter
   3. If payload_counter < last_seen → WARN: "vault may have been rolled back by sync backend"
@@ -798,7 +798,7 @@ These four were verified during the original adversarial review pass and are not
 
 *Compiled from multiple rounds of deep research with adversarial multi-pass verification against primary sources on all load-bearing claims.*
 *Source verification audit completed May 2026: 29 claims fully verified, 1 attribution error corrected, 4 claims unverifiable via automated fetch (PDFs / blocked sites).*
-*IVD intent artifact: `vault/vault_intent.yaml` (v1.7.0 — **60 constraints / 15 groups**).
+*IVD intent artifact: `vault/blindkey_intent.yaml` (v1.7.0 — **60 constraints / 15 groups**).
 Historical counts: 27/10 at initial publication, 34/11 after the 2026-06-10 hardening pass —
 see `security_coverage_gaps.md` Promotion ledger.*
 *See also `vault/research/llm_offensive_threats.md` — AI-era offensive-LLM threat landscape (adds constraints C26, C27 / group G10).*

@@ -13,15 +13,15 @@ significance remain, at ≤ ~12 % overhead (decreasing with size).
 | Question | Answer |
 |----------|--------|
 | Does Padmé fit v1 format? | **Yes** — padding after inner `END` marker, inside AEAD; `pad_mode` byte in inner TLV |
-| Default in v1? | **No** — `PadMode::None`; explicit opt-in (`vault pad on`, GUI "Pad size") |
+| Default in v1? | **No** — `PadMode::None`; explicit opt-in (`blindkey pad on`, GUI "Pad size") |
 | Does it hide mtime/frequency? | **No** — size channel only |
 | v2 default-on? | **Deferred** — needs constraint promotion + adversary model (UC-07 §7 open Q4) |
 
 ## Implementation (shipped pre-1.0)
 
-- `vault-core/src/pad.rs` — `padme()`, `PadMode`, unit tests
-- `Vault::padding()` / `set_padding()` — sticky policy, re-save applies bucket
-- CLI: `vault pad on|off`
+- `blindkey-core/src/pad.rs` — `padme()`, `PadMode`, unit tests
+- `Blindkey::padding()` / `set_padding()` — sticky policy, re-save applies bucket
+- CLI: `blindkey pad on|off`
 - GUI: "Pad size" checkbox
 
 ## When to enable

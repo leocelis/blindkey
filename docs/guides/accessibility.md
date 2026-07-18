@@ -1,6 +1,6 @@
 # Desktop GUI accessibility (C54)
 
-Every password field in `vault-gui` has a preceding `ui.label(...)` so screen readers can
+Every password field in `blindkey-gui` has a preceding `ui.label(...)` so screen readers can
 discover the control. Automated tests in `uc21_constraints.rs` verify label wiring in source.
 
 ## Manual spot-check (recommended before v1.0)

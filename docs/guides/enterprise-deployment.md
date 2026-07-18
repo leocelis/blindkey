@@ -1,19 +1,19 @@
 # Enterprise deployment (local-first)
 
-Vault v1 is **single-user, offline-first**. Enterprise fleets deploy it as a **managed local
+Blindkey v1 is **single-user, offline-first**. Enterprise fleets deploy it as a **managed local
 utility** — not a cloud password manager.
 
 ## Environment variables
 
 | Variable | Component | Effect |
 |----------|-----------|--------|
-| `VAULT_VAULT_PATH` | `vault-gui`, `vault-cli` | Absolute path to `vault.vlt` (overrides `~/.vault/vault.vlt`) |
-| `VAULT_CONFIG_DIR` | `vault-gui` | Directory for GUI config (`config` file inside) |
-| `VAULT_LOCK_ON_BLUR` | `vault-gui` | Set to `1` to force lock when the window loses focus |
+| `BLINDKEY_VAULT_PATH` | `blindkey-gui`, `blindkey-cli` | Absolute path to `vault.vlt` (overrides `~/.blindkey/vault.vlt`) |
+| `BLINDKEY_CONFIG_DIR` | `blindkey-gui` | Directory for GUI config (`config` file inside) |
+| `BLINDKEY_LOCK_ON_BLUR` | `blindkey-gui` | Set to `1` to force lock when the window loses focus |
 
 Secrets **must not** be passed via environment variables. For headless CLI unlock, use
-`--password-fd` / `--password-stdin` / `VAULT_PASSWORD_FILE` per
-[UC-05](specs/UC-05-script-and-ci-output.md). The password file must be mode `0600` on Unix.
+`--password-fd` / `--password-stdin` / `BLINDKEY_PASSWORD_FILE` per
+[UC-05](../specs/UC-05-script-and-ci-output.md). The password file must be mode `0600` on Unix.
 
 ## Rollback / sync on fleet machines (C16)
 
@@ -22,10 +22,10 @@ When the vault file lives on shared storage (Drive, Syncthing, git), provision w
 floor so a stale backend copy cannot pass silently:
 
 ```sh
-vault --vault "$VAULT_VAULT_PATH" --expect-min-version "$VAULT_EXPECT_MIN_VERSION" ls
+vault --vault "$BLINDKEY_VAULT_PATH" --expect-min-version "$BLINDKEY_EXPECT_MIN_VERSION" ls
 ```
 
-Obtain `VAULT_EXPECT_MIN_VERSION` from a trusted admin machine's local `.state` file; full walkthrough
+Obtain `BLINDKEY_EXPECT_MIN_VERSION` from a trusted admin machine's local `.state` file; full walkthrough
 and a headless onboarding script:
 [sync-to-untrusted-storage.md — Provisioning a new machine](sync-to-untrusted-storage.md#provisioning-a-new-machine-fleet--tofu).
 
@@ -33,7 +33,7 @@ Non-interactive rollback → exit **2** unless `--allow-rollback`.
 
 ## MDM / fleet policy example
 
-Deploy config via MDM to `~/.vault/config` or set `VAULT_CONFIG_DIR` to a managed path:
+Deploy config via MDM to `~/.blindkey/config` or set `BLINDKEY_CONFIG_DIR` to a managed path:
 
 ```ini
 auto_lock_secs=300
@@ -42,7 +42,7 @@ lock_on_blur=1
 dismissed_pre10=0
 ```
 
-Set `VAULT_LOCK_ON_BLUR=1` in the shell profile for defense-in-depth.
+Set `BLINDKEY_LOCK_ON_BLUR=1` in the shell profile for defense-in-depth.
 
 ## Audit & compliance
 

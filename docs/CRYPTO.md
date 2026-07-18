@@ -1,7 +1,7 @@
 # Cryptographic Design
 
 This is a reader's summary. The **authoritative, testable** specification is
-[vault_intent.yaml](../vault_intent.yaml) (constraints C1–C6, C9–C10, C25); the research rationale
+[blindkey_intent.yaml](../blindkey_intent.yaml) (constraints C1–C6, C9–C10, C25); the research rationale
 is in [research/vault_spec.md](../research/vault_spec.md).
 
 ## Primitives (audited libraries only — constraint C3)

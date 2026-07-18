@@ -7,8 +7,8 @@
 | Factor | v1 status | User path |
 |--------|-----------|-----------|
 | Password | ✅ Shipped | Always present |
-| Keyfile 2FA | ✅ Shipped | `vault enroll keyfile` (CLI + GUI) |
-| YubiKey CR 2FA | ✅ Shipped | `vault enroll yubikey` via `ykman` subprocess (S-8b) |
+| Keyfile 2FA | ✅ Shipped | `blindkey enroll keyfile` (CLI + GUI) |
+| YubiKey CR 2FA | ✅ Shipped | `blindkey enroll yubikey` via `ykman` subprocess (S-8b) |
 | Recovery code | ✅ Shipped | Init + 2FA enroll |
 | FIDO2 (libfido2 CTAP2) | ⏸ Mock/tests only | No CLI enroll (M7 / S-8a) |
 | TPM PCR seal | ⏸ Stub/mock only | `enroll-tpm` disabled in default build (S-8c) |

@@ -1,13 +1,13 @@
-# UC-01 — Install and Create a Vault
+# UC-01 — Install and Create a Blindkey
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-1 · **Constraints:** C20, C2, C4, C5, C7, C8 (touches C9, C16, C26)
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-Everything from `cargo install vault-cli` to a valid, openable, single-stanza vault file on disk:
-the static build strategy, the `vault init` interactive flow (prompt budget, timing), master-password
+Everything from `cargo install blindkey-cli` to a valid, openable, single-stanza vault file on disk:
+the static build strategy, the `blindkey init` interactive flow (prompt budget, timing), master-password
 entry, data-key generation, password-stanza wrapping, header serialization, atomic file creation,
 and the on-disk directory/state layout. Out of scope: adding entries (UC-03), hardware stanzas
 (UC-9), opening existing/hostile files (UC-10).
@@ -58,19 +58,19 @@ versioned, magic-prefixed file (C7) whose KDF params live in the file, not the b
   gate). libsodium remains an approved alternative (C3) but is not the default — see §4.
 - Targets: the four in the intent (`x86_64-unknown-linux-musl`, `aarch64/x86_64-apple-darwin`,
   `x86_64-pc-windows-msvc`). macOS/Windows link only their stable system libs (Security.framework /
-  bcrypt come later with hardware stanzas, feature-gated in `vault-hardware`).
+  bcrypt come later with hardware stanzas, feature-gated in `blindkey-hardware`).
 - `--locked` always; `rust-toolchain.toml` pins the compiler — groundwork for reproducible builds
   (coverage-gap D1, out of scope here).
-- Hardware stanza support (libfido2 etc.) is feature-gated in `vault-hardware` and **off by
+- Hardware stanza support (libfido2 etc.) is feature-gated in `blindkey-hardware` and **off by
   default**, so the C20 binary never grows a dynamic dependency by accident.
 
-### 3.2 `vault init` flow and the prompt budget
+### 3.2 `blindkey init` flow and the prompt budget
 
 ```
-$ vault init                       # default path, see §3.7
+$ blindkey init                       # default path, see §3.7
 Choose a master password: ████     # prompt 1  (no echo)
 Confirm master password:  ████     # prompt 2  (no echo)
-Created vault at ~/.vault/vault.vlt (Argon2id m=64 MiB, t=3, p=4)
+Created vault at ~/.blindkey/vault.vlt (Argon2id m=64 MiB, t=3, p=4)
 There is no password reset. Losing every unlock factor loses the vault.
 ```
 
@@ -78,17 +78,17 @@ C20 requires init → **first entry added** in *fewer than* 5 prompts and < 60 s
 
 | # | Prompt | Command |
 |---|--------|---------|
-| 1 | master password | `vault init` |
-| 2 | confirm master password | `vault init` |
-| 3 | unlock (master password) | `vault add NAME --username U --url …` |
-| 4 | entry password — “Password [Enter = generate with vault gen]” | `vault add` |
+| 1 | master password | `blindkey init` |
+| 2 | confirm master password | `blindkey init` |
+| 3 | unlock (master password) | `blindkey add NAME --username U --url …` |
+| 4 | entry password — “Password [Enter = generate with blindkey gen]” | `blindkey add` |
 
 Total: 4 < 5. Consequence: in the golden path, **username and URL arrive as flags** (they are not
 secrets; argv is acceptable for them — coverage-gap B1 forbids only secrets on argv). Timing: one
 Argon2id derivation at init (~300 ms) + one at add (~300 ms) keeps the flow seconds-long, far under
 the 60 s ceiling even with human typing.
 
-`vault init --file PATH` overrides the location. If the target exists: hard error
+`blindkey init --file PATH` overrides the location. If the target exists: hard error
 `"refusing to overwrite existing file"` — init never destroys data.
 
 ### 3.3 Master-password entry
@@ -102,7 +102,7 @@ the 60 s ceiling even with human typing.
   `String`.
 - **Advisory strength check** (C26 pattern, warn-don't-block): run `zxcvbn` on the candidate; if
   estimated entropy < 60 bits, print a stderr warning suggesting a diceware passphrase
-  (`vault gen --charset words`). Never refuse — the floor is advisory for the *master* password.
+  (`blindkey gen --charset words`). Never refuse — the floor is advisory for the *master* password.
 - Unicode: normalize to **NFC** before Argon2id so the same passphrase typed on macOS (NFD-leaning
   input) and Linux derives the same key (coverage-gap E2; flagged in §7 pending intent promotion).
 
@@ -166,7 +166,7 @@ plus a `.bak` generation; init is the no-replace special case.)
 
 | Artifact | Default path (Linux) | Notes |
 |---|---|---|
-| Vault file | `~/.vault/vault.vlt` | overridable with `--file`; the directory holds exactly this one file (C17 test) |
+| Blindkey file | `~/.blindkey/vault.vlt` | overridable with `--file`; the directory holds exactly this one file (C17 test) |
 | Rollback state | `$XDG_DATA_HOME/vault/<vault_id>.state` (`~/.local/share/vault/…`) | **never synced**; created at init with `last_seen = 0` (C16); macOS `~/Library/Application Support/vault/`, Windows `%APPDATA%\vault\` |
 | Config | `~/.vault.toml` | optional; path fixed by C13/C25 |
 
@@ -199,7 +199,7 @@ encrypted file.
 
 | Constraint | How this design satisfies it |
 |---|---|
-| C20 | musl static target + `ldd` CI gate (§3.1); 4-prompt budget table, < 60 s (§3.2); `cargo install vault-cli` only |
+| C20 | musl static target + `ldd` CI gate (§3.1); 4-prompt budget table, < 60 s (§3.2); `cargo install blindkey-cli` only |
 | C2 | defaults m=65536 KiB/t=3/p=4 baked into the *written file* (§3.4 step 2); salt 32 B OsRng, stored in header |
 | C4 | data key from OsRng (§3.4 step 1), never password-derived, exists on disk only inside `wrapped_key` |
 | C5 | password stanza mandatory and sole stanza at init; HKDF recipe with `info="vault-pw-wrap-v1"`, salt=`vault_id`; 48-byte wrapped_key (§3.4) |
@@ -231,7 +231,7 @@ Spec-specific additions:
 
 ## 7. Open questions
 
-1. **Default vault path** `~/.vault/vault.vlt` vs `$XDG_DATA_HOME/vault-file/`: the C17 test implies
+1. **Default vault path** `~/.blindkey/vault.vlt` vs `$XDG_DATA_HOME/vault-file/`: the C17 test implies
    a dedicated vault dir distinct from the state path; confirm the dotted-home choice before M6.
 2. **NFC normalization (gap E2)** is adopted here but not yet an intent constraint — promote
    (candidate C41) before M2 freeze, since it changes key derivation irreversibly.

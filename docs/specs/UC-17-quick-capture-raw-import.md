@@ -2,7 +2,7 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-17 · **Constraints:** C21 (import), C26, C18, C19, C27; touches C11, C16, C17, C23
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
@@ -22,10 +22,10 @@ interactive disambiguation, and a small optional entry-model nicety (`kind`).
 
 Goals:
 
-1. `vault import --format raw <file>` (also accepts stdin) → reviewed entries → one atomic save.
+1. `blindkey import --format raw <file>` (also accepts stdin) → reviewed entries → one atomic save.
 2. Never write a secret to stdout/stderr; the review UI shows **masked** previews only (C27).
 3. Every captured secret is Protected at rest (C19) and entropy-scanned (C26).
-4. No intermediate plaintext written by Vault; honest guidance to destroy the source (UC-12 §3.6).
+4. No intermediate plaintext written by Blindkey; honest guidance to destroy the source (UC-12 §3.6).
 5. Wrong guesses are *cheap to fix* in review — the parser is allowed to be imperfect because the
    human confirms before the save.
 
@@ -58,14 +58,14 @@ Out of scope: structured-format imports (UC-12), live file watching, re-export t
 ### 3.1 CLI surface
 
 ```
-vault import --format raw <file|->            # lenient parse + interactive review
+blindkey import --format raw <file|->            # lenient parse + interactive review
             [--yes]                            # accept all guesses, no prompts (CI/non-TTY)
             [--default-kind login|apikey|note] # how to classify ambiguous blocks (default: apikey)
             [--tag <t>]                        # apply a tag to every imported entry
             [--on-duplicate skip|rename|overwrite]   # UC-12 §3.4, default skip
 ```
 
-`--format raw` lives under the existing `vault import` command (C21) — **no new top-level command,
+`--format raw` lives under the existing `blindkey import` command (C21) — **no new top-level command,
 no new constraint**. Requires an unlocked session like every mutating command.
 
 ### 3.2 Block splitting (lenient)
@@ -114,7 +114,7 @@ secret in the review UI, which §3.5 forbids).
 
 ### 3.4 Optional entry-model nicety: `kind`
 
-To make `vault get`/`ls` label an API key as a *key* rather than a *password*, add an optional
+To make `blindkey get`/`ls` label an API key as a *key* rather than a *password*, add an optional
 discriminator to the UC-03 `Entry`:
 
 ```rust
@@ -188,8 +188,8 @@ No network at any step (C23).
 | Constraint | How this design satisfies it |
 |---|---|
 | **C21 (import)** | adds `--format raw` under the existing `import` command; no new command/verb |
-| **C26** | every captured value runs through the zxcvbn scan; weak ones flagged with a `vault gen` nudge (warn-don't-block) |
-| **C18** | captured fields are serialized only inside the AEAD payload via UC-03 §3.2; the source is never re-emitted as plaintext by Vault |
+| **C26** | every captured value runs through the zxcvbn scan; weak ones flagged with a `blindkey gen` nudge (warn-don't-block) |
+| **C18** | captured fields are serialized only inside the AEAD payload via UC-03 §3.2; the source is never re-emitted as plaintext by Blindkey |
 | **C19** | the primary secret lands in the already-Protected `password` slot; extra secrets use Protected (`0x800D`) custom_fields — inner-stream double-encrypted |
 | **C27** | review UI shows masked previews only; `--yes`/non-TTY still never prints a full secret; no model/network path |
 | **C16 / C17** | exactly one `vault_version` increment per import; single blob, no per-entry files |
@@ -205,7 +205,7 @@ No network at any step (C23).
 3. **UNIT (entropy):** Shannon bits/char over base64 vs hex vs prose; assert prose < threshold,
    random tokens ≥ threshold; boundary cases at the configured cutoff.
 4. **INTEGRATION (round-trip):** import a 7-block messy fixture with `--yes`; assert 1 file write,
-   `vault_version` +1, all secrets retrievable via `vault get`, and `strings vault.vlt` reveals no
+   `vault_version` +1, all secrets retrievable via `blindkey get`, and `strings vault.vlt` reveals no
    captured value (C18 probe).
 5. **INTEGRATION (masking, C27):** capture under `script`/pty; assert no full secret and no middle
    bytes appear on stdout/stderr; only ≤4+≤4+length masks.
@@ -224,7 +224,7 @@ No network at any step (C23).
    as a small data-only PR (a Lane B sidequest). False-positive/negative budget?
 3. **Command alias:** expose `vault capture <file>` as sugar for `import --format raw`, or keep the
    single `import` surface? (Current: single surface.)
-4. **stdin secret hygiene:** when reading the blob from a pipe (`pbpaste | vault import --format raw -`),
+4. **stdin secret hygiene:** when reading the blob from a pipe (`pbpaste | blindkey import --format raw -`),
    confirm the source never lands in shell history or a tmpfile; document the safe invocation.
 5. **Roadmap placement:** this is a **Lane B sidequest (S-15)** that unblocks once CP-1 freezes the
    Entry model; the `kind` tag (if adopted) wants to land *in* CP-1 so the format includes it from

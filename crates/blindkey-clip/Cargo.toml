@@ -1,0 +1,15 @@
+[package]
+name = "blindkey-clip"
+description = "Concealed clipboard delivery for Vault (constraints C13, C33)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+publish = true
+
+[dependencies]
+arboard = "3.6"
+
+[dev-dependencies]

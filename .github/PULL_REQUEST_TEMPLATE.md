@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to Vault! Security tool → high bar. See CONTRIBUTING.md. -->
+<!-- Thanks for contributing to Blindkey! Security tool → high bar. See CONTRIBUTING.md. -->
 
 ## What does this change?
 

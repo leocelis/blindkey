@@ -1,4 +1,4 @@
-# Frontier LLMs as Offensive Cyber Tooling — Threat Landscape & Vault Implications
+# Frontier LLMs as Offensive Cyber Tooling — Threat Landscape & Blindkey Implications
 
 > **Status:** Research expansion (June 2026). Companion to `vault_spec.md`. Covers how
 > frontier large language models are being used offensively in the wild, the capability
@@ -89,7 +89,7 @@ kind of bounded problem these models already do well.
   on fully hands-off operation, and a reminder that AI-harvested credential dumps contain
   noise.
 
-**Vault relevance:** the campaign's payoff phases were *credential harvesting* and producing
+**Blindkey relevance:** the campaign's payoff phases were *credential harvesting* and producing
 *credential files*. Every credential a victim had stored in plaintext, in a weakly-protected
 store, or in a vault left unlocked in memory was directly in scope. This is the threat the
 vault's zero-plaintext (C17/C18), memory-hardening (C11–C13, C25), and auto-lock constraints
@@ -163,7 +163,7 @@ chaining and self-hosted/stolen-key access route around that. Design for the att
   the model's predictable distribution — they are weaker than they look. ~ reported
 - ML/LLM models infer likely email→password patterns (`Surname → Surname2023`), expanding
   hit-rates beyond raw leaked combos.
-- **Vault relevance:** this is an *amplifier on the password the user chooses*, not a break of
+- **Blindkey relevance:** this is an *amplifier on the password the user chooses*, not a break of
   Argon2id. It strengthens the case for (a) the enforced KDF floor (C2: m≥19 MiB, t≥2) so a
   weak-but-not-trivial password still costs real money to crack, and (b) shipping a strong
   generator/strength meter so users do not store AI-predictable secrets. The vault does **not**
@@ -174,7 +174,7 @@ chaining and self-hosted/stolen-key access route around that. Design for the att
   ~**22%** of initial-access vectors. ~ reported
 - AI augments the classic stuffing pipeline: intelligent credential pairing, CAPTCHA/anti-bot
   evasion, and per-target variation.
-- **Vault relevance:** every site password the user reuses is exposed; a vault that makes
+- **Blindkey relevance:** every site password the user reuses is exposed; a vault that makes
   *unique random per-site passwords* effortless is the direct defense. Reinforces the value of
   C21's generator surface and frictionless `get`.
 
@@ -183,7 +183,7 @@ chaining and self-hosted/stolen-key access route around that. Design for the att
   any of the cryptography once a human is tricked into typing it elsewhere.
 - Frontier models produce fluent, culturally-tuned, individually-personalized lures at scale
   (APT42 above; academic SoK on LLM phishing confirms a widening *generation-vs-detection* gap).
-- **Vault relevance:** this is out-of-band of the file format, but it argues for UX that
+- **Blindkey relevance:** this is out-of-band of the file format, but it argues for UX that
   *never* trains users to enter the master password into anything but the local binary
   (no web portal, no "verify your vault" email — the vault's zero-network property, C23, helps
   here because there is legitimately *nothing* online to imitate convincingly).
@@ -225,7 +225,7 @@ the vault (e.g., "let my coding agent fetch the DB password").
 > "Secure Agentic Autofill" injects credentials into the destination on the user's authorized
 > behalf so "the AI agent and underlying LLM never need to see nor handle the credentials." ~ reported
 
-The current vault is a CLI and an agent *could* simply run `vault get X --field password` and
+The current vault is a CLI and an agent *could* simply run `blindkey get X --field password` and
 capture stdout — which is exactly the leak path above. If/when an agentic interface is
 contemplated, the vault should prefer **clipboard or direct-injection delivery that bypasses the
 model's context** over returning plaintext on a channel an LLM reads. This is a *new* design
@@ -233,7 +233,7 @@ question that is now addressed by constraint C27 (adopted into group G10; see §
 
 ---
 
-## 8 — What This Changes for Vault (mapping to existing constraints)
+## 8 — What This Changes for Blindkey (mapping to existing constraints)
 
 The good news: nothing here defeats the cryptography already specified. The threat shift mostly
 *raises the stakes* on constraints the vault already has, and surfaces two genuine gaps.
@@ -252,15 +252,15 @@ The good news: nothing here defeats the cryptography already specified. The thre
 - **C23 (zero network calls):** removes the legitimate online surface that phishing (§5.3) would
   otherwise imitate, and removes any AI-observable telemetry channel.
 
-**Genuine gaps surfaced — ADOPTED into `vault_intent.yaml` (June 2026, day 0) as group G10:**
+**Genuine gaps surfaced — ADOPTED into `blindkey_intent.yaml` (June 2026, day 0) as group G10:**
 - **Gap G-1 → constraint C26 (CSPRNG password generation with entropy floor).** §5.1 shows
   LLM-*generated* and human-chosen passwords are increasingly predictable to AI. The vault
-  specified `vault tune` for KDF cost but no generator. Now adopted: a `vault gen` command using
+  specified `blindkey tune` for KDF cost but no generator. Now adopted: a `blindkey gen` command using
   OsRng with rejection sampling (no modulo bias), configurable charset/length and an EFF-wordlist
-  diceware mode, plus a 60-bit entropy-floor warning (warn, don't block) on `vault add`/`edit`.
+  diceware mode, plus a 60-bit entropy-floor warning (warn, don't block) on `blindkey add`/`edit`.
 - **Gap G-2 → constraint C27 (model-blind secret delivery).** §7 shows that the moment an LLM
-  agent can read `vault get` output, indirect prompt injection can exfiltrate it. Now adopted:
-  v1 explicitly excludes any LLM/AI agent from the trust boundary (a non-goal); `vault get`
+  agent can read `blindkey get` output, indirect prompt injection can exfiltrate it. Now adopted:
+  v1 explicitly excludes any LLM/AI agent from the trust boundary (a non-goal); `blindkey get`
   delivers to the clipboard by default with `--stdout` as a warned opt-in; and a **forward
   constraint** binds any future agentic interface to model-blind delivery (clipboard / keychain
   handoff / direct field injection) so the model's context never receives the plaintext secret.
@@ -324,4 +324,4 @@ OpenAI), peer-reviewed/arXiv offensive-security benchmarks, and industry breach 
 fetched and quoted directly; benchmark and statistical figures retrieved via secondary
 summaries and marked `~ reported` pending direct verification of each underlying paper.*
 *Companion to `vault_spec.md`. Two gaps (G-1 password generation, G-2 agentic secret-handling)
-have been adopted into `vault_intent.yaml` as constraints C26 and C27 under new group G10.*
+have been adopted into `blindkey_intent.yaml` as constraints C26 and C27 under new group G10.*

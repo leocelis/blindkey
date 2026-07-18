@@ -2,11 +2,11 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026 · **the flagship use case**
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-4 · **Constraints:** C27 (primary), C13, C23; touches B2 ([gaps](../../research/security_coverage_gaps.md))
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-The developer runs `vault get github-prod --field password` in a terminal that a coding agent
+The developer runs `blindkey get github-prod --field password` in a terminal that a coding agent
 is attached to. The guarantee this spec implements: **the agent can be told the secret was
 delivered; it can never read it.** The secret travels `decrypted payload → OS clipboard`,
 touching no channel an LLM ingests by default — not stdout, not a tool result, not a file.
@@ -52,9 +52,9 @@ threats §7) to run exfiltration commands. It does **not** (in this UC) have a c
 binary scraping the OS clipboard — that is host-malware territory (C13/B2 narrow it; full
 malware-with-root is out of scope per [THREAT_MODEL](../THREAT_MODEL.md)).
 
-| Channel | Agent reads it by default? | Vault policy |
+| Channel | Agent reads it by default? | Blindkey policy |
 |---|---|---|
-| stdout | **Yes** (tool result) | Empty on `vault get` (C27) |
+| stdout | **Yes** (tool result) | Empty on `blindkey get` (C27) |
 | stderr | Usually (merged into transcript) | Human-status text only; never secret bytes |
 | Files / tempfiles | Yes (workspace reads) | No secret ever written to a file path |
 | Shell history / argv | Yes | No secrets on argv (C31 → UC-05 §3.5) |
@@ -66,11 +66,11 @@ remaining window.
 
 ### 3.2 Process model: detached clipboard holder
 
-`vault get` is a one-shot CLI, but C13's timer must outlive it, and on X11/Wayland the
+`blindkey get` is a one-shot CLI, but C13's timer must outlive it, and on X11/Wayland the
 *selection owner* must stay alive to serve paste requests (ICCCM; same reason `wl-copy` forks).
 
 ```
-vault get NAME
+blindkey get NAME
   ├── unlock, decrypt entry, extract field (Zeroizing buffer)
   ├── spawn detached helper:  vault __clip-holder --timeout 30   (secret via inherited pipe fd,
   │     NEVER argv/env; helper closes the read end immediately after reading)
@@ -143,7 +143,7 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
 
 ### 3.6 Channel discipline: stdout vs stderr vs scrollback
 
-- **stdout: empty.** Nothing is written on success. `vault get X | wc -c` → `0`. This is the
+- **stdout: empty.** Nothing is written on success. `blindkey get X | wc -c` → `0`. This is the
   C27 integration test and keeps every pipe/tool-result path clean.
 - **stderr: human channel.** Status lines name the entry and field, never the value:
   `Copied 'github-prod' password to clipboard. Clears in 30 s.` Agents typically *do* capture
@@ -188,7 +188,7 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
 
 ## 6. Test plan
 
-1. **INTEGRATION (C27):** `vault get X --field password` → stdout byte-count 0; clipboard equals
+1. **INTEGRATION (C27):** `blindkey get X --field password` → stdout byte-count 0; clipboard equals
    the secret; stderr contains `Copied` and `Clears in`.
 2. **INTEGRATION (C13):** copy; poll clipboard at t=31 s (default config) → empty or changed.
    With `clipboard_timeout = 5`: cleared by t=6 s.
@@ -203,7 +203,7 @@ is why B2 is "PARTIAL" in [security_coverage_gaps.md](../../research/security_co
    mentions `--stdout`, clipboard untouched, stdout empty.
 7. **UNIT (no secret on argv/env):** spawn the holder; read its `/proc/<pid>/cmdline` and
    `environ`; assert the secret appears in neither.
-8. **AGENT-SIMULATION (flagship e2e):** drive `vault get` under a PTY harness that records
+8. **AGENT-SIMULATION (flagship e2e):** drive `blindkey get` under a PTY harness that records
    everything a terminal-attached agent would see (stdin/stdout/stderr merged); assert the
    secret string appears nowhere in the recording.
 9. **CI (C23):** `strace -e trace=network` over the full get-and-clear lifecycle → no network

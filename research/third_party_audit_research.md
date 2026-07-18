@@ -21,12 +21,12 @@ Card #847 recommends audit **after format freeze, before enterprise marketing** 
 
 | Area | Primary artifacts |
 |------|-------------------|
-| On-disk format & parsers | `docs/FILE_FORMAT.md`, `crates/vault-core/src/format/`, `fuzz/` |
-| KDF & crypto | `docs/CRYPTO.md`, `crates/vault-core/src/crypto/` |
-| Envelope & stanzas | `crates/vault-core/src/envelope/`, UC-09 |
-| Memory & runtime | UC-14, `vault-sys`, `crates/vault-core/src/memory/` |
-| AI-era delivery | UC-04, C27/C28/C31, `vault-cli`, `vault-clip` |
-| Desktop boundary | `vault-gui` — no crypto in UI crate |
+| On-disk format & parsers | `docs/FILE_FORMAT.md`, `crates/blindkey-core/src/format/`, `fuzz/` |
+| KDF & crypto | `docs/CRYPTO.md`, `crates/blindkey-core/src/crypto/` |
+| Envelope & stanzas | `crates/blindkey-core/src/envelope/`, UC-09 |
+| Memory & runtime | UC-14, `blindkey-sys`, `crates/blindkey-core/src/memory/` |
+| AI-era delivery | UC-04, C27/C28/C31, `blindkey-cli`, `blindkey-clip` |
+| Desktop boundary | `blindkey-gui` — no crypto in UI crate |
 | Supply chain | `scripts/reproducible-build.sh`, `cargo audit`/`deny`, C34 |
 
 **Out of scope:** cloud sync service, team vaults, browser extension, live libfido2/TPM FFI (mock paths only), S-13 agent broker (design only).

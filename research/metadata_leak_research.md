@@ -13,7 +13,7 @@ statement cross-linked to UC-07 and user guides.
 
 | Signal | Reveals | Mitigation in v1 |
 |--------|---------|------------------|
-| Blob size (exact bytes) | Entry count, coarsely | Optional Padmé padding (`vault pad on`) — buckets size to O(log log L) bits |
+| Blob size (exact bytes) | Entry count, coarsely | Optional Padmé padding (`blindkey pad on`) — buckets size to O(log log L) bits |
 | Size deltas across versions | Approximate edit magnitude | Same padding; backend version history still retains curve |
 | mtime / version timestamps | Save schedule, activity patterns | None in v1 — documented residual |
 | Save frequency | Usage intensity | None in v1 |
@@ -27,7 +27,7 @@ statement cross-linked to UC-07 and user guides.
 
 ## References
 
-- `vault_intent.yaml` C17 rationale
+- `blindkey_intent.yaml` C17 rationale
 - `docs/specs/UC-07-untrusted-storage-sync.md` §3.1–3.2
 - `docs/guides/sync-to-untrusted-storage.md`
 - Grubbs et al. — why per-entry encryption was rejected

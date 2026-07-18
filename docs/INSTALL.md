@@ -1,14 +1,14 @@
 # Installation
 
 > **Status:** v1.0.0 — build from source, install from git, or download a
-> [GitHub Release](https://github.com/leocelis/vault/releases) binary with SHA-256 checksums.
+> [GitHub Release](https://github.com/leocelis/blindkey/releases) binary with SHA-256 checksums.
 
 ## Quick install (recommended)
 
 From a clone of this repo:
 
 ```sh
-git clone https://github.com/leocelis/vault.git
+git clone https://github.com/leocelis/blindkey.git
 cd vault
 ./scripts/setup-rust.sh    # once: project-scoped toolchain in ./.toolchain
 ./scripts/install.sh       # builds release binary → ~/.local/bin/vault
@@ -19,13 +19,13 @@ Ensure `~/.local/bin` is on your `PATH`.
 ## Install from Git (no clone)
 
 ```sh
-cargo install --git https://github.com/leocelis/vault.git --locked vault-cli
+cargo install --git https://github.com/leocelis/blindkey.git --locked blindkey-cli
 ```
 
 Pin a release tag for reproducibility:
 
 ```sh
-cargo install --git https://github.com/leocelis/vault.git --tag v1.0.0 --locked vault-cli
+cargo install --git https://github.com/leocelis/blindkey.git --tag v1.0.0 --locked blindkey-cli
 ```
 
 ## Install from crates.io
@@ -33,14 +33,14 @@ cargo install --git https://github.com/leocelis/vault.git --tag v1.0.0 --locked 
 When published (maintainer manual step — see [CRATES_IO_TRUSTED_PUBLISHING.md](CRATES_IO_TRUSTED_PUBLISHING.md)):
 
 ```sh
-cargo install vault-cli --locked
+cargo install blindkey-cli --locked
 ```
 
 Until then, use git install or a GitHub Release binary.
 
 ## GitHub Releases
 
-Download `vault-<arch>-<platform>` from [Releases](https://github.com/leocelis/vault/releases),
+Download `vault-<arch>-<platform>` from [Releases](https://github.com/leocelis/blindkey/releases),
 verify with [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md), then:
 
 ```sh
@@ -53,23 +53,23 @@ sudo mv vault-x86_64-apple-darwin /usr/local/bin/vault
 ```sh
 cd vault
 . scripts/dev-env.sh       # activate ./.toolchain (or Rust 1.96+)
-cargo build --release -p vault-cli
+cargo build --release -p blindkey-cli
 # Binary at target/release/vault
 ```
 
 Reproducibility check: `./scripts/reproducible-build.sh`
 
-## Desktop app (`vault-gui`)
+## Desktop app (`blindkey-gui`)
 
 ```sh
-cargo run -p vault-gui
+cargo run -p blindkey-gui
 # macOS app bundle:
-./scripts/bundle-macos.sh    # → target/Vault.app
+./scripts/bundle-macos.sh    # → target/Blindkey.app
 ```
 
 ### Linux GUI dependencies
 
-`vault-gui` uses native file dialogs via **xdg-desktop-portal**:
+`blindkey-gui` uses native file dialogs via **xdg-desktop-portal**:
 
 ```sh
 # Debian/Ubuntu (GTK portal)
@@ -84,7 +84,7 @@ Package list above is the canonical GTK stack for Linux builds.
 
 ### Linux runtime hardening (gap B3)
 
-Vault marks itself **non-dumpable** at startup (`PR_SET_DUMPABLE`, `RLIMIT_CORE=0`,
+Blindkey marks itself **non-dumpable** at startup (`PR_SET_DUMPABLE`, `RLIMIT_CORE=0`,
 `coredump_filter=0`). Under the default **Yama** `ptrace_scope`, same-uid malware cannot
 `ptrace`-attach or read `/proc/<pid>/mem` while vault runs.
 
@@ -101,7 +101,7 @@ own hardening. macOS has no equivalent; see [THREAT_MODEL.md](THREAT_MODEL.md) r
 
 ### Memory locking (`mlock`) and containers (C12)
 
-While a vault is **unlocked**, decrypted entry data is held in RAM. Vault calls `mlock(2)` to keep
+While a vault is **unlocked**, decrypted entry data is held in RAM. Blindkey calls `mlock(2)` to keep
 those pages **off swap** (constraint C12). If locking fails — common in **Docker**, **Podman**, and
 **Kubernetes** default seccomp profiles return **EPERM** — vault prints **one warning per process**
 and **continues** (never aborts). Secrets may then appear in swap if the host uses unencrypted swap.
@@ -123,7 +123,7 @@ docker run --rm -it \
   --cap-add=IPC_LOCK \
   --ulimit memlock=-1:-1 \
   -v "$HOME/.vault:/vault:rw" \
-  vault:local vault ls /vault/test.vlt
+  vault:local blindkey ls /vault/test.vlt
 ```
 
 **Kubernetes (illustrative — adjust for your policy):**
@@ -148,5 +148,5 @@ See [guides/enterprise-deployment.md](guides/enterprise-deployment.md) and
 
 ## Security caution
 
-Vault has **not** had an independent third-party security audit. Keep a **separate backup** of
+Blindkey has **not** had an independent third-party security audit. Keep a **separate backup** of
 anything you store. On-disk format v1 is stable ([ADR-0005](adr/0005-format-v1-freeze.md)).

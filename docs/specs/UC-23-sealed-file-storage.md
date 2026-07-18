@@ -2,7 +2,7 @@
 
 > **Tech spec** · **Accepted v1.0** · shipped July 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-23 · **Constraints:** proposed C61–C66; reuses C1, C2, C7, C11, C27, C30, C31, C32; extends the UC-07 posture to arbitrary files
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 > C61–C66 are drafted as **forward constraints** (G16, intent v1.8.0 + conflict SC9) — vacuously
 > satisfied until UC-23 ships; the intent amendment lands with code-owner sign-off per GOVERNANCE.
 
@@ -16,8 +16,8 @@ crypto path, model-blind terminal behavior.
 
 Goals:
 
-1. `vault seal <path>...` → one `<name>.vltf`; `vault open <file>.vltf` restores;
-   `vault peek` lists the inner tree post-unlock. GUI: drag-and-drop both directions.
+1. `blindkey seal <path>...` → one `<name>.vltf`; `blindkey open <file>.vltf` restores;
+   `blindkey peek` lists the inner tree post-unlock. GUI: drag-and-drop both directions.
 2. **Zero observable metadata** (C62): names, paths, sizes, counts, permissions, mtimes all
    inside the AEAD payload; Padmé padding default-on (C66).
 3. **Streaming, bounded memory** (C63): multi-GB inputs on small machines; ≥ 400 MiB/s
@@ -39,13 +39,13 @@ Full survey: [research/encrypted_cloud_storage_research.md](../../research/encry
 
 | Source | Lesson for UC-23 |
 |---|---|
-| Cryptomator / gocryptfs / rclone crypt | Live per-file vaults permanently leak tree structure, file counts, sizes, change timing — the metadata class Vault refuses (C17 precedent) |
+| Cryptomator / gocryptfs / rclone crypt | Live per-file vaults permanently leak tree structure, file counts, sizes, change timing — the metadata class Blindkey refuses (C17 precedent) |
 | VeraCrypt + sync clients | Monolithic *live-mounted* containers conflict/corrupt under sync; as **seal-once artifacts** the monolithic shape is the strong option (FPF recommends exactly this workflow) |
 | age | Reference UX for streaming encrypt-then-upload pipes; fresh-file-key non-determinism is the correct default absent git-diff constraints |
 | Picocrypt (audited ROS 2024) | Independent validation of XChaCha20-Poly1305 + Argon2id for exactly this one-shot use case |
 | 7-Zip | Opt-in filename encryption is the canonical usability trap → metadata protection must be default-on, not a flag |
 | MEGA (S&P 2023), "Broken Ecosystem" (CCS 2024), Nextcloud (2024) | Every real E2EE break was unauthenticated key material / missing binding — never the cipher → reuse the existing authenticated envelope, add nothing bespoke |
-| PURBs/Padmé (PoPETs 2019) | Size channel bounded to O(log log M) bits at ≤ 12 % overhead — already shipped in vault-core (S-12); default-on here |
+| PURBs/Padmé (PoPETs 2019) | Size channel bounded to O(log log M) bits at ≤ 12 % overhead — already shipped in blindkey-core (S-12); default-on here |
 | SUNDR/Depot | Freshness needs a witness; sealed artifacts are immutable one-shots, so the C16 counter question becomes an open question (§7 Q2) rather than a requirement |
 
 ## 3. Design
@@ -69,7 +69,7 @@ identical machinery to `vault.vlt`:
   layout otherwise byte-identical to format v1 — one header parser branches on magic into
   two payload types. Distinct magic (vs a kind byte inside the vault's magic) keeps ADR-0005
   untouched by construction: `.vlt` bytes cannot change because `.vltf` never shares its
-  magic. `vault open` on a `.vlt` (and vice versa) fails with a clear kind-mismatch error,
+  magic. `blindkey open` on a `.vlt` (and vice versa) fails with a clear kind-mismatch error,
   not a parse error.
 - Deterministic-order entry walk (sorted paths) so seal output depends only on content +
   fresh key — no filesystem-iteration-order nondeterminism in tests.
@@ -84,7 +84,7 @@ bounded by O(chunk); zeroizing buffers for plaintext chunks; Argon2id runs **onc
 seal regardless of file count. Open: mirror image; each inner file writes to a temp path
 inside the destination and renames only after its final chunk authenticates.
 
-Pipe modes: `vault seal - < tarball` / `vault open --stdout single.vltf`. `--stdout`
+Pipe modes: `blindkey seal - < tarball` / `blindkey open --stdout single.vltf`. `--stdout`
 buffers-and-verifies small single-file containers; above a size threshold it refuses with
 guidance (a pipe cannot be un-written on late auth failure — fail-closed wins over
 convenience; threshold calibrated during implementation, IVD Rule 5).
@@ -104,12 +104,12 @@ convenience; threshold calibrated during implementation, IVD Rule 5).
 ### 3.4 CLI / GUI surface
 
 ```
-vault seal <path>... [-o out.vltf] [--no-pad] [--append]
-vault open <file>.vltf [-C dir] [--stdout]        # --stdout: single-file, size-capped
-vault peek <file>.vltf                            # inner tree (names/sizes), post-unlock
+blindkey seal <path>... [-o out.vltf] [--no-pad] [--append]
+blindkey open <file>.vltf [-C dir] [--stdout]        # --stdout: single-file, size-capped
+blindkey peek <file>.vltf                            # inner tree (names/sizes), post-unlock
 vault --vault <file>.vltf upgrade-kdf …           # header-only KDF re-wrap
 vault --vault <file>.vltf rotate-data-key         # full inner re-encrypt
-vault stanzas … <file>.vltf                       # same stanza management as the vault
+blindkey stanzas … <file>.vltf                       # same stanza management as the vault
 ```
 
 - **`--append`:** unlock an existing `.vltf`, merge new paths (same inner path replaces), full
@@ -125,10 +125,10 @@ vault stanzas … <file>.vltf                       # same stanza management as 
   restoring to disk is the feature, the terminal/scrollback channel stays protected.
 - Exit codes extend the stable table (UC-04/G0.8); no new ad-hoc codes.
 
-#### Desktop app (`vault-gui`) design
+#### Desktop app (`blindkey-gui`) design
 
 Follows the shipped UC-18/UC-20/UC-21 architecture: thin egui shell, all crypto in
-`vault-core`, no secret rendering by default.
+`blindkey-core`, no secret rendering by default.
 
 - **Drop targets**: `egui`'s `raw.dropped_files` — dropping a folder/file on the window
   opens the **seal dialog** (output name pre-filled, passphrase + confirm fields using the
@@ -137,7 +137,7 @@ Follows the shipped UC-18/UC-20/UC-21 architecture: thin egui shell, all crypto 
   C66 default-on). Dropping a `.vltf` opens the **open dialog** (destination picker via the
   existing `rfd` dependency, unlock flow identical to vault unlock incl. 2FA).
 - **Threading (the one new GUI mechanism)**: seal/open run on a **worker thread** calling
-  the streaming `vault-core` API; the UI thread never blocks. Progress reports over a
+  the streaming `blindkey-core` API; the UI thread never blocks. Progress reports over a
   channel as `(bytes_done, bytes_total)`; the worker calls `ctx.request_repaint()` on
   progress ticks (UC-20 reactive-repaint rule: no busy polling, ~0% CPU when idle).
   Cancel button sets an atomic flag the worker checks between chunks; cancellation runs
@@ -161,7 +161,7 @@ Follows the shipped UC-18/UC-20/UC-21 architecture: thin egui shell, all crypto 
 
 Seal and open sustain **≥ 400 MiB/s** on the reference machine for large inputs (manual
 sign-off on audit hardware). Automated gate in `just audit-ready` uses
-`VAULT_SEAL_BENCH_MIN_MIB_S` (default **20** MiB/s on dev/CI; set **400** on the reference
+`BLINDKEY_SEAL_BENCH_MIN_MIB_S` (default **20** MiB/s on dev/CI; set **400** on the reference
 machine). Debug builds skip the bench (C58 pattern). One Argon2id invocation per operation —
 never per file.
 
@@ -172,7 +172,7 @@ never per file.
 | **Symlinks** | Skipped on seal (not followed, not archived). Documented hostile symlink at rest is out of scope — only path strings inside the AEAD payload are extracted. |
 | **mtimes** | Stored in inner `FILE_HDR` metadata (inside AEAD); restored on `open` where the host OS permits `utimens`. |
 | **`--stdout` cap (SC9)** | 64 MiB single-file limit (`STDOUT_SIZE_LIMIT`); refuse above with uniform C64 error — fail-closed beats late pipe auth failure. |
-| **Pipe seal** | `vault seal -` reads payload from stdin; passphrase via TTY, `--password-fd`, or `VAULT_PASSWORD_FILE` (not `--password-stdin`). Inner path name `-`. |
+| **Pipe seal** | `blindkey seal -` reads payload from stdin; passphrase via TTY, `--password-fd`, or `BLINDKEY_PASSWORD_FILE` (not `--password-stdin`). Inner path name `-`. |
 
 ## 4. Constraint mapping
 
@@ -207,7 +207,7 @@ never per file.
 
 ## 6. Rollout
 
-Phase A: `vault-core` archive payload + seal/open API (lane A — format/crypto boundary).
+Phase A: `blindkey-core` archive payload + seal/open API (lane A — format/crypto boundary).
 Phase B: CLI verbs + exit codes (lane B, against the frozen core API).
 Phase C: GUI drag-and-drop + TUI (lane B; design review by lane A).
 Gate: intent amendment C61–C66 signed off (code owner) **before** Phase A merges — Gate-0
@@ -215,7 +215,7 @@ style, constraints first.
 
 **Phase C design review (C10):** GUI worker/cancel path reviewed against spec §3.4 — byte
 progress via `SealedIoOpts`, cancel flag between chunks, `SEALED_OPEN_ERROR` parity with CLI;
-verified by `vault-gui/tests/uc23_constraints.rs`.
+verified by `blindkey-gui/tests/uc23_constraints.rs`.
 
 **Craft patterns (D5):** validation rules remain in this spec + `research/encrypted_cloud_storage_research.md`;
 no separate `*_patterns.yaml` distilled for v1 (optional post-ship).

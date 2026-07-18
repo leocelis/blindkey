@@ -51,7 +51,7 @@ ok "AUDIT_COMMISSION.md present"
 
 # Core artefacts auditors need
 for f in \
-  vault_intent.yaml \
+  blindkey_intent.yaml \
   docs/FILE_FORMAT.md \
   docs/CRYPTO.md \
   docs/specs/UC-04-model-blind-retrieval.md \

@@ -5,7 +5,7 @@
 # colliding and keeps main always green. Agents MUST read this file at session start
 # (the repo CLAUDE.md points here).
 #
-# Precedence: vault_intent.yaml (constraints) > docs/specs/ (designs) > ROADMAP.md
+# Precedence: blindkey_intent.yaml (constraints) > docs/specs/ (designs) > ROADMAP.md
 # (ordering) > this file (process). GOVERNANCE.md governs decisions; this file only
 # operationalizes it.
 
@@ -14,7 +14,7 @@ version: 1
 maintainers:
   - github: leocelis
     lane: A
-    scope_default: "security boundary — vault-core (format, crypto, memory, rollback)"
+    scope_default: "security boundary — blindkey-core (format, crypto, memory, rollback)"
   - github: jgm972
     lane: B
     scope_default: "CLI surface, utilities, importers, helper processes, docs"
@@ -24,7 +24,7 @@ maintainers:
 # ──────────────────────────────────────────────────────────────────────────────
 before_any_work:
   - "git fetch origin && git rebase origin/main  (start from current main, always)"
-  - "Read vault_intent.yaml constraints for the area you will touch (IVD Rule 1)."
+  - "Read blindkey_intent.yaml constraints for the area you will touch (IVD Rule 1)."
   - "Read the governing spec in docs/specs/ for the use case you are implementing."
   - "Check the claim board (see §3) — do not start unclaimed-by-you work in a path
      owned by the other lane."
@@ -41,8 +41,8 @@ branching:
   forbidden:
     - "force-push to main (ever)"
     - "long-lived divergent branches (> ~10 commits behind main = rebase now)"
-    - "committing directly to main for anything that touches crates/vault-core/,
-       vault_intent.yaml, the file format, SECURITY.md, or scripts/
+    - "committing directly to main for anything that touches crates/blindkey-core/,
+       blindkey_intent.yaml, the file format, SECURITY.md, or scripts/
        (release/audit scripts — CODEOWNERS + GOVERNANCE tiers require PR review there)"
   allowed_direct_to_main:
     - "docs typo-level fixes outside the protected paths, at maintainer discretion"
@@ -60,10 +60,10 @@ sync_protocol:
 ownership:
   # Default owner per path. The owner's lane may edit freely on its branches;
   # the other lane needs a claim (below) or a PR reviewed by the owner.
-  "crates/vault-core/":            lane_A
+  "crates/blindkey-core/":            lane_A
   "fuzz/":                         lane_A
-  "crates/vault-cli/":             lane_B
-  "crates/vault-hardware/":        lane_B   # implementation; design review by lane A
+  "crates/blindkey-cli/":             lane_B
+  "crates/blindkey-hardware/":        lane_B   # implementation; design review by lane A
   "docs/specs/":                   shared_read_only   # changes via PR + code-owner approval
   "docs/":                         lane_B_default
   "research/":                     shared_read_only
@@ -73,7 +73,7 @@ ownership:
 locked_files:
   # Changes here REQUIRE code-owner approval (GOVERNANCE code-owner-sign-off tier, see
   # CODEOWNERS). Changes always go via PR; an ADR is added where GOVERNANCE requires one.
-  - vault_intent.yaml
+  - blindkey_intent.yaml
   - docs/FILE_FORMAT.md
   - docs/THREAT_MODEL.md
   - SECURITY.md
@@ -145,7 +145,7 @@ pr_checklist:
   - "Tests added; docs/CONSTRAINT_INDEX.md updated where applicable"
   - "`just ci` green; no new clippy allows without justification"
   - "CHANGELOG.md line added"
-  - "Review tier respected: lazy consensus (docs/tests) · code-owner (vault-core,
+  - "Review tier respected: lazy consensus (docs/tests) · code-owner (blindkey-core,
      workflows) · code-owner sign-off + ADR (crypto, format, intent, SECURITY.md)"
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -155,5 +155,5 @@ sync_points:
   - "SP1: Gate 0 intent amendments signed off (G0.1–G0.6) — blocks all CP work"
   - "SP2: CP-1 format freeze — byte layout + format API stable; Lane B may build
      importers/CLI against it"
-  - "SP3: CP-4 core API freeze — full vault-core public API stable; CLI integration"
+  - "SP3: CP-4 core API freeze — full blindkey-core public API stable; CLI integration"
   - "SP4: CP-7 release quality gate — IVD Rule 2 sweep + `just audit-ready` green before v1.0.0"

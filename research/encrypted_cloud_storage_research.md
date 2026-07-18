@@ -147,7 +147,7 @@ pipelines (best throughput, worst platform coverage); CryFS when metadata privac
 
 - ✓ **PURBs/Padmé** (Nikitin et al., PoPETs 2019, [arXiv:1806.03160](https://arxiv.org/abs/1806.03160)):
   ciphertexts indistinguishable from random bits (no plaintext headers) + padding leaking
-  only O(log log M) bits of length at ≤12% overhead. Already explored for Vault — see
+  only O(log log M) bits of length at ≤12% overhead. Already explored for Blindkey — see
   `padme_padding_research.md` (shipped opt-in `PadMode`).
 - ✓ **CryFS model** ([eprint 2017/773](https://eprint.iacr.org/2017/773)): fixed-size
   encrypted blocks provably hide sizes, tree, and metadata from an honest-but-curious
@@ -168,7 +168,7 @@ pipelines (best throughput, worst platform coverage); CryFS when metadata privac
   Fork-Join-Causal to let forked clients rejoin safely.
 - ~ For plain cloud storage (no Merkle DAG to lean on, unlike git), freshness must be
   supplied explicitly — a monotonic counter or out-of-band witness. **This is exactly
-  Vault's C17 rollback anchor design** — the per-`vault_id` monotonic counter is the
+  Blindkey's C17 rollback anchor design** — the per-`vault_id` monotonic counter is the
   freshness witness the literature prescribes, and it generalizes cleanly to any cloud
   backend since it doesn't depend on git's object model.
 
@@ -400,12 +400,12 @@ threat model" document). Flag as **not found**, not as "doesn't exist."
 
 ---
 
-## 8. Relevance to Vault
+## 8. Relevance to Blindkey
 
-Vault's existing design already embodies most of §7 — useful validation and a map of
+Blindkey's existing design already embodies most of §7 — useful validation and a map of
 what a future sync feature (ROADMAP: "sync/merge" pending) must NOT regress:
 
-| Principle (§7) | Vault today |
+| Principle (§7) | Blindkey today |
 |---|---|
 | Multi-snapshot adversary | UC-07 threat model; single `.vlt` blob = no per-entry churn leakage (an observer sees only "vault changed") |
 | Non-deterministic by default | XChaCha20-Poly1305 STREAM with fresh nonces — no forced determinism, unlike git-oriented tools |
@@ -418,29 +418,29 @@ what a future sync feature (ROADMAP: "sync/merge" pending) must NOT regress:
 
 Implications for future work:
 
-1. **Cloud sync as a Vault feature** (if ever pursued): the whole-blob model means each
+1. **Cloud sync as a Blindkey feature** (if ever pursued): the whole-blob model means each
    save = a new full blob upload → every sync produces size + timing metadata (§5.2,
    §6.1's own analysis of the S3/Drive incidents underscores that access-control
    mistakes, not crypto, are the dominant real risk — worth weighing if any sharing/link
    feature is ever considered). The literature-backed shape is opaque single-blob
    transport + the existing C17 counter for freshness; do **not** move to per-entry
    files for diff-friendliness — that would trade away the metadata profile that
-   differentiates Vault from Cryptomator/gocryptfs/rclone crypt (§5.2 tension).
+   differentiates Blindkey from Cryptomator/gocryptfs/rclone crypt (§5.2 tension).
 2. **Multi-snapshot size channel**: with Padmé off (default), a backend retaining every
    version sees a fine-grained size trajectory ≈ entry-count history. Strengthens the
    case in `padme_padding_research.md`'s v2-promotion criterion 2 (longitudinal
    adversary analysis) — now backed by community evidence that hosts *do* retain
    long version histories (Dropbox Rewind, Drive version history) by default.
 3. **Building-block choice, if any custom crypto surface is ever extended**: §4's
-   findings reinforce Vault's existing non-custom-crypto stance (AG4/cowork.yaml) —
+   findings reinforce Blindkey's existing non-custom-crypto stance (AG4/cowork.yaml) —
    libsodium-class audited primitives, not bespoke constructions, is the safest 2026
    default; RustCrypto's audit coverage is improving but still per-crate.
 4. **Docs/marketing**: the CCS 2024 "broken ecosystem" and CRYPTO 2024 formal-model
-   results remain strong citations for Vault's "verify the claims" positioning.
-   Evaluating vault-core against the eprint 2024/989 malicious-server games is a
+   results remain strong citations for Blindkey's "verify the claims" positioning.
+   Evaluating blindkey-core against the eprint 2024/989 malicious-server games is a
    candidate differentiating exercise for `docs/THIRD_PARTY_AUDIT.md`. The real-breach
    evidence in §6.1 (access-control, not crypto, failures) is also useful supporting
-   material for Vault's threat-model narrative in README/THREAT_MODEL.md.
+   material for Blindkey's threat-model narrative in README/THREAT_MODEL.md.
 
 ---
 

@@ -2,17 +2,17 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-6 · **Constraints:** C21, C25, C18 via SC2; C11, C13
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-The daily loop: find an entry (`vault ls --search`), change it (`vault edit`), remove it
-(`vault rm`), and rely on the session locking itself when you walk away (C25). This spec
+The daily loop: find an entry (`blindkey ls --search`), change it (`blindkey edit`), remove it
+(`blindkey rm`), and rely on the session locking itself when you walk away (C25). This spec
 covers:
 
 - in-memory search with **no on-disk index** (SC2's resolution: `C18 > C21`),
-- the `vault edit` flow and the `$EDITOR` swap-file leak it must not reproduce,
-- `vault rm` confirmation semantics,
+- the `blindkey edit` flow and the `$EDITOR` swap-file leak it must not reproduce,
+- `blindkey rm` confirmation semantics,
 - the v1 session model: **per-process, no daemon** — what C25's auto-lock means in that world,
 - the `~/.vault.toml` configuration schema (validated, loud on error).
 
@@ -56,7 +56,7 @@ Single-shot commands (`get`, `ls`, `rm …`) create a `Session`, use it, and dro
 runs unconditionally on scope exit. Long-lived flows (interactive `edit`, a future REPL) are
 where the C25 idle timer actually ticks (§3.4).
 
-### 3.2 `vault ls --search` — in-memory, O(n), no index
+### 3.2 `blindkey ls --search` — in-memory, O(n), no index
 
 Per SC2: search requires unlock, runs over the decrypted entries in mlock'd memory, and
 **never** creates an on-disk index, cache, or "recent results" file. O(n) over < 10,000
@@ -86,9 +86,9 @@ fn rank(query: &str, e: &Entry) -> Option<u8> {        // lower = better
 
 Output: entry titles (+ tags with `-v`), one per line, **ANSI/control-sanitized** before
 printing (gap A2 — a hostile imported title must not own the terminal). Secrets never appear
-in `ls` output under any flag. Plain `vault ls` lists all titles, same ordering rules.
+in `ls` output under any flag. Plain `blindkey ls` lists all titles, same ordering rules.
 
-### 3.3 `vault edit` — field-by-field by default; `$EDITOR` only into RAM
+### 3.3 `blindkey edit` — field-by-field by default; `$EDITOR` only into RAM
 
 **The `$EDITOR` problem:** handing a plaintext temp file to an editor leaks via vim swap files
 (`.swp`), undo persistence (`~/.viminfo`, undodir), backup-on-write copies, editor LSP/plugin
@@ -99,7 +99,7 @@ we treat that fallback as a defect, not a feature.
 **Default flow — interactive field-by-field prompts (no temp file at all):**
 
 ```
-$ vault edit github-prod
+$ blindkey edit github-prod
   title    [github-prod]:            ⏎ keep
   username [leo]:                    ⏎ keep
   password [unchanged]:              (g)enerate / (e)nter / ⏎ keep → g
@@ -129,7 +129,7 @@ touches the filesystem in plaintext.
 
 ### 3.4 Sessions and auto-lock (C25) — v1 is per-process, no daemon
 
-**What v1 ships:** every `vault` invocation derives keys, does its work, zeroizes, exits.
+**What v1 ships:** every `blindkey` invocation derives keys, does its work, zeroizes, exits.
 There is no background agent, no socket, no cached unlock between commands. Consequences,
 stated plainly (this goes in CLI.md too):
 
@@ -155,7 +155,7 @@ endpoint, a token to steal). v1 buys auditability with keystrokes. A post-v1 opt
 (socket-peer-credential-checked, hardware-tap-to-release) is roadmap material and must arrive
 as new constraints, not as a quiet feature.
 
-### 3.5 `vault rm NAME`
+### 3.5 `blindkey rm NAME`
 
 1. Resolve entry (exact title; if multiple/ambiguous after C28-sanitized listing → exit 9).
 2. TTY: prompt `Delete entry 'github-prod'? This cannot be undone. [y/N]` — default **No**.
@@ -163,14 +163,14 @@ as new constraints, not as a quiet feature.
 3. Remove from the in-memory entry set, save atomically, `vault_version += 1` (C16).
 4. Deletion is **crypto-shredding semantics** (gaps C2): the entry is absent from the
    re-encrypted payload; we do not promise physical erasure of old blob generations on SSDs or
-   in sync history — documented in the user guide, with `vault rotate-data-key` as the future
+   in sync history — documented in the user guide, with `blindkey rotate-data-key` as the future
    stronger answer.
 
 ### 3.6 `~/.vault.toml` — configuration schema
 
 ```toml
 # ~/.vault.toml — all keys optional; absent file = all defaults.
-vault_file        = "~/.vault/vault.vlt"   # default vault path (CLI --file overrides)
+vault_file        = "~/.blindkey/vault.vlt"   # default vault path (CLI --file overrides)
 clipboard_timeout = 30      # seconds; C13: min 5, max 300, default 30
 auto_lock_seconds = 300     # seconds; C25: min 30, max 3600, 0 = disabled, default 300
 ```
@@ -235,13 +235,13 @@ pub struct Config {
    `n` aborts with entry intact; `--yes` required when stdin piped.
 2. **UNIT (ranking):** fixture entries; assert exact > prefix > substring > tag ordering and
    alphabetical tie-break; case-insensitive matches.
-3. **INTEGRATION (SC2):** run `vault ls --search github` under `strace -e trace=openat,write`;
+3. **INTEGRATION (SC2):** run `blindkey ls --search github` under `strace -e trace=openat,write`;
    assert no file created/written besides the state file and TTY; before/after directory
    snapshot identical.
 4. **INTEGRATION (edit, no plaintext on disk):** run field-by-field edit changing the password;
    `grep -r` the filesystem temp locations (`$TMPDIR`, `/tmp`, `/var/tmp`) for the new secret →
    zero hits. With `--editor` on Linux: file existed only under `/dev/shm`, gone after.
-5. **INTEGRATION (`--editor` refusal):** on macOS CI, `vault edit X --editor` → exit ≠ 0,
+5. **INTEGRATION (`--editor` refusal):** on macOS CI, `blindkey edit X --editor` → exit ≠ 0,
    message contains `RAM-backed`.
 6. **INTEGRATION (C25):** interactive session with `auto_lock_seconds = 30` (mock clock);
    after 31 s idle, next action demands re-unlock; memory test hook asserts key pages zeroed.
@@ -256,7 +256,7 @@ pub struct Config {
    interactive picker — picker is friendlier but adds TTY-only behavior divergence.
 2. **`--all-fields` search scope:** include notes (potentially large, semi-sensitive) or keep
    to title/tags/username? Current: include, opt-in only.
-3. **`vault lock` in a per-process world** is near-vacuous v1 (clears the local state file's
+3. **`blindkey lock` in a per-process world** is near-vacuous v1 (clears the local state file's
    session hints and the clipboard holder, if any) — keep for forward-compat with an agent, or
    document as a no-op? Current: keep, document exactly what it clears.
 4. **Unicode casefold:** simple lowercase vs full casefold for search normalization (relates to
