@@ -34,7 +34,7 @@ categories = ["command-line-utilities", "cryptography", "authentication"]
 [workspace.dependencies]
 # --- Cryptography (audited libraries only — no custom primitives) ---
 chacha20poly1305 = "0.10"       # C1  XChaCha20-Poly1305 / STREAM
-chacha20         = "0.9"        # C19 inner-stream ChaCha20 over Protected fields
+chacha20         = "0.10"        # C19 inner-stream ChaCha20 over Protected fields
 argon2           = "0.5"        # C2  Argon2id KDF
 hkdf             = "0.12"       # C5  HKDF-SHA-256 key wrapping
 hmac             = "0.12"       # C9/C10 header + block HMAC
