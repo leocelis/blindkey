@@ -1,4 +1,4 @@
-//! UC-23 sealed-file CLI — `vault seal` / `open` / `peek` (Phase B).
+//! UC-23 sealed-file CLI — `blindkey seal` / `open` / `peek` (Phase B).
 
 use std::io::Write;
 use std::path::{Path, PathBuf};

@@ -2,11 +2,11 @@
 #  SAMPLE keys.txt — SYNTHETIC TEST DATA. NOT REAL CREDENTIALS.
 #
 #  Every value below is randomly generated and marked FAKE/EXAMPLE. It exists so
-#  `vault import --format raw` can be exercised against a realistically messy file.
+#  `blindkey import --format raw` can be exercised against a realistically messy file.
 #  Do NOT put real secrets in a committed file. Lines starting with '#' are ignored
 #  by the importer.
 #
-#  Try:   vault import --format raw samples/keys.txt
+#  Try:   blindkey import --format raw samples/keys.txt
 # =============================================================================
 
 AWS_ACCESS_KEY_ID=AKIAEXAMPLE7F4QX9TZ2P

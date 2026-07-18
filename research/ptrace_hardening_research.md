@@ -15,7 +15,7 @@ C25 disables **core dumps**, but a same-uid infostealer can still attach with `p
 | `setrlimit(RLIMIT_CORE, 0)` | No core file on crash (C25) |
 | Write `"0"` to `/proc/self/coredump_filter` | Belt-and-braces — no VMAs in core even if limit mis-set (C25 intent) |
 
-Called from `vault_core::memory::harden_process()` at startup in CLI/TUI/GUI `main`.
+Called from `blindkey_core::memory::harden_process()` at startup in CLI/TUI/GUI `main`.
 
 ## Admin hardening (documented, not enforced)
 

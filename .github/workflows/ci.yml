@@ -1,4 +1,4 @@
-# CI — mirrors `just check` across every platform Vault ships a binary for, plus the
+# CI — mirrors `just check` across every platform Blindkey ships a binary for, plus the
 # supply-chain and reproducible-build gates that `just audit-ready` runs before a release.
 name: CI
 

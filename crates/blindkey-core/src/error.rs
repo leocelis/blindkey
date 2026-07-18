@@ -58,7 +58,7 @@ pub enum Error {
     /// Opening an existing weak vault is allowed with a warning (constraint C2).
     #[error(
         "Argon2id parameters are below the minimum floor (m >= 19456 KiB, t >= 2, p >= 1); \
-         use stronger params or `vault upgrade-kdf` on an existing vault"
+         use stronger params or `blindkey upgrade-kdf` on an existing vault"
     )]
     KdfBelowFloor,
 

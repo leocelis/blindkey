@@ -33,7 +33,7 @@ pub mod kind {
     pub const PW_KEYFILE: u8 = 8;
 }
 
-/// Human-readable stanza type for `vault stanzas list` (no secrets).
+/// Human-readable stanza type for `blindkey stanzas list` (no secrets).
 pub fn kind_name(stanza_type: u8) -> &'static str {
     match stanza_type {
         kind::PASSWORD => "password",
@@ -48,7 +48,7 @@ pub fn kind_name(stanza_type: u8) -> &'static str {
     }
 }
 
-/// Parse a user-facing stanza type name (C21 `vault stanzas`).
+/// Parse a user-facing stanza type name (C21 `blindkey stanzas`).
 pub fn parse_kind_name(name: &str) -> Option<u8> {
     match name.to_ascii_lowercase().as_str() {
         "password" => Some(kind::PASSWORD),

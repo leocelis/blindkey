@@ -182,8 +182,8 @@ enum Command {
         #[command(subcommand)]
         action: StanzasAction,
     },
-    /// Add a required second factor (true 2FA): `vault enroll yubikey`, or
-    /// `vault enroll keyfile <PATH>`. Additive OR factors: `vault enroll fido2`.
+    /// Add a required second factor (true 2FA): `blindkey enroll yubikey`, or
+    /// `blindkey enroll keyfile <PATH>`. Additive OR factors: `blindkey enroll fido2`.
     Enroll {
         /// Factor to enroll: `yubikey`, `keyfile`, or `fido2`.
         factor: String,
@@ -193,7 +193,7 @@ enum Command {
         #[arg(long)]
         graceful_yubikey: bool,
     },
-    /// Toggle payload size-padding so the file's exact size is hidden (UC-07 §3.2). `vault pad on|off`.
+    /// Toggle payload size-padding so the file's exact size is hidden (UC-07 §3.2). `blindkey pad on|off`.
     Pad {
         /// `on` to enable Padmé size-padding, `off` to disable it.
         state: String,
@@ -201,7 +201,7 @@ enum Command {
     /// Seal a TPM stanza to the current PCR policy (Linux/Windows — requires tpm2-tools).
     ///
     /// Default policy: PCR 7 (Secure Boot certificate state). PCR values change after firmware
-    /// or kernel updates — run `vault re-enroll-tpm` to re-seal.
+    /// or kernel updates — run `blindkey re-enroll-tpm` to re-seal.
     EnrollTpm,
     /// Re-seal the TPM stanza after firmware or kernel updates changed PCR values (constraint C15).
     ///
@@ -264,7 +264,7 @@ enum Command {
 pub enum StanzasAction {
     /// Show enrolled stanza types (no secrets).
     List,
-    /// Enroll guidance for a stanza type (delegates to `vault enroll …`).
+    /// Enroll guidance for a stanza type (delegates to `blindkey enroll …`).
     Add { stanza_type: String },
     /// Remove a non-password stanza (requires unlock).
     Remove { stanza_type: String },

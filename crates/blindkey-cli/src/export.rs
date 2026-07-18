@@ -1,4 +1,4 @@
-//! `vault export --format json` (UC-05 §3.4, C21/C29).
+//! `blindkey export --format json` (UC-05 §3.4, C21/C29).
 
 use std::collections::BTreeMap;
 

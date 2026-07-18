@@ -1,4 +1,4 @@
-# Vault — Cargo workspace.
+# Blindkey — Cargo workspace.
 # The security core (`blindkey-core`) is a separate library from the CLI so it can be audited,
 # fuzzed, and reused independently. Hardware factors live behind an optional crate.
 [workspace]
@@ -13,6 +13,10 @@ members = [
     "crates/blindkey-clip",
     "crates/blindkey-agent",
 ]
+# fuzz/ is intentionally its own crate (cargo-fuzz requires nightly-only features not pinned
+# for the main workspace toolchain); exclude it so `cargo check`/`cargo test` here don't treat
+# it as an ambiguous nested workspace member.
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "1.0.0"

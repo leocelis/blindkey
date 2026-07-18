@@ -4,8 +4,8 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    let _ = vault_core::format::file_archive::parse_all(data);
-    let mut inc = vault_core::format::file_archive::ArchiveIncrementalParser::new();
+    let _ = blindkey_core::format::file_archive::parse_all(data);
+    let mut inc = blindkey_core::format::file_archive::ArchiveIncrementalParser::new();
     let _ = inc.feed(data);
     let _ = inc.finish();
 });

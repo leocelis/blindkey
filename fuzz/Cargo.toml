@@ -1,5 +1,5 @@
 [package]
-name = "vault-fuzz"
+name = "blindkey-fuzz"
 version = "0.0.0"
 edition = "2021"
 publish = false
@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-vault-core = { path = "../crates/vault-core" }
+blindkey-core = { path = "../crates/blindkey-core" }
 
 # Fuzz targets cover every parser that consumes untrusted bytes (coverage-gap A4).
 [[bin]]
