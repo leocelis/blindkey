@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blindkey — secrets your AI agents can use but never see</title>
+<meta name="description" content="Blindkey is a local-first credential vault your AI agents can use — but never see. No server. No account. One encrypted file. 66 testable security constraints. Rust." />
+<meta property="og:title" content="Blindkey" />
+<meta property="og:description" content="The local-first credential vault your AI agents can use — but never see. 66 testable security constraints. Rust." />
+<meta property="og:type" content="website" />
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#9198a1;
+    --accent:#58a6ff; --accent2:#a371f7; --ok:#3fb950; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#ffffff; --panel:#f6f8fa; --border:#d0d7de; --fg:#1f2328; --muted:#59636e; --accent:#0969da; --accent2:#8250df; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px}
+  header{text-align:center;padding:72px 20px 40px}
+  .logo{font-size:52px}
+  h1{font-size:40px;margin:.3em 0 .15em;letter-spacing:-.02em}
+  .tag{font-size:20px;color:var(--fg);max-width:640px;margin:0 auto;font-weight:600}
+  .sub{color:var(--muted);max-width:620px;margin:14px auto 0}
+  .cta{margin:30px 0 6px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:11px 20px;border-radius:8px;border:1px solid var(--border);font-weight:600}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .badges{margin-top:22px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .badges img{height:20px}
+  section{padding:28px 0;border-top:1px solid var(--border)}
+  h2{font-size:24px;margin:0 0 16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  pre{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.5}
+  .cmt{color:var(--muted)} .ok{color:var(--ok)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel)}
+  .warn{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:8px;padding:14px 16px;color:var(--muted);font-size:14.5px}
+  footer{padding:40px 20px 60px;text-align:center;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🔑</div>
+    <h1>Blindkey</h1>
+    <p class="tag">The local-first credential vault your AI agents can use — but never see.</p>
+    <p class="sub">No server. No account. One encrypted file. Your coding agents get a <em>handle</em>, a human approves at the terminal, and the secret is injected at the edge — the agent process never receives the bytes.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/leocelis/blindkey">GitHub &rarr;</a>
+      <a class="btn" href="https://github.com/leocelis/blindkey#install">Install</a>
+      <a class="btn" href="https://github.com/leocelis/blindkey/blob/main/docs/AGENT_BROKER.md">Agent broker</a>
+    </div>
+    <div class="badges">
+      <img alt="CI" src="https://github.com/leocelis/blindkey/actions/workflows/ci.yml/badge.svg" />
+      <img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" />
+      <img alt="MSRV" src="https://img.shields.io/badge/MSRV-1.96-blue.svg" />
+    </div>
+  </header>
+
+  <section>
+    <h2>Why it exists</h2>
+    <p>Developers now work alongside AI agents that read their files, run their shells, and — if a secret sits in a <code>.env</code> or an MCP config — read their credentials too. In 2026 researchers found <strong>~24,000 secrets exposed in public MCP configuration files</strong> on GitHub. The industry's own answer is converging on one principle: <strong>the agent should never hold or see the secret</strong>. Blindkey is that principle, built local-first.</p>
+  </section>
+
+  <section>
+    <h2>What makes it different</h2>
+    <div class="grid">
+      <div class="card"><h3>Model-blind by design</h3><p>The agent gets a scoped handle; a human approves; the secret is delivered to the destination, never to the requesting process.</p></div>
+      <div class="card"><h3>No proxy, no account</h3><p>Not a cloud platform or a MITM HTTPS proxy in your traffic. One encrypted file plus a local broker — nothing to stand up, nothing to trust with your connection.</p></div>
+      <div class="card"><h3>Zero-plaintext at rest</h3><p>URLs, titles, timestamps — all encrypted. Argon2id with an enforced floor; XChaCha20-Poly1305 STREAM; whole-file rollback detected.</p></div>
+      <div class="card"><h3>Memory-hardened Rust</h3><p><code>zeroize</code> + <code>mlock</code>, <code>panic = "abort"</code>, and no <code>unsafe</code> outside one designated FFI crate.</p></div>
+      <div class="card"><h3>Every claim is testable</h3><p>66 numbered security constraints, each with a test — not a trust-us page. Read the whole design in an afternoon.</p></div>
+      <div class="card"><h3>Fully offline</h3><p>Zero network, zero telemetry. Sync the encrypted blob over any storage you don't trust; rollback is still detected.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>60 seconds</h2>
+    <pre><span class="cmt">$ blindkey init</span>
+  Created vault at ~/.blindkey/vault.vlt
+
+<span class="cmt">$ blindkey import --format raw --yes keys.txt</span>
+  Imported 2 entries into ~/.blindkey/vault.vlt
+
+<span class="cmt">$ blindkey get github</span>            <span class="cmt"># copies to clipboard, model-blind by default</span>
+  <span class="ok">✓ copied github password to clipboard (clears in 30s)</span></pre>
+  </section>
+
+  <section>
+    <div class="warn"><strong>Status:</strong> functional; on-disk format v1 is stable. Not yet independently third-party audited — keep your own backup of anything you store. See the <a href="https://github.com/leocelis/blindkey/blob/main/SECURITY.md">security policy</a> and <a href="https://github.com/leocelis/blindkey/blob/main/docs/THREAT_MODEL.md">threat model</a>.</div>
+  </section>
+</div>
+<footer>
+  Open source · MIT OR Apache-2.0 · <a href="https://github.com/leocelis/blindkey">github.com/leocelis/blindkey</a>
+</footer>
+</body>
+</html>

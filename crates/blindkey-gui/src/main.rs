@@ -55,12 +55,12 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([900.0, 620.0])
             .with_min_inner_size([640.0, 440.0])
-            .with_title("Vault"),
+            .with_title("Blindkey"),
         ..Default::default()
     };
 
     eframe::run_native(
-        "Vault",
+        "Blindkey",
         options,
         Box::new(move |_cc| Ok(Box::new(VaultApp::new(path)))),
     )
@@ -853,7 +853,7 @@ impl VaultApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.add_space(60.0);
             ui.vertical_centered(|ui| {
-                ui.heading("🔒  Vault");
+                ui.heading("🔒  Blindkey");
                 ui.add_space(4.0);
                 ui.label(if creating {
                     "Create your vault — choose a master password you won't forget."
@@ -1061,7 +1061,7 @@ impl VaultApp {
             }
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                ui.heading("Vault");
+                ui.heading("Blindkey");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("🔒 Lock").clicked() {
                         action = Some(Action::Lock);

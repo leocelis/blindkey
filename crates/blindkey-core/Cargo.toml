@@ -1,6 +1,6 @@
 [package]
 name = "blindkey-core"
-description = "Vault security core: XChaCha20-Poly1305 STREAM, Argon2id, age-style envelope, zeroizing memory. No custom crypto."
+description = "Blindkey security core: XChaCha20-Poly1305 STREAM, Argon2id, age-style envelope, zeroizing memory. No custom crypto."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
