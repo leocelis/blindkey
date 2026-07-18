@@ -3,7 +3,6 @@
 //! Named in `blindkey_intent.yaml` → `constraint_satisfiability.joint_satisfaction_test`.
 
 use std::fs;
-use std::path::Path;
 
 use blindkey_core::pad::PadMode;
 use blindkey_core::sealed::{SealOptions, SealedContainer, SealedUnlock, SEALED_OPEN_ERROR};
@@ -72,12 +71,17 @@ fn uc23_joint_satisfaction_on_one_artifact() {
     SealedContainer::open_to_dir(&blob_a, &SealedUnlock::password_only(PASSWORD), &out).unwrap();
     assert_eq!(fs::read(out.join("safe.txt")).unwrap(), b"ok");
 
-    // C65 — zip-slip corpus: manually craft hostile archive is covered in file_archive tests;
-    // open path rejects traversal at extract time.
+    // C65 — a hostile / unwritable destination is surfaced as an error at extract time,
+    // never a silent success or panic. (Zip-slip path traversal *inside* an archive is
+    // covered portably by the file_archive tests.) The destination's parent is a regular
+    // file, so the write fails on every platform — unlike relying on "/" being unwritable,
+    // which is a Unix-only filesystem property (on a Windows admin runner "/" is writable).
+    let blocked_parent = base.join("i_am_a_file");
+    fs::write(&blocked_parent, b"x").unwrap();
     assert!(SealedContainer::open_to_dir(
         &blob_a,
         &SealedUnlock::password_only(PASSWORD),
-        Path::new("/")
+        &blocked_parent.join("dest")
     )
     .is_err());
 
