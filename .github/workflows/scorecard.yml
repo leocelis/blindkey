@@ -27,7 +27,10 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
-          publish_results: true
+          # Findings upload to the repo's Security tab (code scanning). Public-badge publishing
+          # to the OpenSSF API is disabled until the project is registered there — it fails for
+          # a brand-new repo and would red the workflow. Flip to true once registered.
+          publish_results: false
       - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: scorecard-results
