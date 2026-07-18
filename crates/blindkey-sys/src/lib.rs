@@ -156,6 +156,10 @@ pub fn read_line_from_fd(fd: i32) -> std::io::Result<String> {
     Ok(line.trim_end_matches(['\n', '\r']).to_string())
 }
 
+/// Non-Unix stub: reading a raw file descriptor is unsupported (no `--password-fd` off Unix).
+///
+/// Always returns [`std::io::ErrorKind::Unsupported`]; use `--password-stdin` or
+/// `BLINDKEY_PASSWORD_FILE` on these platforms (UC-05).
 #[cfg(not(unix))]
 pub fn read_line_from_fd(_fd: i32) -> std::io::Result<String> {
     Err(std::io::Error::new(

@@ -1,0 +1,14 @@
+# cargo-audit configuration — advisory policy for `cargo audit` (CI `audit` job).
+# Kept in sync with the [advisories] ignore list in deny.toml; rationale for each
+# exemption lives in docs/SUPPLY_CHAIN.md. Exemptions are per-RUSTSEC-ID, never blanket.
+
+[advisories]
+ignore = [
+    # quick-xml <0.41 (RUSTSEC-2026-0194 / -0195): DoS on malicious XML. Not reachable —
+    # quick-xml is used only by the build-time `wayland-scanner` proc-macro to parse
+    # trusted vendored Wayland protocol XML, reaching only blindkey-gui on Linux/Wayland.
+    # The security core / CLI / blindkey-sys never depend on it. No upstream fix yet
+    # (wayland-scanner 0.31.10, latest, still pins quick-xml 0.39). See docs/SUPPLY_CHAIN.md.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]

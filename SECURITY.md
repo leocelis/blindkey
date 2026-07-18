@@ -75,7 +75,7 @@ residual, not entry-level plaintext).
 
 - **Memory-safe Rust**, `#![forbid(unsafe_code)]` outside a vetted crypto-FFI boundary.
 - **Audited libraries only** — no custom cryptographic primitives.
-- **`cargo audit` / `cargo deny`** via `just audit` / `just audit-ready` (maintainers run locally before release).
+- **`cargo audit` / `cargo deny` / `cargo vet`** on every push and PR (not just before release); advisory exemptions are documented per-ID with rationale in [docs/SUPPLY_CHAIN.md](docs/SUPPLY_CHAIN.md).
 - **Fuzzed parsers** for all untrusted input.
 - **Reproducible builds + checksums** — see [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
 - **Release quality gate** before `1.0.0` — see [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md)

@@ -5,7 +5,21 @@
 version = 2
 # CI fails on any unresolved advisory in the dependency tree.
 yanked = "deny"
-ignore = []
+# Documented exemptions. Each entry states WHY the advisory is not reachable in
+# Blindkey's threat model — see docs/SUPPLY_CHAIN.md for the full rationale and
+# review cadence. Exemptions are scoped to a single RUSTSEC ID, never blanket.
+ignore = [
+    # RUSTSEC-2026-0194 / -0195: quick-xml <0.41 memory-exhaustion / quadratic
+    # attribute parsing on MALICIOUS XML. Not reachable: quick-xml is pulled only
+    # by `wayland-scanner` (a BUILD-TIME proc-macro) to parse the trusted, vendored
+    # Wayland protocol XML into Rust bindings — never runtime or untrusted input.
+    # It reaches only `blindkey-gui` on Linux/Wayland; the security core, CLI, and
+    # `blindkey-sys` never depend on it. No upstream fix exists: wayland-scanner at
+    # its latest release (0.31.10) still pins quick-xml 0.39. Re-check when the
+    # Wayland crates bump quick-xml to >=0.41, then drop these two lines.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]
 
 [licenses]
 version = 2

@@ -35,7 +35,7 @@ grep -q "Status:\*\* Accepted" docs/adr/0005-format-v1-freeze.md \
 ok "ADR-0005 format v1 freeze accepted"
 
 # TA-03: constraint index present and reports 60 PASS
-grep -q "60" docs/CONSTRAINT_INDEX.md || fail "CONSTRAINT_INDEX.md missing 60-constraint reference"
+grep -q "66 constraints" docs/CONSTRAINT_INDEX.md || fail "CONSTRAINT_INDEX.md missing 66-constraint reference"
 grep -q "PASS" docs/CONSTRAINT_INDEX.md || fail "CONSTRAINT_INDEX.md missing PASS evidence"
 ok "CONSTRAINT_INDEX.md present"
 
