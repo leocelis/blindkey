@@ -132,7 +132,7 @@ non-interactive). No other free local manager detects whole-file rollback.
 ### UC-8 · Recover from a sync conflict
 **Persona:** P2 · **Constraints:** C21, C16, SC3
 
-Two machines wrote the vault concurrently. `vault merge OLD.vlt NEW.vlt` performs a manual,
+Two machines wrote the vault concurrently. `blindkey merge OLD.vlt NEW.vlt` performs a manual,
 unlocked merge. (Per-entry mergeable encryption is deliberately prohibited — deterministic
 per-entry encryption enables leakage-abuse reconstruction; Grubbs et al. 2017.)
 

@@ -1,4 +1,4 @@
-//! `vault tune` — benchmark Argon2id on this machine and recommend parameters (constraint C22).
+//! `blindkey tune` — benchmark Argon2id on this machine and recommend parameters (constraint C22).
 //!
 //! The interactive-unlock budget is ~300 ms (C22): fast enough that users don't lower the cost or
 //! abandon the tool, slow enough to be expensive to crack. We hold `t` at the default and `p` at the

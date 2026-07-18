@@ -60,7 +60,7 @@ pub enum KdfStrength {
     Recommended,
     /// Above the OWASP floor but below recommended — open with a mild note.
     BelowRecommended,
-    /// Below the OWASP floor — open is allowed but MUST warn and offer `vault upgrade-kdf` (C2).
+    /// Below the OWASP floor — open is allowed but MUST warn and offer `blindkey upgrade-kdf` (C2).
     BelowFloor,
 }
 

@@ -32,6 +32,6 @@ human high-assurance path.
 
 ## References
 
-- `vault_core::totp` (RFC 6238)
+- `blindkey_core::totp` (RFC 6238)
 - UC-04 C27 (clipboard default for passwords, not for GUI TOTP)
 - gap B2 / C33 clipboard history

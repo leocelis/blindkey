@@ -1,4 +1,4 @@
-# UC-16 — An AI Agent Uses the Blindkey Without Ever Seeing a Secret
+# UC-16 — An AI Agent Uses Blindkey Without Ever Seeing a Secret
 
 > **Status: DESIGN EXPLORATION — post-v1, non-binding.**
 > Nothing in this document is committed for v1. v1 ships **no** agent interface

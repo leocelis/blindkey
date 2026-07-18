@@ -155,7 +155,7 @@ If `check()` returns `Regressed { expected, got }`:
 - **`.gitattributes`:** ship and document `*.vlt binary` (equivalent to `-diff -merge -text`).
   Without it, Git may attempt textual diff/merge on the blob; a textual "merge" of two `.vlt`
   files produces garbage that fails C9/C10 verification loudly (good) after wasting the user's
-  time (bad). With `-merge`, conflicting versions are left intact for `vault merge` (UC-08).
+  time (bad). With `-merge`, conflicting versions are left intact for `blindkey merge` (UC-08).
 - **Diff noise:** every save rewrites the header (`master_seed` and `nonce_prefix` both rotate per body-writing save, C8/C1) and the
   body; commits are whole-blob binary changes. Delta compression across versions is poor by
   design — accept repository growth, recommend a dedicated repo and occasional `git gc`.
@@ -170,7 +170,7 @@ If `check()` returns `Regressed { expected, got }`:
 
 | Option | Pros | Cons | Verdict |
 |---|---|---|---|
-| One anchor file per `vault_id` (proposed) | No cross-blindkey lock contention; corruption blast radius = one vault; trivial parser; matches `anchor_path()` scaffold | Directory of small files | **Adopt** |
+| One anchor file per `vault_id` (proposed) | No cross-vault lock contention; corruption blast radius = one vault; trivial parser; matches `anchor_path()` scaffold | Directory of small files | **Adopt** |
 | Single map file `vault_id → last_seen` | One file | One corrupt write kills all anchors; needs serialization format + whole-file lock; contradicts the scaffold | Reject |
 | Anchor with magic/version/CRC framing | Self-describing | C16 says "a plain u64"; intent wins; framing adds parse failure modes to an alarm wire | Reject (note for v2 intent revision) |
 | Anchor in OS keychain | Harder for same-uid malware to edit | Platform-divergent, breaks headless/CI, adds prompt friction on every open | Reject for v1; TPM NV is the stronger upgrade anyway |

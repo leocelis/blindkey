@@ -1,4 +1,4 @@
-# UC-18 — Use the Blindkey Through a Fast, Native UI
+# UC-18 — Use Blindkey Through a Fast, Native UI
 
 > **Tech spec** · Implemented · June 2026 · **Status:** ✅ `blindkey-tui` + `blindkey-gui` shipped (pre-1.0 beta); SwiftUI/uniffi shell post-v1 (S-18)
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-18 · **Constraints:** C20, C11, C12, C25, C27, C5, C23; candidate C-presentation

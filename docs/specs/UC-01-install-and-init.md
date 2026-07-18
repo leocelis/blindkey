@@ -1,4 +1,4 @@
-# UC-01 — Install and Create a Blindkey
+# UC-01 — Install and Create a Vault
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-1 · **Constraints:** C20, C2, C4, C5, C7, C8 (touches C9, C16, C26)

@@ -1,4 +1,4 @@
-# Security Coverage Gaps — Areas the Blindkey Should Cover (and Currently Doesn't)
+# Security Coverage Gaps — Areas Blindkey Should Cover (and Currently Doesn't)
 
 > **Historical research (June 2026).** This document audited the intent at **27 constraints**
 > (later **34**, now **60** in intent v1.7.0). The Promotion ledger and matrix table reflect

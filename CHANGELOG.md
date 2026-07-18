@@ -61,13 +61,22 @@ All notable changes to this project are documented here. The format is based on
   `research/agent_broker_research.md` (wrong `../` depth), `docs/specs/UC-19-omni-search.md` →
   `vault.rs:381` (not a resolvable path; now `vault.rs#L381`), `docs/guides/enterprise-deployment.md`
   → `docs/specs/UC-05-...md` (missing `../`).
-- `docs/CRATES_IO_TRUSTED_PUBLISHING.md` now documents the crates.io name collision blocking
-  publication (see Known limitations below) instead of implying `cargo install blindkey-cli` works.
+- **crates.io name collision resolved by the Vault → Blindkey rename** (see below): the old
+  names `vault`, `vault-cli`, and `vault-core` were taken by unrelated published crates, so
+  `cargo install vault-cli` (as the pre-rename docs promised) could never have worked. The
+  `blindkey-*` names are unclaimed. Publishing itself is still pending — see Known limitations.
+
+### Changed (rename)
+- **Project renamed Vault → Blindkey**, repositioned from "password manager for the AI era" to
+  "local-first credential broker for AI agents": all 8 crates, the CLI binary, `VAULT_*` env
+  vars, the default `~/.vault` data directory, `vault_intent.yaml`, and every user-facing CLI/TUI
+  runtime hint string. GitHub repo moved to
+  [github.com/leocelis/blindkey](https://github.com/leocelis/blindkey). Full rationale:
+  `limitless/docs/research/ventures/vault/VAULT_AGENT_SECURITY_PIVOT_DECISION_2026-07.md` (private).
 
 ### Known limitations (surfaced by audit, unresolved — need a maintainer decision)
-- **crates.io name collision:** `blindkey`, `blindkey-cli`, and `blindkey-core` are taken by unrelated
-  published crates. `cargo install blindkey-cli` (promised in README/SECURITY.md) cannot work under
-  the current names. Blocks publishing until the project is renamed.
+- **crates.io publish still pending.** Names are now free under `blindkey-*`, but nothing has
+  been published yet — needs a maintainer's `cargo login` token.
 - **No signed/notarized release artifacts.** The `v0.1.0-alpha.3` macOS binary is unsigned and
   un-notarized (`scripts/bundle-macos.sh` says so explicitly) — Gatekeeper will quarantine it on
   first run. No `v1.0.0` git tag or GitHub Release exists yet despite `Cargo.toml`/this
@@ -182,7 +191,7 @@ still change before `1.0.0`. Not independently audited.
 - **Fuzzy keyboard-first omni-search (UC-19, CLI + GUI).** Type a few characters — `gh`, `awsprod`,
   a typo like `githb` — and the right entry rises to the top instantly; Enter copies the password to
   the (auto-clearing, model-blind) clipboard. fzf-quality scoring via `nucleo-matcher` (offline,
-  Unicode-correct, returns highlight indices) behind a small swappable `vault_core::search`
+  Unicode-correct, returns highlight indices) behind a small swappable `blindkey_core::search`
   trait. **Searches metadata only — title, username, url, tags, never secret values (C35)** — so the
   matcher can't leak a secret it never sees; the GUI tints the matched characters. Usage history
   (**frecency**, zoxide tiers) nudges the entries you reach for to the top without overpowering match
@@ -191,7 +200,7 @@ still change before `1.0.0`. Not independently audited.
   with no debounce and stays well under 100 ms at 2000 entries (**C38**); selection delivers through
   the existing model-blind clipboard path (**C39**). New `blindkey find [QUERY]` (`--stdout` lists ranked
   titles, scriptable); GUI omni-bar with ⌘K/Ctrl-K focus and Ctrl-N/Ctrl-P navigation. New
-  `vault_core::search` + `vault_core::frecency`; `Blindkey::find` / `record_use`. New intent group **G12**
+  `blindkey_core::search` + `blindkey_core::frecency`; `Vault::find` / `record_use`. New intent group **G12**
   (constraints **C35–C39**). Built via the research→extract→spec→PRD→implement→validate cycle
   ([docs/specs/UC-19](docs/specs/UC-19-omni-search.md)). +18 tests (core 126, CLI 9).
 - Open-source project scaffolding: governance, security policy, CI/security automation,
@@ -246,7 +255,7 @@ still change before `1.0.0`. Not independently audited.
 - **Entry management — `blindkey add` / `edit` / `rm`.** Completes the daily-use manager: `add NAME`
   (interactive; **Enter at the password prompt generates a strong one**), `edit NAME` (per-field,
   Enter keeps the current value, optional password rotation), `rm NAME` (confirm on a TTY). The core
-  gains `Blindkey::entry_mut` and `Blindkey::remove`. You can now rotate a weak imported password in place.
+  gains `Vault::entry_mut` and `Vault::remove`. You can now rotate a weak imported password in place.
 - **CLI integration test + KDF-cost flags.** [`crates/blindkey-cli/tests/cli.rs`](crates/blindkey-cli/tests/cli.rs)
   drives the real binary end-to-end (init → import the sample → ls → get → wrong-password → rm → gen)
   and asserts the encrypted file leaks neither secrets nor titles (C18). `init` gains hidden
@@ -269,7 +278,7 @@ still change before `1.0.0`. Not independently audited.
   recommended floor now prints a warning suggesting an upgrade (centralized in a shared `open_vault`
   helper). `blindkey upgrade-kdf [--kdf-m-cost/-t-cost/-p-cost]` re-wraps the password stanza under
   stronger parameters and does a full body-writing save (version bump per G0.3); the data key and
-  salt are unchanged, so entries stay intact. Core gains `Blindkey::kdf_strength` and `Blindkey::change_kdf`.
+  salt are unchanged, so entries stay intact. Core gains `Vault::kdf_strength` and `Vault::change_kdf`.
 - **`blindkey-gui` — the desktop window app (UC-18 P2).** A pure-Rust **egui/eframe** GUI over
   `blindkey-core`: a create/unlock screen, **drag-and-drop (or pick) a `keys.txt`** with a masked
   review dialog before import, **type-to-search**, a detail pane that shows the password **shadowed**
@@ -307,14 +316,14 @@ still change before `1.0.0`. Not independently audited.
   shows a rollback warning banner and advances the anchor on open/save. New end-to-end guide
   [docs/guides/sync-to-untrusted-storage.md](docs/guides/sync-to-untrusted-storage.md). 6 new tests
   (core anchor unit tests + a CLI integration test covering regression→exit 2, `--allow-rollback`,
-  TOFU, and `--expect-min-version`). `Blindkey::vault_id()` added.
+  TOFU, and `--expect-min-version`). `Vault::vault_id()` added.
 - **Optional Padmé size-padding (UC-07 §3.2).** New [`pad`](crates/blindkey-core/src/pad.rs): a single
   encrypted blob still leaks its *length* (≈ entry count) to a backend; turning padding on rounds the
   plaintext payload up to a **Padmé** bucket (`⌊log₂log₂L⌋+1` significant length bits → `O(log log L)`
   leakage at `≤ ~12 %` overhead). Padding is appended **inside** the AEAD (after the `END` marker the
   parser already ignores), so it's encrypted, authenticated, and invisible. The policy is **sticky**
   (persisted in the inner header, default off) and toggled with **`blindkey pad on|off`** or the desktop
-  app's **"Pad size"** checkbox; `Blindkey::padding()`/`set_padding()` added. 6 new tests (Padmé bucket
+  app's **"Pad size"** checkbox; `Vault::padding()`/`set_padding()` added. 6 new tests (Padmé bucket
   math + bound, sticky round-trip, CLI toggle).
 - **`blindkey tune` (C22).** New [`crypto::tune`](crates/blindkey-core/src/crypto/tune.rs): benchmarks
   Argon2id on the current machine and recommends `m`/`t`/`p` targeting the ~300 ms interactive-unlock
@@ -360,7 +369,7 @@ still change before `1.0.0`. Not independently audited.
 - **Hostile-file robustness hardening (UC-10 / C30).** A malicious `.vlt` from an untrusted sync
   backend is the #1 untrusted-input path, so the guarantee that *parsing it can't be exploited* is
   now property-tested in the normal suite ([`tests/robustness.rs`](crates/blindkey-core/tests/robustness.rs)):
-  over thousands of random inputs, every public parser (`Header`/`Payload`/`stanza`/`Blindkey::open`)
+  over thousands of random inputs, every public parser (`Header`/`Payload`/`stanza`/`Vault::open`)
   is **panic-free on arbitrary bytes**, a real vault always **round-trips and leaks no plaintext**
   (C18), a wrong password always fails, and a **single-byte flip anywhere is always detected**
   (C9/C10/C1 — never decrypts to something else). Also extended the continuous fuzzer with a full
@@ -382,7 +391,7 @@ still change before `1.0.0`. Not independently audited.
   lost. Keep the keyfile on a **separate device** (USB stick) from the vault — co-locating them
   defeats the factor. Reuses the composite-stanza machinery, so it is **fully unit- and
   integration-tested without any hardware** (the gap the YubiKey path leaves for CI). New
-  `Blindkey::open_keyfile` / `enroll_keyfile_2fa` / `requires_keyfile`; `--keyfile` global CLI flag.
+  `Vault::open_keyfile` / `enroll_keyfile_2fa` / `requires_keyfile`; `--keyfile` global CLI flag.
 - **YubiKey 2FA — hardware second factor (UC-09, CLI).** `blindkey enroll yubikey` turns the master
   password into a **required-both** second factor: the data key is re-wrapped under
   `HKDF(Argon2id(password) ‖ YubiKey-HMAC-SHA1-response)` in a composite `PW_YUBIKEY` stanza, so the
@@ -392,7 +401,7 @@ still change before `1.0.0`. Not independently audited.
   `ykman` and computes responses — no manual setup), driven as a subprocess like the clipboard tools
   (so no FFI, no `unsafe`, no new build deps; needs `ykman` at runtime only when you opt in). A fixed
   per-enrollment challenge means you tap on **unlock only**, not on every save. Works on older
-  YubiKeys (4/NEO) that lack FIDO2. New `blindkey-hardware::yubikey`, `Blindkey::open_2fa` /
+  YubiKeys (4/NEO) that lack FIDO2. New `blindkey-hardware::yubikey`, `Vault::open_2fa` /
   `enroll_yubikey_2fa` / `requires_yubikey`, `Error::Hardware`. Fully unit-tested with a mock key
   response (the physical tap is verified manually). *(Desktop-app enrollment + the UC-09 AND-model
   intent amendment land next.)*

@@ -252,7 +252,7 @@ fn unique_dir(tag: &str) -> PathBuf {
     p
 }
 
-/// 2FA: `vault otp <name>` wires up and reports a missing secret clearly. (Code generation itself
+/// 2FA: `blindkey otp <name>` wires up and reports a missing secret clearly. (Code generation itself
 /// is proven by the RFC 6238 vectors in `blindkey-core::totp`.)
 #[test]
 fn cli_otp_requires_a_2fa_secret() {
@@ -295,7 +295,7 @@ fn cli_otp_requires_a_2fa_secret() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
-/// UC-19 fuzzy omni-search: `vault find QUERY --stdout` ranks by fuzzy match over metadata (typo-
+/// UC-19 fuzzy omni-search: `blindkey find QUERY --stdout` ranks by fuzzy match over metadata (typo-
 /// tolerant), lists titles only (never a secret), and never echoes the query on a miss (C37). The
 /// clipboard copy path is exercised at the unit level (no clipboard in CI).
 #[test]
@@ -409,7 +409,7 @@ fn cli_import_non_tty_requires_yes() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
-/// C35: `vault find` never matches secret values or notes — metadata only.
+/// C35: `blindkey find` never matches secret values or notes — metadata only.
 #[test]
 fn cli_find_does_not_search_secrets_or_notes() {
     let home = unique_dir("find-c35-home");
@@ -466,7 +466,7 @@ fn cli_find_does_not_search_secrets_or_notes() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
-/// Pre-1.0 safety: `vault init` writes an initial `.bak` and prints the audit notice.
+/// Pre-1.0 safety: `blindkey init` writes an initial `.bak` and prints the audit notice.
 #[test]
 fn cli_init_writes_initial_backup_and_notice() {
     let home = unique_dir("init-bak-home");
@@ -502,7 +502,7 @@ fn cli_init_writes_initial_backup_and_notice() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
-/// Root-of-trust hardening: `vault init` warns on a weak master password; `--allow-weak-password`
+/// Root-of-trust hardening: `blindkey init` warns on a weak master password; `--allow-weak-password`
 /// silences it. (Non-interactive init proceeds either way — the prompt is TTY-only.)
 #[test]
 fn cli_init_warns_on_weak_master_password() {
@@ -544,7 +544,7 @@ fn cli_init_warns_on_weak_master_password() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
-/// C26 diceware: `vault gen --words N` emits an N-word passphrase from the built-in list.
+/// C26 diceware: `blindkey gen --words N` emits an N-word passphrase from the built-in list.
 #[test]
 fn cli_gen_passphrase() {
     let (ok, out, err) = run(&["gen", "--words", "6"], "");
@@ -555,7 +555,7 @@ fn cli_gen_passphrase() {
     assert!(err.contains("bits of entropy"), "stderr: {err}");
 }
 
-/// C22: `vault tune` benchmarks Argon2id and prints a recommended m/t/p with the measured time.
+/// C22: `blindkey tune` benchmarks Argon2id and prints a recommended m/t/p with the measured time.
 #[test]
 fn cli_tune_recommends_params() {
     let (ok, out, err) = run(&["tune"], "");
@@ -571,7 +571,7 @@ fn cli_tune_recommends_params() {
     );
 }
 
-/// UC-07 §3.2: `vault pad on` enables Padmé size-padding and the vault still opens.
+/// UC-07 §3.2: `blindkey pad on` enables Padmé size-padding and the vault still opens.
 #[test]
 fn cli_padding_toggle() {
     let home = unique_dir("pad-home");
@@ -982,7 +982,7 @@ fn c13_hold_clipboard_zero_exits_immediately() {
     let _ = std::fs::remove_dir_all(&home);
 }
 
-/// C15: `vault re-enroll-tpm --help` documents PCR brittleness (constraint C15 documentation test).
+/// C15: `blindkey re-enroll-tpm --help` documents PCR brittleness (constraint C15 documentation test).
 #[test]
 fn c15_re_enroll_tpm_help_documents_pcr() {
     let out = Command::new(env!("CARGO_BIN_EXE_blindkey"))
@@ -997,7 +997,7 @@ fn c15_re_enroll_tpm_help_documents_pcr() {
     assert!(help.contains("re-enroll"), "help: {help}");
 }
 
-/// C21: `vault stanzas list` shows enrolled types (password always present after init).
+/// C21: `blindkey stanzas list` shows enrolled types (password always present after init).
 #[test]
 fn c21_stanzas_list_after_init() {
     let home = unique_dir("c21-home");

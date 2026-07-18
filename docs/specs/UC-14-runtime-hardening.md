@@ -129,7 +129,7 @@ verification (C1) need nothing from us. The comparisons **we** author, exhaustiv
 |---|---|---|
 | `header_hmac` (C9 step 3) | header verify | `hmac::Mac::verify_slice` (subtle-backed) — never `==` on the tag |
 | Per-block HMAC (C10) | body block reader | same `verify_slice` discipline |
-| Data-key equality in `vault merge` (UC-08 §3.5) | merge | `subtle::ConstantTimeEq` on the two unwrapped keys |
+| Data-key equality in `blindkey merge` (UC-08 §3.5) | merge | `subtle::ConstantTimeEq` on the two unwrapped keys |
 | Protected-field equality in merge diffs (UC-08 §3.4) | merge | `ct_eq` (scaffolded wrapper over `ConstantTimeEq`) |
 | `header_hash` (C9 step 1) | header verify | plain compare **permitted**: SHA-256 over public header bytes, both operands attacker-known — documented exception, not an oversight |
 | Passwords | — | **No password comparison exists by design**: verification is KDF → keyed HMAC (C9), never string equality |

@@ -1,4 +1,4 @@
-# Vault developer task runner — https://github.com/casey/just
+# Blindkey developer task runner — https://github.com/casey/just
 # `just` with no args lists tasks. Each task is the pre-PR / release gate (no GitHub Actions).
 
 # List available tasks.

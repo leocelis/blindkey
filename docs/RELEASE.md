@@ -19,7 +19,7 @@ tier on public repos; the local gate still wins before every release.
 ./scripts/reproducible-build.sh
 
 # SHA-256 checksums for upload
-shasum -a 256 target/release/vault > SHA256SUMS.txt
+shasum -a 256 target/release/blindkey > SHA256SUMS.txt
 
 # Optional: macOS app bundle
 ./scripts/bundle-macos.sh
@@ -29,7 +29,7 @@ git tag -s v0.1.0 -m "v0.1.0"
 git push origin v0.1.0
 
 # GitHub Release (upload binaries + SHA256SUMS manually)
-gh release create v0.1.0 target/release/vault SHA256SUMS.txt --notes-file CHANGELOG.md
+gh release create v0.1.0 target/release/blindkey SHA256SUMS.txt --notes-file CHANGELOG.md
 
 # crates.io (manual; see CRATES_IO_TRUSTED_PUBLISHING.md)
 ./scripts/publish-crates.sh   # or cargo publish -p … in dependency order

@@ -1,4 +1,4 @@
-//! UC-23 CLI integration: `vault seal` / `open` / `peek`.
+//! UC-23 CLI integration: `blindkey seal` / `open` / `peek`.
 
 use std::fs;
 use std::io::Write;

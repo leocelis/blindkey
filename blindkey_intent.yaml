@@ -1843,7 +1843,7 @@ constraints:
         note: "§3.6 frame workflow"
     test: |
       REVIEW: `blindkey-gui` has `#![forbid(unsafe_code)]` and no direct imports of
-        `chacha20poly1305`, `argon2`, or `vault_core::format` crypto modules.
+        `chacha20poly1305`, `argon2`, or `blindkey_core::format` crypto modules.
         `vault.save()` and `clip::copy` are not called inside `ui.add` closures.
 
   # ── G14: Desktop GUI gaps closure (UC-21) ─────────────────────────────────

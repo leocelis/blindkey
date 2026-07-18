@@ -7,7 +7,7 @@
 ## 1. Scope & goals
 
 Two machines wrote the same vault concurrently; the sync backend now holds two valid, divergent
-`.vlt` files (or the user has `vault.vlt` and `vault.sync-conflict-….vlt`). `vault merge OLD.vlt
+`.vlt` files (or the user has `vault.vlt` and `vault.sync-conflict-….vlt`). `blindkey merge OLD.vlt
 NEW.vlt` (C21) produces one merged vault, entry by entry, without ever printing a secret value.
 
 This spec covers: conflict detection, the merge algorithm and UX (masked diffs), the entry
@@ -59,11 +59,11 @@ and either:
 | D1 | `vault_version(A) ≠ vault_version(B)`, and neither file's entry set is a superset of the other | Divergent histories (both machines saved past the common ancestor) |
 | D2 | `vault_version(A) == vault_version(B)` but header bytes differ (different `master_seed`/HMAC) | Split brain: same counter, different writes |
 
-`vault merge` does not need to prove divergence to run — it is safe on any two same-`vault_id`
+`blindkey merge` does not need to prove divergence to run — it is safe on any two same-`vault_id`
 files (merging a strict ancestor is a no-op union). Different `vault_id`s → hard error
 "these are different vaults" (no flag to override in v1; import is the tool for that).
 
-**Rollback-anchor interaction (C16):** `vault merge` reads both inputs *bypassing* the
+**Rollback-anchor interaction (C16):** `blindkey merge` reads both inputs *bypassing* the
 regression abort (one input is old by definition) and **never advances the anchor from an
 input**. The anchor advances only when the merged output is written, whose version (§3.5) is
 `max(old, new) + 1 ≥ last_seen` — so the merge never manufactures a rollback warning.
@@ -71,7 +71,7 @@ input**. The anchor advances only when the merged output is written, whose versi
 ### 3.2 CLI behavior
 
 ```
-vault merge OLD.vlt NEW.vlt [--output PATH] [--prefer newest|left|right] [--dry-run]
+blindkey merge OLD.vlt NEW.vlt [--output PATH] [--prefer newest|left|right] [--dry-run]
 ```
 
 1. Parse + verify both headers (C9 order: hash → KDF → HMAC). Check same `vault_id`.
@@ -190,7 +190,7 @@ The merged vault is a **new** save of the active vault lineage:
 
 | Constraint | How this design satisfies it |
 |---|---|
-| C21 (merge) | Implements `vault merge OLD.vlt NEW.vlt` exactly; both inputs require valid unlock; confirmation semantics via interactive prompts |
+| C21 (merge) | Implements `blindkey merge OLD.vlt NEW.vlt` exactly; both inputs require valid unlock; confirmation semantics via interactive prompts |
 | C16 | Output version = max+1 keeps the counter monotonic past both heads; inputs bypass the regression *abort* but never move the anchor; anchor advances only on the authenticated merged write |
 | SC3 | Merge stays whole-blob and offline; no per-entry files, no deterministic encryption, no CRDT — the prohibited approaches are documented with the Grubbs et al. grounding in §3.6 |
 | C5/C8/C9/C10 (by construction) | Output is a normal save: password stanza enforced, fresh master_seed, re-HMAC'd header and blocks |
@@ -227,4 +227,4 @@ The merged vault is a **new** save of the active vault lineage:
 4. **`--prefer` naming** — `left`/`right` vs `old`/`new`: positional names invite the user to
    believe OLD/NEW ordering matters beyond labels. Does it? (This spec: labels only.)
 5. **Same-version split brain (D2)** — should `blindkey open` itself detect a sibling
-   `.sync-conflict` file (Syncthing naming convention) and suggest `vault merge` proactively?
+   `.sync-conflict` file (Syncthing naming convention) and suggest `blindkey merge` proactively?

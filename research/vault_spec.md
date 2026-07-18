@@ -1,4 +1,4 @@
-# Open-Source Local-First Credential Blindkey — Security Research Spec
+# Open-Source Local-First Credential Vault — Security Research Spec
 
 > **Status:** Multiple rounds of deep research complete, with adversarial multi-pass verification on all load-bearing claims.
 > All nine dimensions covered. All four previously-open questions answered.

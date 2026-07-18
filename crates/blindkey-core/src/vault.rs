@@ -940,7 +940,7 @@ impl Vault {
         Ok(())
     }
 
-    /// Enrolled unlock stanzas (types only — no secret material; C21 `vault stanzas list`).
+    /// Enrolled unlock stanzas (types only — no secret material; C21 `blindkey stanzas list`).
     pub fn stanzas(&self) -> &[crate::format::Stanza] {
         &self.header.stanzas
     }

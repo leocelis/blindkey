@@ -95,7 +95,7 @@ impl Payload {
     /// `inner_stream_key` — so the key is always available before any Protected field is decrypted,
     /// regardless of record order (constraint C19).
     ///
-    /// For vault open, prefer [`Self::parse_from_stream_ciphertext`] — it never materializes the
+    /// For blindkey open, prefer [`Self::parse_from_stream_ciphertext`] — it never materializes the
     /// full outer plaintext in one buffer .
     pub fn parse(bytes: &[u8]) -> Result<Payload> {
         let mut cur = Cursor::new(bytes);

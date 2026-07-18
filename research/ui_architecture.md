@@ -1,4 +1,4 @@
-# UI Architecture for a Local-First Credential Blindkey — Options, Security, Native Integration
+# UI Architecture for a Local-First Credential Vault — Options, Security, Native Integration
 
 > **Status:** Research (June 2026). Companion to [`vault_spec.md`](vault_spec.md). Informs PRD
 > UC-18 and [`docs/specs/UC-18-native-ui.md`](../docs/specs/UC-18-native-ui.md).

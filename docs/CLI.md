@@ -93,7 +93,7 @@ Spec: [UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md).
 | Command | Notes |
 |---------|-------|
 | `blindkey import --format txt\|json` | Structured importers (UC-12). |
-| `vault merge OLD NEW` | Conflict merge (UC-08). |
+| `blindkey merge OLD NEW` | Conflict merge (UC-08). |
 
 ## `blindkey find` — searchable fields (constraint C35)
 
