@@ -72,11 +72,11 @@ header + stanza envelope + STREAM body (constraints **C61–C66**). Padmé paddi
 | `blindkey open ARCHIVE.vltf [-C DIR]` | Extract all entries under `DIR` (default: cwd). Staging dir `.vltf-partial/` until complete. |
 | `blindkey open ARCHIVE.vltf --stdout` | Decrypt a **single** small file to stdout (stderr warning; 64 MiB cap — SC9). |
 | `blindkey peek ARCHIVE.vltf` | List inner paths and sizes only (no file bodies). |
-| `vault --vault FILE.vltf enroll keyfile\|yubikey\|fido2 …` | Add stanzas to a sealed container (header re-wrap only; inner archive unchanged). |
-| `vault --vault FILE.vltf enroll-tpm` / `re-enroll-tpm` | TPM OR stanza on `.vltf` (same PCR-7 policy as `.vlt`). |
-| `vault --vault FILE.vltf upgrade-kdf …` | Re-wrap password stanza at new Argon2id params (inner archive unchanged). |
-| `vault --vault FILE.vltf rotate-data-key` | Fresh data key + full inner re-encrypt (password/keyfile/YubiKey stanzas only; drop FIDO2/TPM first). |
-| `vault --vault FILE.vltf stanzas remove TYPE` | Remove a non-password stanza from `.vltf` (requires unlock). |
+| `blindkey --vault FILE.vltf enroll keyfile\|yubikey\|fido2 …` | Add stanzas to a sealed container (header re-wrap only; inner archive unchanged). |
+| `blindkey --vault FILE.vltf enroll-tpm` / `re-enroll-tpm` | TPM OR stanza on `.vltf` (same PCR-7 policy as `.vlt`). |
+| `blindkey --vault FILE.vltf upgrade-kdf …` | Re-wrap password stanza at new Argon2id params (inner archive unchanged). |
+| `blindkey --vault FILE.vltf rotate-data-key` | Fresh data key + full inner re-encrypt (password/keyfile/YubiKey stanzas only; drop FIDO2/TPM first). |
+| `blindkey --vault FILE.vltf stanzas remove TYPE` | Remove a non-password stanza from `.vltf` (requires unlock). |
 
 **Unlock flags** (same as vault commands): `--password-stdin`, `--password-file PATH`,
 `--keyfile PATH`, `--recovery` — keyfile/YubiKey stanzas use the same UC-09 paths as `.vlt`.
@@ -124,8 +124,8 @@ YubiKey CR and keyfile 2FA ship; FIDO2/TPM/Secure Enclave are deferred (mocks on
 **required-both** factor: the data key is re-wrapped under
 `HKDF(Argon2id(password) ‖ factor)`, so the password **alone no longer unlocks**.
 
-- Keyfile unlock: `vault --keyfile <PATH> <cmd>` — keep the keyfile on a **separate device**.
-- **Anti-lockout:** enrollment prints a one-time **recovery code**; `vault --recovery <cmd>` if
+- Keyfile unlock: `blindkey --keyfile <PATH> <cmd>` — keep the keyfile on a **separate device**.
+- **Anti-lockout:** enrollment prints a one-time **recovery code**; `blindkey --recovery <cmd>` if
   the factor is lost.
 - Only one second factor enrolled at a time.
 

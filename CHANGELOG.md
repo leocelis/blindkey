@@ -69,10 +69,11 @@ All notable changes to this project are documented here. The format is based on
 ### Changed (rename)
 - **Project renamed Vault → Blindkey**, repositioned from "password manager for the AI era" to
   "local-first credential broker for AI agents": all 8 crates, the CLI binary, `VAULT_*` env
-  vars, the default `~/.vault` data directory, `vault_intent.yaml`, and every user-facing CLI/TUI
-  runtime hint string. GitHub repo moved to
-  [github.com/leocelis/blindkey](https://github.com/leocelis/blindkey). Full rationale:
-  `internal/docs/research/ventures/vault/internal-decision.md` (private).
+  vars, the default `~/.vault` data directory, the constraint intent file, and every user-facing
+  CLI/TUI runtime hint string. GitHub repo moved to
+  [github.com/leocelis/blindkey](https://github.com/leocelis/blindkey). The old `vault`,
+  `vault-cli`, and `vault-core` crate names were already taken on crates.io by unrelated
+  projects, which is what prompted the rename.
 
 ### Known limitations (surfaced by audit, unresolved — need a maintainer decision)
 - **crates.io publish still pending.** Names are now free under `blindkey-*`, but nothing has
@@ -386,8 +387,8 @@ still change before `1.0.0`. Not independently audited.
   re-wrapped under `HKDF(Argon2id(password) ‖ SHA-256(keyfile))` in a composite `PW_KEYFILE` stanza,
   so the password **alone no longer unlocks** — the keyfile's bytes are needed too. Enrollment
   generates a fresh 32-byte random keyfile at `<PATH>` (mode `0600`) if the file doesn't exist, or
-  adopts an existing file's bytes; unlock with `vault --keyfile <PATH> <cmd>`. Same anti-lockout as
-  the hardware path: a one-time **recovery code** opens via `vault --recovery <cmd>` if the keyfile is
+  adopts an existing file's bytes; unlock with `blindkey --keyfile <PATH> <cmd>`. Same anti-lockout as
+  the hardware path: a one-time **recovery code** opens via `blindkey --recovery <cmd>` if the keyfile is
   lost. Keep the keyfile on a **separate device** (USB stick) from the vault — co-locating them
   defeats the factor. Reuses the composite-stanza machinery, so it is **fully unit- and
   integration-tested without any hardware** (the gap the YubiKey path leaves for CI). New
@@ -396,7 +397,7 @@ still change before `1.0.0`. Not independently audited.
   password into a **required-both** second factor: the data key is re-wrapped under
   `HKDF(Argon2id(password) ‖ YubiKey-HMAC-SHA1-response)` in a composite `PW_YUBIKEY` stanza, so the
   password **alone no longer unlocks** — the key must be tapped too. Anti-lockout: enrollment prints
-  a one-time high-entropy **recovery code** (a separate stanza); `vault --recovery <cmd>` unlocks
+  a one-time high-entropy **recovery code** (a separate stanza); `blindkey --recovery <cmd>` unlocks
   without the key if it's lost. The product owns enrollment (it programs the key's slot 2 via
   `ykman` and computes responses — no manual setup), driven as a subprocess like the clipboard tools
   (so no FFI, no `unsafe`, no new build deps; needs `ykman` at runtime only when you opt in). A fixed

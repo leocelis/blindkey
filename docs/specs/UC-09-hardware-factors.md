@@ -52,7 +52,7 @@ attestation.
 >   `wrapping_key = HKDF(ikm = Argon2id(password) ‖ YubiKey-HMAC-SHA1-response, salt = vault_id,
 >   info = "vault-2fa-wrap-v1")` — so **password alone no longer unlocks**.
 > - Anti-lockout is preserved by a separate **recovery-code** stanza (a high-entropy password-path
->   stanza), surfaced once at enrollment; `vault --recovery` unlocks without the key.
+>   stanza), surfaced once at enrollment; `blindkey --recovery` unlocks without the key.
 > - Mechanism is **HMAC-SHA1 challenge-response on slot 2 via `ykman`** (subprocess, no FFI) because
 >   YubiKey 4 / NEO lack FIDO2 `hmac-secret`. A **fixed per-enrollment challenge** (stored in the
 >   stanza) means the tap is required on **unlock only**, not per save.
@@ -82,7 +82,7 @@ blindkey enroll yubikey [--slot 2]
 blindkey enroll tpm  [--pcrs 7]                 # alias: blindkey enroll-tpm   (C21 name preserved)
 blindkey enroll keychain                        # macOS Secure Enclave
 blindkey enroll dpapi                           # Windows, current user scope
-vault re-enroll tpm                          # alias: blindkey re-enroll-tpm (C21/C15)
+blindkey re-enroll tpm                          # alias: blindkey re-enroll-tpm (C21/C15)
 blindkey stanzas list                           # types + enrollment dates, no secrets
 blindkey stanzas remove <type>[#index]          # password removable: NO (hard error, C5)
 ```
@@ -137,7 +137,7 @@ spurious re-enrollments than PCR 0/2/4 (systemd-cryptenroll convention, §2.1); 
 stricter sets. `extra = { pcr_bank: u8, pcr_mask: u32, sealed_blob_len: u16, sealed_blob }`.
 On PCR-mismatch unseal failure, emit verbatim (C15): `TPM stanza failed (PCR mismatch — firmware
 or kernel may have changed). Run 'blindkey re-enroll-tpm' or unlock with password.`
-`vault re-enroll tpm`: unlock via any *other* stanza → fresh `tpm_ikm`, re-seal to current PCRs,
+`blindkey re-enroll tpm`: unlock via any *other* stanza → fresh `tpm_ikm`, re-seal to current PCRs,
 replace stanza, save. `--help` text must contain "PCR", "firmware", "re-enroll" (C15 test).
 
 **macOS Secure Enclave (type 5 · `info="vault-mac-wrap-v1"`).** Enrollment: create a P-256 key

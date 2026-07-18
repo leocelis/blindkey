@@ -179,7 +179,7 @@ No network at any step (C23).
 | **`--format raw` + interactive review** | handles real messy files; imperfect parser is safe because human confirms; reuses UC-12 pipeline | needs a small TUI review loop | ✅ **chosen** |
 | Force users into UC-12 `--format txt` | no new code | rejects/mangles unstructured files — the actual user need; bad first impression | ❌ rejected |
 | Fully automatic import (no review) | one keystroke | silent mis-classification stores a label as a secret or vice-versa; unfixable post-hoc | ❌ rejected (offered only as explicit `--yes`) |
-| Dedicated `vault capture` command | discoverable verb | new command + arguably new constraint surface for no capability gain over `import --format raw` | ❌ rejected (note as alias in §7) |
+| Dedicated `blindkey capture` command | discoverable verb | new command + arguably new constraint surface for no capability gain over `import --format raw` | ❌ rejected (note as alias in §7) |
 | New top-level `secret`/freeform field on `Entry` | semantically clean | model bloat; `password`(Protected) + `custom_fields` already cover it; more C18/C19 surface | ❌ rejected — reuse `password`, add only the `kind` tag |
 | LLM-assisted parsing of the blob | "smart" splitting | sends secrets to a model — categorically prohibited (C27); the whole point is model-blind | ❌ **prohibited** |
 
@@ -222,7 +222,7 @@ No network at any step (C23).
 2. **Provider-prefix table & entropy thresholds (§3.3):** freeze an initial known-prefix set and
    per-alphabet cutoffs — source from a current public secret-scanning ruleset and pin it; revisit
    as a small data-only PR (a Lane B sidequest). False-positive/negative budget?
-3. **Command alias:** expose `vault capture <file>` as sugar for `import --format raw`, or keep the
+3. **Command alias:** expose `blindkey capture <file>` as sugar for `import --format raw`, or keep the
    single `import` surface? (Current: single surface.)
 4. **stdin secret hygiene:** when reading the blob from a pipe (`pbpaste | blindkey import --format raw -`),
    confirm the source never lands in shell history or a tmpfile; document the safe invocation.
