@@ -1,0 +1,2336 @@
+# blindkey_intent.yaml
+# Feature Intent Artifact — Intent-Verified Development (IVD) v1.5
+#
+# IVD is a constraint-first development methodology. This artifact encodes every
+# security requirement as a testable, falsifiable constraint before any code is written.
+# Reference: https://ivdframework.dev
+#
+# IVD rules applied in this artifact:
+#   Rule 1 — Intent Before Implementation: 66 constraints, HIGH density.
+#             Segmented implementation required (see implementation_notes).
+#   Rule 3 — Constraint Tests Are Mandatory: every constraint has a `test:` field.
+#   Rule 4 — Stress-Test Intent: constraint_satisfiability block documents all
+#             identified conflicts and their resolutions with explicit priority ordering.
+#   Rule 6 — Constraint Quality: all constraints are near-zero interpretive entropy
+#             (specific numbers, named algorithms, exact byte counts — no vague claims).
+#             distinctiveness block enforces homogenization check.
+#             constraint_satisfiability enforces satisfiability check.
+#
+# Post-implementation: apply IVD Rule 2 (re-read this file, diff each change against
+# each constraint, report PASS / FAIL / NEEDS_REVIEW before declaring work done).
+#
+# ─── Research basis ──────────────────────────────────────────────────────────────
+# Primary sources (cited inline throughout; all claims adversarially verified):
+#   RFC 9106  (Argon2id)                    · RFC 8439  (ChaCha20-Poly1305)
+#   RFC 8452  (AES-GCM-SIV)                 · NIST SP 800-38D  (AES-GCM)
+#   W3C WebAuthn Level 3 §10.1.4            · age spec  (C2SP/age.md)
+#   KeePass KDBX 4 format spec              · OWASP Password Storage Cheat Sheet
+#   KeePassXC Molotnikov security audit (2023)
+#   KeePassXC ANSSI/Synacktiv certification (2025)
+#   palant.info LastPass breach post-mortems (2022)
+#   Grubbs, Ristenpart et al. leakage-abuse attack papers (CCS 2015, IEEE S&P 2017)
+#   Apple Platform Security guide           · Microsoft MSDN: DPAPI, CNG
+#   libsodium docs                          · RustCrypto: zeroize, secrecy, subtle
+#   tpm2-tools docs                         · TCG TPM 2.0 Library Specification
+
+# ──────────────────────────────────────────────────────────────────────────────
+meta:
+  id: vault-intent-v1
+  artifact: blindkey_intent.yaml
+  ivd_version: "1.5"
+  intent_type: "feature"        # scope: single deliverable, not system-level
+  name: vault
+  tagline: "Zero-plaintext · local-first · open-source credential vault"
+  version: "1.8.0"   # 1.8.0: UC-23 sealed-file-storage FORWARD constraints (C61–C66, G16) — bind the post-1.0 feature before any code, Gate-0 style; vacuously satisfied until it ships. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
+  license: "MIT OR Apache-2.0"
+  language: rust
+  ifscale_density: high         # IVD Rule 1: 66 constraints → segmented implementation
+  constraint_count: 66
+  constraint_groups: 16
+  target_platforms:
+    - x86_64-unknown-linux-musl
+    - aarch64-apple-darwin
+    - x86_64-apple-darwin
+    - x86_64-pc-windows-msvc
+
+# ──────────────────────────────────────────────────────────────────────────────
+intent:
+  summary: |
+    An open-source, local-first credential vault with no cloud dependency, no
+    plaintext metadata, enforced Argon2id KDF with minimum-cost validation,
+    XChaCha20-Poly1305 STREAM encryption, age-style multi-stanza key envelope
+    (any-of-N stanzas unlock), Rust zeroize + mlock memory hardening, rollback
+    detection via local monotonic counter, and a one-command install. Designed to
+    be verifiably more secure than any existing free tool, and simpler to set up.
+
+  problem: |
+    1. Cloud managers (1Password, Bitwarden SaaS) require trusting a vendor's infrastructure.
+    2. LastPass (2022) stored website URLs in hex-encoded plaintext and had PBKDF2 iteration
+       counts as low as 1 for legacy accounts — never auto-migrated — making stolen vault
+       blobs crackable for $15/17h. (palant.info, Dec 2022)
+    3. `pass` leaks entry names, counts, and modification patterns in plaintext filesystem
+       and git history.
+    4. KeePassXC (Molotnikov audit, Jan 2023) does not encrypt in-memory secrets and
+       defaults to Argon2d; the auditor explicitly recommended Argon2id.
+    5. No existing free manager enforces a minimum KDF cost on open, or detects whole-file
+       rollback when syncing over untrusted storage.
+
+  non_goals:
+    - Hosted cloud sync service (untrusted-storage sync is supported; no hosted service)
+    - Browser extension (v1: CLI + TUI + desktop GUI)
+    - Team / organisational vaults (v1: single-user)
+    - "Native macOS SwiftUI shell (post-v1). Pure-Rust TUI (`blindkey-tui`) and desktop GUI (`blindkey-gui`)
+       shipped as pre-1.0 beta thin shells over blindkey-core — Signal libsignal / Mozilla UniFFI pattern;
+       see UC-18. They never reimplement crypto and are bound by C27's model-blind UI rule."
+    - Custom KDF or cipher implementation (all crypto from audited libraries)
+    - "LLM / AI agent inside the vault trust boundary (v1 ships none; any future agentic
+       interface is bound by C27's model-blind delivery rule)"
+
+# ──────────────────────────────────────────────────────────────────────────────
+distinctiveness:
+  # IVD Rule 6 — HOMOGENIZATION CHECK
+  # What makes this NOT the parametric average of "password manager"?
+  # Prohibitions are more effective than requirements for enforcing distinctiveness.
+  what_sets_this_apart: |
+    - Zero plaintext in any entry field including URLs, titles, and timestamps.
+      Every existing free manager leaks at least some metadata.
+    - Any-of-N stanzas OR model: password + hardware + OS keystore; any one unlocks.
+      Loss of a hardware factor never locks you out.
+    - KDF floor enforced on open: vault warns and offers upgrade if params are below
+      the OWASP minimum (m=19 MiB). No existing manager rejects below-floor KDF at open.
+    - Monotonic version counter with local anchor: sync backend cannot silently serve
+      an old vault version. No existing local manager implements this.
+    - Rust zeroize (volatile write + fence) — not memset. KeePassXC audit flagged
+      in-memory secrets as unresolved. We address it at the type-system level.
+    - Argon2id (not Argon2d) — the Molotnikov auditor's explicit recommendation for
+      KeePassXC applies equally here; we make it the non-negotiable default.
+    - AI-era threat model (2025–26): assumes the attacker has a frontier LLM in the loop
+      for offline cracking, mass-personalized phishing, and agentic exfiltration. CSPRNG-only
+      password generation (no human- or LLM-chosen secrets) and model-blind secret delivery
+      (the LLM never sees plaintext) are first-class constraints (C26, C27), not afterthoughts.
+      No existing free manager designs against prompt-injection-driven credential exfiltration.
+      See research/llm_offensive_threats.md for the grounding threat intelligence.
+
+  prohibitions:
+    - "Any plaintext field in any entry (URLs, titles, tags, timestamps)"
+    - "Deterministic per-entry encryption — leakage-abuse attacks (Grubbs et al. 2017)"
+    - "Server-supplied or externally-mutable KDF parameters"
+    - "Silent acceptance of below-floor KDF parameters on open"
+    - "memset() / memzero() for secret zeroization (dead-store elimination risk)"
+    - "Rolling any custom cryptographic primitive"
+    - "Any telemetry, analytics, update-check, or network call in normal operation"
+    - "Single-factor-only unlock model (loss of sole factor = permanent lockout)"
+    - "Per-entry plaintext files on the filesystem (pass-style directory trees)"
+    - "Returning plaintext secrets on any channel an LLM agent reads by default (e.g. stdout dump)"
+    - "Non-CSPRNG or LLM-generated passwords presented to the user as secure"
+    - "Any LLM/AI agent inside the vault trust boundary that can read decrypted secrets (v1)"
+
+# ──────────────────────────────────────────────────────────────────────────────
+constraint_groups:
+  G1: "Cryptographic primitives — cipher, KDF, libraries"
+  G2: "Key hierarchy and envelope"
+  G3: "File format and integrity"
+  G4: "Memory and runtime hardening"
+  G5: "Hardware and multi-factor unlock"
+  G6: "Rollback and sync safety"
+  G7: "Completeness of encryption"
+  G8: "Usability and install"
+  G9: "Open source and auditability"
+  G10: "AI-era threat resistance — CSPRNG credential generation and model-blind secret handling"
+  G11: "Untrusted input and output robustness — hostile files, terminal output, exports"
+  G12: "Search and discovery — fuzzy omni-search over non-secret metadata (UC-19)"
+  G13: "Desktop GUI shell — performance and presentation hardening (UC-20)"
+  G14: "Desktop GUI session hygiene and 2FA parity (UC-21)"
+  G15: "Fleet deployment and release quality gate (UC-22)"
+  G16: "Sealed file containers — encrypted file/folder storage for untrusted clouds (UC-23, post-1.0 forward constraints)"
+
+# ──────────────────────────────────────────────────────────────────────────────
+constraints:
+
+  # ── G1: Cryptographic primitives ─────────────────────────────────────────
+
+  - id: C1
+    group: G1
+    title: "XChaCha20-Poly1305 STREAM payload encryption"
+    description: |
+      The vault payload MUST be encrypted with XChaCha20-Poly1305.
+      The payload MUST be split into 64 KiB chunks. Each chunk MUST be independently
+      AEAD-sealed. Each chunk's authentication tag MUST be verified before ANY plaintext
+      bytes are released to the caller. Per-chunk nonce: 11-byte big-endian counter ||
+      1-byte final-chunk marker (0x01 for last chunk, 0x00 for all preceding).
+      Payload key: HKDF-SHA-256(ikm=data_key, salt=nonce_prefix, info=b"vault-payload-v1"),
+      where nonce_prefix is a 16-byte CSPRNG field in the plaintext header (C8), regenerated
+      on EVERY save that writes the encrypted body.
+      It MUST NOT be reused across body-writing saves: the data key is constant for a vault's
+      lifetime (C4) and chunk nonces are deterministic counters restarting at 0 per encryption,
+      so a repeated (data_key, nonce_prefix) pair repeats the XChaCha20 keystream across saves.
+      nonce_prefix MUST NOT be regenerated by header-only rewrites (e.g. password rotation
+      re-wraps a stanza without re-encrypting the body — C4); regenerating without a matching
+      body rewrite would orphan the stored ciphertext.
+      This matches the age spec's construction (random per-encryption 16-byte nonce as the HKDF
+      salt); the previous empty-salt deviation is withdrawn (see rationale).
+      The terms `data_key` (this spec) and `file_key` (age spec) refer to the same concept.
+      Implementation MUST use one of: libsodium crypto_secretstream_xchacha20poly1305,
+      or the chacha20poly1305 RustCrypto crate in STREAM mode.
+    rationale: |
+      libsodium: "if interoperability with other libraries is not a concern, this is
+      the recommended AEAD construction." 192-bit nonce is safe for random generation
+      at scale. STREAM chunking: each segment is location-bound — cannot be reordered,
+      truncated, or spliced without tag failure (Tink STREAM property, verified 3-0).
+      AES-256-GCM rejected: catastrophic nonce-reuse failure (Joux forbidden attack,
+      NIST SP 800-38D §8.2: "vulnerable to forgery attacks" on IV repeat).
+      Empty-salt deviation withdrawn: the previous rationale ("data_key unique per vault,
+      never reused") covered cross-vault key uniqueness but missed cross-save reuse within
+      the same vault. C4 deliberately never rotates the data key (password rotation re-wraps
+      the stanza, O(1)); successive saves therefore encrypted different plaintexts under
+      identical (data_key, nonce_prefix=b"", counter) sequences — XChaCha20 keystream reuse.
+      A history-keeping backend (Git, Dropbox — UC-7) could XOR corresponding chunks of
+      successive versions to recover plaintext differences; unchanged chunks were byte-identical
+      across versions (edit-locality oracle). master_seed rotation does not mitigate this —
+      it keys only the C10 block HMACs, not the payload cipher. The per-save nonce_prefix
+      restores age's defense at the cost of one HKDF call already on the open/save path.
+    sources:
+      - url: "https://libsodium.gitbook.io/doc/secret-key_cryptography/aead/chacha20-poly1305/xchacha20-poly1305_construction"
+      - url: "https://github.com/C2SP/C2SP/blob/main/age.md"
+        note: "STREAM construction, 64 KiB chunks, per-chunk nonce derivation"
+      - url: "https://csrc.nist.gov/pubs/sp/800/38/d/final"
+        note: "NIST SP 800-38D §8.2 — nonce-reuse failure mode"
+    test: |
+      UNIT: Encrypt a known plaintext across 3 chunks of sizes [65536, 65536, 1].
+        (a) Full decryption succeeds and output equals original plaintext.
+        (b) Swapping chunk 0 and chunk 1 in the file causes AEAD tag failure on chunk 0.
+        (c) Truncating the file before the final-chunk marker causes a read error.
+        (d) The API makes it architecturally impossible to receive any decrypted bytes
+            from a chunk before its tag is verified (documented in API contract or
+            enforced by type system).
+      UNIT (cross-save independence): Save the same vault twice with no entry changes. Assert
+        (a) the header nonce_prefix value differs between the two saves, and
+        (b) the raw ciphertext bytes of every 64 KiB chunk differ between save N and save N+1 —
+            no chunk is byte-identical to its counterpart. (This test targets body-writing saves;
+            a stanza-only rewrite is not expected to change the ciphertext — see SC6.)
+      UNIT (payload-key derivation): With a fixed data_key and fixed nonce_prefix, assert
+        payload_key == HKDF-SHA-256(ikm=data_key, salt=nonce_prefix, info=b"vault-payload-v1").
+        With the same data_key but a different nonce_prefix, assert the derived payload_key is
+        different.
+
+  - id: C2
+    group: G1
+    title: "Argon2id KDF with enforced minimum-cost floor and maximum ceiling"
+    description: |
+      Key derivation from the master password MUST use Argon2id (RFC 9106).
+      Default parameters: m_cost=65536 KiB (64 MiB), t_cost=3, p_cost=4.
+      Minimum floor (validated on every blindkey open):
+        m_cost >= 19456 KiB (19 MiB), t_cost >= 2, p_cost >= 1.
+      NOTE: OWASP also lists m=46 MiB / t=1 / p=1 as an equivalent configuration.
+      This intent deliberately requires t_cost >= 2 even when m is higher, preferring
+      more CPU work over relaxing time cost. Vaults with t=1 (any memory) are rejected.
+      This is stricter than OWASP's minimum and is documented as an intentional choice.
+      Maximum ceiling (validated on every blindkey open, BEFORE any KDF allocation):
+        m_cost <= 4194304 KiB (4 GiB), t_cost <= 24, p_cost <= 16.
+      The KiB-to-bytes conversion MUST use checked arithmetic; any overflow is a
+      rejection. Ceiling validation runs after the header_hash check (C9 step 1) and
+      before ANY Argon2id computation or memory allocation. On an above-ceiling or
+      overflowing value the vault MUST abort with the error
+        "KDF parameters exceed safe limits — possible hostile or corrupt file"
+      with no upgrade prompt (unlike below-floor params, above-ceiling params are
+      never legitimate). Note the ordering is deliberate: the keyed header HMAC (C9)
+      cannot be verified until a stanza has been unwrapped — which on the password
+      path requires the KDF to run — so a hostile file's allocation bomb must be
+      rejected by this bounds check, not by the HMAC.
+      UNICODE: the master password MUST be normalized to Unicode NFC before being
+      passed to Argon2id, identically on every platform. (NFC, not NFKC — NFC fixes
+      the macOS-NFD vs Linux-NFC encoding mismatch that makes the same typed password
+      fail across platforms, without collapsing visually-distinct strings.)
+      Salt: 32 bytes from OsRng, stored in the plaintext header, unique per vault.
+      Output: 32 bytes. This output is the IKM (input keying material) passed to the
+      HKDF step in C5 — it is NOT used directly as the wrapping key. The final
+      wrapping_key = HKDF-SHA-256(ikm=argon2id_output, salt=vault_id, info="vault-pw-wrap-v1").
+      If stored params are BELOW the floor on **open**, the vault MUST:
+        (a) Print a prominent WARNING to stderr.
+        (b) Offer the user an upgrade prompt before unlocking.
+        (c) NOT silently proceed without warning.
+      On **creation** (`blindkey init` / `Vault::create`) and **KDF upgrade targets**
+      (`blindkey upgrade-kdf` / `change_kdf`), parameters below the floor MUST be rejected
+      with [`Error::KdfBelowFloor`]. `blindkey init` MAY accept `--allow-weak-kdf` for
+      scripted/tests only. Import opens an existing vault and follows the open policy.
+      The vault MUST provide `blindkey upgrade-kdf` to re-derive with current recommended params.
+      `blindkey upgrade-kdf` MUST be a FULL body-writing save (Gate 0 G0.3): it MUST
+      increment vault_version (C16), regenerate master_seed and nonce_prefix (C8, C1),
+      and rewrite the encrypted body. A header-only KDF upgrade would not bump the
+      version counter, letting a sync backend serve the older weak-KDF file undetected
+      by rollback detection — the exact blind spot this rule closes.
+    rationale: |
+      RFC 9106: "Argon2id MUST be supported." Memory-hard — GPU/ASIC parallelism
+      provides no advantage at 64 MiB per attempt (each cracking attempt needs 64 MiB RAM).
+      OWASP absolute floor: m=19 MiB, t=2, p=1.
+      LastPass lesson (palant.info 2022): 1-iteration PBKDF2 crackable in 17h for $15.
+      Accounts with 5,000 iterations: ~$75K to crack; with 100,100: ~$1.5M.
+      Molotnikov audit: recommended Argon2id over KeePassXC's Argon2d default.
+      Ceiling precedent: the Argon2 KDF in libgcrypt/cryptsetup had a real fix for a
+      KiB-to-bytes integer overflow "allowing allocation of more than 4 GB" — a memory
+      bomb that detonates before any password check. The floor defends the low end
+      (downgrade); the ceiling defends the high end (hostile-file DoS).
+      NFC precedent: macOS keyboards/IMEs commonly emit NFD while Linux emits NFC for
+      the same typed string; without normalization the same password silently derives
+      a different key per platform.
+    sources:
+      - url: "https://www.rfc-editor.org/rfc/rfc9106.html"
+        note: "RFC 9106 §4 — Argon2id MUST be supported; parameter recommendations"
+      - url: "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
+        note: "OWASP absolute floor: m=19 MiB, t=2, p=1"
+      - url: "https://palant.info/2022/12/28/lastpass-breach-the-significance-of-these-password-iterations/"
+        note: "Cracking economics table for PBKDF2 iteration counts"
+      - url: "https://keepassxc.org/blog/2023-04-15-audit-report/"
+        note: "Molotnikov audit: recommended Argon2id over Argon2d"
+      - url: "https://www.mail-archive.com/gcrypt-devel@gnupg.org/msg00128.html"
+        note: "libgcrypt/cryptsetup Argon2 KiB-to-bytes integer-overflow fix (ceiling precedent)"
+    test: |
+      UNIT: Derive key with default params (m=64 MiB, t=3, p=4) on CI;
+        assert wall-clock time >= 200ms and <= 2000ms.
+      UNIT: Derive key with floor params (m=19 MiB, t=2, p=1); assert output is 32 bytes
+        and differs from default-params output for the same password.
+      INTEGRATION: Open a vault whose header specifies m=4096 KiB (4 MiB), t=1, p=1;
+        assert a WARNING is printed to stderr containing "below minimum recommended";
+        assert user is prompted before unlock proceeds.
+      INTEGRATION: Open a vault with m=19456 KiB, t=2, p=1 (exact floor); assert no warning.
+      INTEGRATION: Open a vault with m=19456 KiB, t=1, p=1 (t below floor); assert WARNING
+        (t_cost < 2 triggers floor failure regardless of memory).
+      UNIT (ceiling): Craft a header with m_cost=0xFFFFFFFF and a correctly recomputed
+        header_hash (header_hash is unkeyed, so an attacker can always fix it — that is
+        exactly why the ceiling must not rely on the HMAC). Assert open fails with
+        "KDF parameters exceed safe limits", that the failure occurs before any Argon2id
+        call, and that no allocation proportional to m_cost is attempted.
+      UNIT (ceiling): Header with m_cost=4194304 KiB, t_cost=24, p_cost=16 (exact
+        ceiling); assert no ceiling error (floor/HMAC checks proceed normally).
+      UNIT (ceiling): Header with t_cost=25; assert rejection with the same error.
+      UNIT (NFC): Derive keys from the same password encoded as NFC and as NFD
+        (e.g. "é" as U+00E9 vs U+0065 U+0301); assert identical derived keys.
+      INTEGRATION: Run `blindkey upgrade-kdf`; assert vault re-encrypts with default params
+        and old params are no longer present in the header.
+      INTEGRATION (G0.3): Run `blindkey upgrade-kdf`; assert vault_version incremented by 1,
+        master_seed and nonce_prefix both regenerated, and the body ciphertext differs
+        from the pre-upgrade file (full save, not a header-only rewrite).
+      INTEGRATION: `blindkey init` with m=8192,t=1,p=1 without `--allow-weak-kdf` MUST fail
+        with below-floor error; with `--allow-weak-kdf` MUST succeed.
+      INTEGRATION: `blindkey upgrade-kdf` targeting below-floor params MUST fail.
+
+  - id: C3
+    group: G1
+    title: "No custom cryptographic primitives — only audited libraries"
+    description: |
+      The vault MUST NOT implement any cryptographic algorithm from scratch.
+      All crypto operations MUST use one or more of:
+        - libsodium (via sodiumoxide or libsodium-sys Rust bindings)
+        - RustCrypto crates: chacha20poly1305, argon2, hkdf, hmac, sha2, aes-gcm-siv
+        - subtle crate (dalek-cryptography) — for constant-time comparisons (see C25)
+        - ring (for HMAC-SHA-256 if needed)
+      All cryptographic dependencies MUST be pinned in Cargo.lock.
+      CI MUST run `cargo audit` on every commit and fail on High/Critical advisories.
+    rationale: |
+      Rolling custom crypto is the most common cause of cryptographic vulnerabilities.
+      libsodium has a public audit (PIA 2017). RustCrypto crates are open-source and
+      widely reviewed. ring is used in Firefox and Chrome.
+    sources:
+      - url: "https://www.privateinternetaccess.com/blog/libsodium-v1-0-12-and-v1-0-13-security-assessment/"
+        note: "libsodium PIA security audit 2017"
+      - url: "https://github.com/RustCrypto"
+        note: "RustCrypto organisation — audited open-source Rust crypto"
+    test: |
+      STATIC: In non-wrapper modules, grep for raw cipher/primitive calls not going
+        through an approved library facade:
+        `grep -rn "ChaCha20\|Argon2\|HMAC\|SHA256\|AES" src/` outside of
+        `src/crypto/` and `src/primitives/` must return zero results.
+        Code-review gate: no `unsafe` block in crypto-adjacent modules may implement
+        bit manipulation that resembles a cipher (shift-mix patterns, S-boxes, etc.).
+      CI: `cargo audit` exits 0 with no High or Critical advisories.
+      CI: `cargo deny check licenses` passes with policy permitting only:
+        MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, Unicode-DFS-2016.
+
+  # ── G2: Key hierarchy and envelope ────────────────────────────────────────
+
+  - id: C4
+    group: G2
+    title: "Random per-vault data key — never reused, never stored plaintext"
+    description: |
+      On vault creation, generate a 256-bit (32-byte) data key using OsRng.
+      This key MUST be wrapped by at least one stanza before being written to disk.
+      It MUST NOT appear in plaintext anywhere in the vault file or on disk.
+      It MUST NOT be derived from or seeded by the master password.
+      Changing the master password MUST re-wrap the data key inside its stanza
+      without re-encrypting the payload (the data key itself does not change).
+    rationale: |
+      age spec: "file key MUST NOT be reused." Separating the data key from the
+      password allows password rotation to be O(1) (re-wrap one stanza), and allows
+      multiple independent unlock paths without any path deriving the other's key.
+    sources:
+      - url: "https://github.com/C2SP/C2SP/blob/main/age.md"
+        note: "age spec: file key, stanza wrapping model"
+    test: |
+      UNIT: Create two vaults with identical passwords; extract data keys via test-mode
+        decryption; assert the two data keys are different (CSPRNG).
+      UNIT: Change master password on an existing vault (re-wrap stanza);
+        assert the ENTIRE encrypted body — ciphertext AND block-HMAC fields — is
+        byte-for-byte identical before and after. (Possible because block-HMAC keys
+        derive from the data key, not the master_key (C10), and master_seed /
+        nonce_prefix do not rotate on header-only saves (C8, C1). Data key unchanged,
+        only the stanza wrapping changed — verify via test-mode extraction.)
+      UNIT: Inspect vault file bytes for the literal value of the data key
+        (from a test-only extraction); assert it does not appear in the file.
+
+  - id: C5
+    group: G2
+    title: "Multi-stanza OR envelope — password stanza always present"
+    description: |
+      The vault header MUST support N >= 1 independent stanzas, each wrapping the data key.
+      Any single valid stanza MUST be sufficient to unlock the vault (OR model).
+      Stanza wrapping recipe for all types:
+        wrapping_key = HKDF-SHA-256(ikm=<stanza-secret>, salt=vault_id, info=<stanza-type-label>)
+        wrapped_data_key = XChaCha20-Poly1305-Seal(wrapping_key, random_nonce, data_key)
+      Stanza types (info label is the HKDF info string — exact bytes matter for interop):
+        password  info="vault-pw-wrap-v1"   ikm=Argon2id(password, header_salt)       [REQUIRED]
+        fido2     info="vault-hw-wrap-v1"   ikm=CTAP2_hmac_secret_output              [optional]
+        yubikey   info="vault-yk-wrap-v1"   ikm=HMAC-SHA1_CR_response                 [optional]
+        tpm       info="vault-tpm-wrap-v1"  ikm=TPM_unseal(sealed_blob)               [optional]
+        keychain  info="vault-mac-wrap-v1"  ikm=SE_decrypt(ecies_blob)                [optional, macOS]
+        dpapi     info="vault-win-wrap-v1"  ikm=CryptUnprotectData(blob)              [optional, Windows]
+      The password stanza MUST always be present. Hardware/OS stanzas are additive.
+      On-disk stanza record layout (one per stanza, stanza_count records in sequence):
+        stanza_type:        u8       (1=password, 2=fido2, 3=yubikey, 4=tpm, 5=keychain, 6=dpapi)
+        stanza_data_len:    u32 LE   (byte count of stanza_data below, max 4096)
+        stanza_data:        [u8; stanza_data_len]
+          — stanza_data MUST contain:
+              wrap_nonce:   [u8; 24]   XChaCha20-Poly1305 nonce used to seal the data key
+              wrapped_key:  [u8; 48]   Poly1305-authenticated ciphertext of data_key
+                                       (32-byte data_key + 16-byte Poly1305 tag)
+              extra:        remaining bytes, stanza-type-specific (e.g., credential_id,
+                            relying_party_id, PCR policy blob, SE key reference)
+      Total wrapped_key size is always 48 bytes regardless of stanza type.
+
+      YubiKey CR stanza detail: the master_seed (from the header, updated each save) is
+      the HMAC-SHA1 challenge. The 20-byte YubiKey response MUST be hashed:
+        yk_ikm = SHA-256(yubikey_response_20_bytes)   → 32 bytes
+      then used as IKM into HKDF (info="vault-yk-wrap-v1"). Using SHA-256 rather than
+      zero-padding avoids a biased IKM and is consistent with the 32-byte IKM convention
+      for all other stanza types.
+      CHALLENGE STORAGE AND FRESHNESS (amended 2026-06-10, Gate 0 G0.7 — adopts the
+      UC-09 stored-challenge design): the YubiKey stanza's extra bytes hold
+        extra = { slot: u8 (1|2), challenge: [u8; 32] }
+      and unlock always challenges the device with extra.challenge (not the current
+      master_seed directly). On every BODY-WRITING save (master_seed rotates — C8):
+        - Device present: re-challenge with the new master_seed, re-wrap the data key
+          under the new response, set extra.challenge = master_seed. Anti-replay holds:
+          a recorded old response cannot unlock the new file.
+        - Device absent (default, graceful staleness): the save proceeds; the stanza
+          keeps its previous challenge and wrapping, and the vault MUST print:
+          "WARNING: yubikey stanza not refreshed (key absent); insert it and save to
+          restore challenge rotation." A stale stanza still unlocks (with the response
+          to the stored challenge); the replay window stays open only until the next
+          device-present save.
+        - Strict mode (config `yubikey_strict = true` or `--strict-yubikey`): the save
+          MUST abort with a clear error naming the device instead of writing a stale
+          stanza — the KeePassXC challenge-response behavior, for users who want the
+          unconditional anti-replay property over save availability.
+      Rationale for graceful-as-default: a save that cannot complete because a key is
+      in a drawer risks data loss, which outweighs a bounded replay window that is
+      loudly warned about and self-heals on the next device-present save. The
+      static-challenge KeeChallenge design (never rotates) remains rejected.
+      Limitation: YubiKey/OnlyKey specific; FIDO2 PRF stanza is device-agnostic.
+    rationale: |
+      Apple Platform Security: SE key "can only be used by that specific SE" — device-bound,
+      lost device = stanza gone. DPAPI: "usually must be done on the same computer" (MSDN).
+      Hardware factors MUST be additive, never sole. A user without a FIDO2 key must still
+      be able to use the vault.
+    sources:
+      - url: "https://github.com/C2SP/C2SP/blob/main/age.md"
+        note: "age multi-recipient stanza model"
+      - url: "https://support.apple.com/guide/security/secure-enclave-sec59b0b31ff/web"
+        note: "SE device-bound guarantee"
+      - url: "https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata"
+        note: "DPAPI machine-bound limitation"
+      - url: "https://keepassxc.org/docs/"
+        note: "KeePassXC challenge-response: device required at every save (seed-rotation precedent)"
+      - url: "https://support.keepassium.com/kb/yubikey-keechallenge/"
+        note: "Why the static-challenge (KeeChallenge) alternative is rejected"
+    test: |
+      INTEGRATION: Create vault with password + FIDO2 stanza. Remove FIDO2 authenticator.
+        Assert vault opens successfully with password alone.
+      INTEGRATION: Create vault with password + FIDO2 stanza. Authenticate with FIDO2 only.
+        Assert vault opens successfully without password.
+      UNIT: Corrupt stanza 2 in a 2-stanza vault; assert stanza 1 still unlocks.
+      UNIT: Attempt to create vault without a password stanza; assert hard error.
+      INTEGRATION (mocked YubiKey, device present): Body-writing save; assert
+        extra.challenge == new master_seed, and a response recorded against the OLD
+        challenge fails to unlock the new file (anti-replay).
+      INTEGRATION (mocked YubiKey, device absent, default): Body-writing save; assert
+        the save SUCCEEDS, a warning containing "not refreshed" is printed to stderr,
+        and the vault still unlocks via the stale stanza (response to the stored
+        challenge) and via the password.
+      INTEGRATION (mocked YubiKey, device absent, strict): With yubikey_strict=true,
+        attempt a body-writing save; assert it aborts with an error naming the YubiKey
+        and the vault file on disk is byte-for-byte unchanged.
+
+  - id: C6
+    group: G2
+    title: "FIDO2 PRF output through HKDF; raw CTAP2 path only"
+    description: |
+      FIDO2 stanza MUST use raw CTAP2 hmac-secret extension via libfido2.
+      It MUST NOT use the WebAuthn browser PRF path.
+      Salt passed to the authenticator: SHA-256(vault_id_bytes || b"fido2-hw-v1")  (32 bytes).
+      The raw 32-byte PRF output MUST NOT be used as a wrapping key directly.
+      It MUST be passed through HKDF as specified in C5 (info="vault-hw-wrap-v1",
+      salt=vault_id, ikm=prf_output).
+    rationale: |
+      Yubico developer guide: "treat the 32-byte PRF output as IKM, not a final key.
+      The definitive best practice is to use HKDF." Browser path applies
+      SHA-256("WebAuthn PRF" || 0x00 || salt) before the authenticator; raw CTAP2
+      does NOT — mixing paths produces different secrets from the same hardware.
+    sources:
+      - url: "https://developers.yubico.com/WebAuthn/Concepts/PRF_Extension/Developers_Guide_to_PRF.html"
+        note: "HKDF requirement for PRF output"
+      - url: "https://developers.yubico.com/WebAuthn/Concepts/PRF_Extension/CTAP2_HMAC_Secret_Deep_Dive.html"
+        note: "Browser vs native salt-transform difference"
+    test: |
+      UNIT: Mock PRF output = known 32 bytes; vault_id = known bytes.
+        Assert wrapping_key == HKDF-SHA-256(ikm=prf_output, salt=vault_id, info=b"vault-hw-wrap-v1").
+        Assert raw prf_output != wrapping_key.
+      UNIT: Assert salt_to_authenticator == SHA-256(vault_id || b"fido2-hw-v1").
+      INTEGRATION (libfido2 mock): Enroll stanza; reopen vault with same authenticator;
+        assert unlock succeeds.
+
+  # ── G3: File format and integrity ─────────────────────────────────────────
+
+  - id: C7
+    group: G3
+    title: "Versioned file format with magic bytes"
+    description: |
+      Every vault file MUST begin with:
+        bytes 0-3:  magic = [0x56, 0x4C, 0x54, 0x00]  ("VLT\0")
+        bytes 4-5:  format_version = u16 little-endian (current value: 1)
+      The vault MUST reject files with unrecognised magic with error "not a vault file".
+      The vault MUST reject files with format_version > supported with error
+      "vault was created by a newer version of this tool; please upgrade".
+      format_version MUST be incremented on any breaking change to the on-disk layout.
+    rationale: |
+      Versioned formats enable future migrations without silent data corruption.
+      Explicit rejection of unknown versions prevents misinterpreting newer formats.
+      Follows KDBX pattern of magic + version at file header.
+    sources:
+      - url: "https://keepass.info/help/kb/kdbx_4.html"
+        note: "KDBX 4 versioned header pattern"
+    test: |
+      UNIT: Open file starting with [0x56, 0x4C, 0x54, 0x00, 0x01, 0x00]; assert success.
+      UNIT: Open file starting with [0x00, 0x00, 0x00, 0x00]; assert error "not a vault file".
+      UNIT: Open file with format_version = 999; assert error containing "newer version".
+      UNIT: format_version is stored and read as little-endian u16 (not big-endian).
+
+  - id: C8
+    group: G3
+    title: "KDF parameters block — file-authoritative, never compiled-in defaults"
+    description: |
+      The complete on-disk header layout (all numeric fields little-endian, in order):
+        [C7]  magic:             [u8; 4]  = [0x56, 0x4C, 0x54, 0x00]
+        [C7]  format_version:    u16
+              vault_id:          [u8; 16] (random UUID v4, generated ONCE at vault creation,
+                                           NEVER changed; domain-separation salt for stanza
+                                           HKDF derivations — see C5, C6, C14)
+              kdf_algorithm:     u8       (1 = Argon2id; no other value valid in v1)
+              argon2id_m_cost:   u32      (KiB)
+              argon2id_t_cost:   u32
+              argon2id_p_cost:   u32
+              argon2id_salt:     [u8; 32] (CSPRNG, generated ONCE at vault creation;
+                                           MUST NOT be regenerated on saves —
+                                           regenerating invalidates all password stanzas)
+              master_seed:       [u8; 32] (CSPRNG; MUST be regenerated on every save that
+                                           writes the encrypted body, like nonce_prefix;
+                                           MUST NOT be regenerated by header-only rewrites
+                                           such as password rotation — it salts the
+                                           per-block HMAC keys (C10), so rotating it
+                                           without re-MACing the body would invalidate
+                                           every stored block HMAC. It is also the
+                                           YubiKey challenge — C5)
+              nonce_prefix:      [u8; 16] (CSPRNG; HKDF salt for the C1 payload key derivation.
+                                           MUST be regenerated on every save that writes the
+                                           encrypted body. MUST NOT be regenerated by header-only
+                                           rewrites such as password rotation, which re-wraps a
+                                           stanza without re-encrypting the body — see C4, SC6)
+              stanza_count:      u8       (number of stanzas that follow; max 8 in v1)
+              stanzas:           [stanza_count × stanza_record] (see C5 for stanza layout)
+        [C9]  header_hash:       [u8; 32] SHA-256(all bytes from magic through last stanza)
+        [C9]  header_hmac:       [u8; 32] (see C9)
+      The vault binary MUST read all params from the file verbatim; MUST NOT
+      override with compiled-in defaults on open.
+    rationale: |
+      KDF parameters must be fully client-owned. LastPass anti-pattern: server-set
+      iteration counts meant some accounts had 1 PBKDF2 iteration permanently.
+      The file IS the security specification; the binary is a reader of it.
+    sources:
+      - url: "https://keepass.info/help/kb/kdbx_4.html"
+      - url: "https://palant.info/2022/12/28/lastpass-breach-the-significance-of-these-password-iterations/"
+    test: |
+      UNIT (param reader): Call the KDF-params parser directly with a byte slice containing
+        m_cost=131072 (128 MiB), t_cost=3, p_cost=4; assert the returned struct has
+        m_cost=131072. This bypasses header integrity — tests that the READER uses file
+        values, not compiled-in defaults. (Hex-editing a real vault file cannot be used
+        because it invalidates header_hash before Argon2id ever runs — see C9.)
+      UNIT: Serialise and deserialise a full header struct; assert round-trip byte-for-byte
+        identity for every field including vault_id, argon2id_salt, master_seed.
+      UNIT: Set kdf_algorithm=2 (unknown); assert error "unsupported KDF algorithm".
+      UNIT: Assert argon2id_salt is NOT regenerated across two sequential saves of the
+        same vault (read salt from header before save N, after save N+1; assert equal).
+      UNIT: Assert master_seed IS different across two sequential BODY-WRITING saves of
+        the same vault (read master_seed before save N, after save N+1; assert different).
+      UNIT: Assert master_seed is NOT regenerated by a stanza-only rewrite (password
+        rotation): read master_seed before and after; assert byte-for-byte equal
+        (rotating it would orphan the stored block HMACs — C10).
+      UNIT: Assert nonce_prefix IS different across two sequential body-writing saves of the
+        same vault (read nonce_prefix before save N, after save N+1; assert different).
+      UNIT: Assert nonce_prefix is NOT regenerated during a password rotation: read
+        nonce_prefix before and after re-wrapping the password stanza only (no entry changes);
+        assert the two values are byte-for-byte equal (body was not re-encrypted — see SC6).
+
+  - id: C9
+    group: G3
+    title: "Header integrity: unauthenticated SHA-256 + data-key-authenticated HMAC"
+    description: |
+      Directly after the KDF params block (and stanza data) in the plaintext header, store:
+        header_hash:  SHA-256(all preceding header bytes)              [32 bytes]
+        header_hmac:  HMAC-SHA-256(all preceding header bytes,         [32 bytes]
+                        key=HKDF-SHA-256(ikm=data_key, salt=b"", info=b"vault-header-hmac-v2"))
+      The HMAC key derives from the DATA KEY, not the Argon2id master_key: every unlock
+      path (password, FIDO2, YubiKey, TPM, OS keystore) reaches the data key, while only
+      the password path derives a master_key — a hardware-only unlock (C5 OR-model) could
+      never verify a master_key-keyed HMAC. (Amended 2026-06-10, Gate 0 G0.2; the v1
+      info string is retired with the keying change.)
+      Verification order:
+        1. Verify header_hash (no key required — fast corruption check).
+        2. Validate KDF params against the C2 floor and ceiling.
+        3. Unwrap the data key from any valid stanza (on the password path this runs
+           Argon2id with the header KDF params).
+        4. Verify header_hmac with the data-key-derived key. On failure: emit
+           "header tampered" and abort.
+        5. MUST NOT decrypt any payload byte before header_hmac verification succeeds.
+      ERROR SEMANTICS: a wrong password and tampered KDF params are both detected at
+      step 3 as a stanza unwrap failure (the derived wrapping key fails the stanza's
+      Poly1305 tag) and MUST share one indistinguishable error:
+      "invalid credentials or tampered header". A header_hmac failure at step 4 occurs
+      only after a stanza unwrapped successfully (the factor was valid), so it is
+      unambiguously tampering of header fields not covered by the stanza tag
+      (master_seed, nonce_prefix, stanza extras, vault_id) and reports "header tampered".
+    rationale: |
+      KDBX 4 verbatim: "non-encrypted SHA-256 hash of the header allows detection of
+      unintentional corruptions, without knowing the master key. Directly after: the
+      HMAC-SHA-256 value of the header."
+      KDF-downgrade defense is preserved without the master_key keying: an attacker who
+      lowers m_cost (and fixes the unkeyed header_hash) changes the Argon2id output, so
+      the derived wrapping key fails the password stanza's AEAD tag — the open aborts
+      before any payload work. The data-key-keyed header_hmac then authenticates the
+      header fields the stanza tag does NOT cover. Keying from the data key also keeps
+      block HMACs (C10) and the header HMAC verifiable on hardware-only unlocks and
+      stable across password rotation (the data key never changes — C4).
+    sources:
+      - url: "https://keepass.info/help/kb/kdbx_4.html"
+      - url: "https://palant.info/2023/03/29/documenting-keepass-kdbx4-file-format/"
+    test: |
+      UNIT: Flip one bit in the m_cost field; assert header_hash fails before any
+        Argon2id computation is performed (timing: must be faster than one Argon2id call).
+      UNIT: Provide correct password, flip one bit in header_hmac; assert error
+        "header tampered" with no payload bytes returned.
+      UNIT: Lower m_cost in header and recompute header_hash (attacker-recomputable);
+        assert the password stanza unwrap fails with "invalid credentials or tampered
+        header" and no payload bytes are returned.
+      UNIT: Wrong password → different wrapping key → stanza tag failure; assert the
+        SAME error string as the KDF-tamper case above (no oracle distinguishing wrong
+        password from header tamper at step 3).
+      UNIT (hardware path): Unlock via a mocked FIDO2 stanza with NO password available;
+        assert header_hmac verification succeeds (key reachable from data_key alone).
+      UNIT: Flip one bit in master_seed (recompute header_hash); unlock with correct
+        password; assert "header tampered" from header_hmac at step 4.
+
+  - id: C10
+    group: G3
+    title: "Encrypt-then-MAC per-block body authentication (HmacBlockStream)"
+    description: |
+      The encrypted payload MUST be split into blocks (default: 1 MiB = 1048576 bytes).
+      Each block on disk: [hmac: 32 bytes][size: u32 LE][ciphertext: size bytes].
+      HMAC = HMAC-SHA-256(
+               key  = HKDF-SHA-256(ikm=data_key, salt=block_index_u64_LE||master_seed_32,
+                                   info=b"vault-block-hmac-v2"),
+               data = block_index_u64_LE || size_u32_LE || ciphertext)
+      Like the header HMAC (C9), block-HMAC keys derive from the DATA KEY so every unlock
+      path can verify them and a password rotation does not invalidate them (the data key
+      never changes — C4). Because master_seed is part of the HKDF salt, master_seed MUST
+      only rotate on saves that rewrite the body (C8) — rotating it on a header-only save
+      would orphan every stored block HMAC. (Amended 2026-06-10, Gate 0 G0.2.)
+      Block with size=0 marks end of stream. The final block MAY be smaller than 1 MiB.
+      Each block's HMAC MUST be verified before decrypting it.
+      NOTE: C9 defines a separate, standalone HMAC for the plaintext header using a
+      different key derivation (info="vault-header-hmac-v2", no master_seed). C10's
+      HmacBlockStream applies to the encrypted body ONLY; the body starts after the
+      header_hmac field defined in C9. Do NOT conflate these two distinct HMAC schemes.
+      LAYERING: The HmacBlockStream blocks (1 MiB) wrap the raw STREAM ciphertext
+      produced by C1's XChaCha20-Poly1305 STREAM layer (64 KiB chunks). Each 1 MiB
+      block contains approximately 16 complete 64 KiB STREAM chunks. The STREAM chunks
+      are the encryption unit; the HmacBlockStream blocks are the integrity unit.
+    rationale: |
+      KDBX 4: "data block authenticated via HMAC-SHA-256 of the ciphertext
+      (Encrypt-then-MAC)." Per-block HMAC key varies by block index — prevents
+      block-substitution attacks. End-of-stream marker prevents truncation attacks
+      not already caught by STREAM chunk tags.
+    sources:
+      - url: "https://keepass.info/help/kb/kdbx_4.html"
+        note: "HmacBlockStream specification"
+    test: |
+      UNIT: Encrypt a 3-block payload. Swap blocks 0 and 1. Assert HMAC failure on block 0.
+      UNIT: Duplicate block 1 at position 2. Assert HMAC failure on the inserted duplicate.
+      UNIT: Remove the end-of-stream (size=0) block. Assert error on read (unexpected EOF).
+
+  # ── G4: Memory and runtime hardening ──────────────────────────────────────
+
+  - id: C11
+    group: G4
+    title: "All secret material uses ZeroizeOnDrop — no plain Vec<u8> for secrets"
+    description: |
+      Every struct or variable holding a cryptographic secret MUST implement ZeroizeOnDrop
+      via the `zeroize` crate (derive macro or manual impl using write_volatile + fence).
+      Secret byte arrays passed between functions MUST be wrapped in `secrecy::Secret<T>`.
+      The vault MUST NOT use plain Vec<u8>, [u8; N], or Box<[u8]> for secret material.
+      Approved types: Secret<[u8; 32]>, SecretBox<[u8]>, Zeroizing<Vec<u8>>.
+    rationale: |
+      RustCrypto zeroize: "guarantee they won't be optimized away by the compiler"
+      via core::ptr::write_volatile + atomic fences. sodium_memzero() guarantee was
+      REFUTED in research verification (1-2 vote) — plain memset is insufficient.
+      KeePassXC audit (Molotnikov 2023): in-memory secrets flagged as unresolved weakness.
+      secrecy crate prevents accidental Debug printing or Clone of secret values.
+    sources:
+      - url: "https://github.com/RustCrypto/utils/tree/master/zeroize"
+        note: "write_volatile + fence guarantee"
+      - url: "https://keepassxc.org/blog/2023-04-15-audit-report/"
+        note: "Molotnikov: memory deallocation could be improved"
+    test: |
+      UNIT: Create a Zeroizing<Vec<u8>> containing known bytes. Drop it. Using unsafe
+        pointer arithmetic (test-only), read the original memory address. Assert all
+        bytes are 0x00 (or differ from original — zeroed or overwritten).
+      CODE-REVIEW CI: `grep -rn "Vec<u8>\|Box<\[u8\]>\|\[u8; " src/` in secret-handling
+        modules (master_key.rs, data_key.rs, stanza.rs) must return zero results.
+      UNIT: Attempt to derive Debug output on a Secret<[u8; 32]>; assert output is
+        "Secret([REDACTED])" not the actual bytes.
+
+  - id: C12
+    group: G4
+    title: "mlock on long-lived secret memory pages; graceful degradation if unavailable"
+    description: |
+      When allocating memory for long-lived secret material — the derived master key,
+      the data key, the inner stream key, wrapped-key buffers, and the decrypted entry
+      cache — the vault MUST call mlock(2) (Unix) or VirtualLock (Windows) on those pages.
+      EXCLUSION (deliberate, documented): the Argon2id working buffer (default 64 MiB)
+      is NOT subject to the mlock requirement. Default RLIMIT_MEMLOCK on most Linux
+      systems is far below 64 MiB (commonly 8 MiB or less), so requiring mlock there
+      would make the warning fire on effectively every open — training users to ignore
+      security warnings. The Argon2id buffer holds password-derived intermediate state
+      only for the duration of one derivation and MUST still be zeroized after use (C11).
+      If mlock returns ENOMEM or is unavailable (e.g., unprivileged container), the vault
+      MUST log a warning to stderr:
+        "WARNING: could not lock memory pages (mlock failed: <errno>). Secrets may be
+        swapped to disk. Raise the limit (ulimit -l / CAP_IPC_LOCK) or run as root."
+      and continue operation (graceful degradation). It MUST NOT abort, and it MUST NOT
+      print this warning more than once per process invocation (no warning fatigue).
+    rationale: |
+      libsodium: sodium_mlock "avoid swapping sensitive data to disk." A stolen swap
+      partition or hibernation file can contain full key material. mlock prevents it.
+      The scope is long-lived secrets: a warning that fires every time is worse than
+      one that fires only when locking the small, persistent key buffers actually fails.
+    sources:
+      - url: "https://doc.libsodium.org/memory_management"
+        note: "sodium_mlock semantics"
+    test: |
+      INTEGRATION (Linux/macOS): Open vault; inspect /proc/self/maps (Linux) or
+        vm_region (macOS); assert pages containing the data key (not the KDF working
+        buffer) are flagged locked.
+      INTEGRATION: Mock mlock to return ENOMEM; open vault; assert:
+        (a) vault opens successfully, (b) a warning containing "mlock failed" appears on
+        stderr exactly once, even though multiple secret allocations occur during open.
+      INTEGRATION: Open a vault under the default Linux RLIMIT_MEMLOCK (no raised limit);
+        assert no mlock warning is emitted solely because of the Argon2id working buffer.
+
+  - id: C13
+    group: G4
+    title: "Clipboard auto-clear after configurable timeout"
+    description: |
+      On `blindkey get ENTRY --field password` (or any field copy to clipboard):
+        1. Copy value to clipboard (with the C33 concealment marks).
+        2. Print to stderr: "Clipboard will be cleared in <N>s."
+        3. After N seconds (default=30, min=5, max=300, configurable in ~/.vault.toml):
+           clear the clipboard.
+      TIMER LIFETIME (amended 2026-06-10, Gate 0 G0.6): `blindkey get` is a one-shot CLI
+      command — a background THREAD dies with the process and can never fire the clear.
+      The timer MUST therefore survive the invoking command's exit: a detached helper
+      process (or equivalent OS mechanism) owns the delayed clear, and the main command
+      MUST NOT block waiting for it.
+      CLEAR-IFF-UNCHANGED: at timeout the helper MUST clear the clipboard ONLY if it
+      still holds the value the vault placed there; if the user has since copied
+      something else, the helper MUST NOT overwrite it. The comparison MUST use the
+      constant-time equality of C25 (it involves the secret value).
+      The helper MUST hold the secret under the same C11/C12 memory rules as the main
+      process and MUST exit immediately after clearing (or after detecting the
+      clipboard changed).
+    rationale: |
+      A password left on the clipboard is readable by any process on the desktop.
+      30s is the KeePassXC / industry-standard default; KeePassXC can rely on a thread
+      because it is a long-lived GUI process — a one-shot CLI cannot (UC-04 §7).
+      Clear-iff-unchanged prevents the delayed clear from destroying unrelated user
+      clipboard content.
+    sources:
+      - url: "https://keepassxc.org/docs/KeePassXC_UserGuide"
+        note: "KeePassXC clipboard clear default"
+    test: |
+      INTEGRATION: `blindkey get` a known password; assert the `blindkey` process exits
+        promptly (does not block for the timeout); wait 31 seconds (default config);
+        assert clipboard contents are empty or differ from the password — the clear
+        fired from the detached helper AFTER the invoking command had exited.
+      INTEGRATION (clear-iff-unchanged): `blindkey get` a password; within the timeout,
+        place a different value on the clipboard; wait past the timeout; assert the
+        user's value is still on the clipboard (the helper did not overwrite it).
+      INTEGRATION: SIGTERM the helper process before timeout; assert best-effort clear
+        runs in the signal path (SIGKILL is explicitly not tested — documented as
+        best-effort only).
+      UNIT: Set clipboard_timeout=5; copy; wait 6s; assert cleared.
+
+  # ── G5: Hardware and multi-factor unlock ──────────────────────────────────
+
+  - id: C14
+    group: G5
+    title: "FIDO2 PRF stanza implementation via libfido2 (raw CTAP2)"
+    description: |
+      The FIDO2 stanza MUST use the CTAP2 hmac-secret extension via the `libfido2` C library
+      (Rust bindings: libfido2-sys or ctap-hid-fido2).
+      It MUST NOT use navigator.credentials.get() or any browser WebAuthn API.
+      Stanza header stored in vault file:
+        credential_id:    bytes (variable length, from device at enrollment)
+        relying_party_id: UTF-8 string (e.g., "vault.local")
+        salt_hash:        SHA-256(vault_id || b"fido2-hw-v1") [32 bytes, also used as CTAP2 salt]
+      On unlock: pass salt_hash to authenticator via hmac-secret extension;
+        receive 32-byte output; derive wrapping_key via HKDF (per C6):
+        wrapping_key = HKDF-SHA-256(ikm=prf_output, salt=vault_id, info=b"vault-hw-wrap-v1")
+    rationale: |
+      W3C WebAuthn L3 §10.1.4 / Yubico: the hmac-secret extension returns a deterministic
+      32-byte secret per credential+salt. The seed "never leaves the secure element"
+      (Yubico: "hardware-level protection prevents extraction, cloning, or compromise
+      by client-side malware"). libfido2 is the standard cross-platform CTAP2 library.
+    sources:
+      - url: "https://www.w3.org/TR/webauthn-3/"
+        note: "W3C WebAuthn L3 §10.1.4 prf extension"
+      - url: "https://developers.yubico.com/WebAuthn/Concepts/PRF_Extension/CTAP2_HMAC_Secret_Deep_Dive.html"
+      - url: "https://github.com/libfido2-sys"
+    test: |
+      INTEGRATION (real or mocked authenticator): Enroll FIDO2 stanza; close vault;
+        reopen with same authenticator; assert unlock succeeds.
+      UNIT: Assert salt passed to authenticator == SHA-256(vault_id || b"fido2-hw-v1").
+      INTEGRATION: Enroll FIDO2 stanza; attempt unlock with different authenticator (wrong
+        credential_id); assert "no matching FIDO2 credential" error (not a crash).
+
+  - id: C15
+    group: G5
+    title: "TPM 2.0 PCR-sealed stanza with mandatory re-enrollment command"
+    description: |
+      On Linux/Windows, the vault MAY offer `blindkey enroll-tpm` which seals the data key
+      wrapping key to a PCR policy using tpm2-tools or the tss2 Rust crate.
+      The vault MUST:
+        (a) Document in `blindkey enroll-tpm --help` that PCR values change after firmware/
+            kernel updates, requiring `blindkey re-enroll-tpm`.
+        (b) Document that discrete TPM bus attacks (SPI sniffing, TPM Genie) are not
+            mitigated by PCR sealing alone.
+        (c) Implement `blindkey re-enroll-tpm` that unseals with the current PCR policy,
+            re-seals to new PCRs, and updates the TPM stanza in the vault.
+      On unseal failure due to PCR mismatch, the vault MUST emit:
+        "TPM stanza failed (PCR mismatch — firmware or kernel may have changed).
+        Run `blindkey re-enroll-tpm` or unlock with password."
+    rationale: |
+      Kernel.org TPM docs: "most TPM functionality can be controlled by an attacker
+      who has access to the bus." PCR brittleness is a documented operational hazard.
+      Clear error messages and re-enrollment path are mandatory for usability.
+    sources:
+      - url: "https://man.archlinux.org/man/extra/tpm2-tools/tpm2_policypcr.1.en"
+      - url: "https://www.kernel.org/doc/html/latest/security/tpm/"
+        note: "TPM bus attack caveat"
+    test: |
+      INTEGRATION: Seal stanza to mocked PCR value X. Change mocked PCR to Y.
+        Assert vault emits the PCR-mismatch error message (not a panic).
+      DOCUMENTATION: `blindkey re-enroll-tpm --help` output must contain the strings
+        "PCR" and "firmware" and "re-enroll".
+
+  # ── G6: Rollback and sync safety ──────────────────────────────────────────
+
+  - id: C16
+    group: G6
+    title: "Monotonic version counter with local state anchor"
+    description: |
+      The encrypted payload MUST contain a vault_version counter (u64, little-endian).
+      vault_version MUST be initialized to 0 at vault creation (blindkey init).
+      On every successful vault save, vault_version MUST increment by exactly 1
+      (so first save after init produces vault_version = 1).
+      The vault MUST maintain a local state file (NOT synced) at platform XDG/AppData path
+      containing the last-seen vault_version as a plain u64.
+      On blindkey open: if decrypted vault_version < local last_seen:
+        Print to stderr:
+          "WARNING: vault version regressed (expected >= <N>, got <M>). The sync
+          backend may have served an older copy. Proceed anyway? [y/N]"
+        Default to N (abort). Require explicit 'y' to proceed.
+        If stdin is not a TTY (piped/non-interactive): do NOT prompt; abort immediately
+        with exit code 2 and print the warning to stderr. The caller must use
+        `blindkey open --allow-rollback` to proceed non-interactively.
+      On blindkey open: if decrypted vault_version >= last_seen: update last_seen and continue.
+      TRUST-ON-FIRST-USE (documented limitation): on the FIRST open on a machine with no
+      local state file, there is no anchor — ANY valid vault version is accepted and
+      becomes the anchor. An attacker who serves an old-but-valid vault file to a freshly
+      provisioned machine is NOT detected by this mechanism. Mitigations:
+        (a) `blindkey open --expect-min-version N` MAY be provided so a user provisioning a
+            new machine can pin the version they expect;
+        (b) a TPM NV monotonic counter (see rationale) is the named hardened upgrade path.
+      This limitation MUST be stated in the threat model.
+    rationale: |
+      STREAM segment-binding prevents intra-ciphertext tampering but NOT whole-file rollback
+      (serving an older complete valid ciphertext). The local state file is outside the sync
+      backend's control. TPM NV counter (tpm2_nvincrement) is the stronger upgrade path:
+      "NV counter is a 64-bit value that can only increment... cannot be rolled back by
+      deleting it and redefining it." (TCG TPM 2.0 spec)
+      KeePassXC, age, Bitwarden: none implement whole-file rollback detection.
+    sources:
+      - url: "https://ebrary.net/24775/computer_science/counter_index"
+        note: "TCG TPM 2.0 NV counter monotonic guarantee"
+      - url: "https://tpm2-tools.readthedocs.io/en/stable/man/tpm2_nvincrement.1/"
+    test: |
+      INTEGRATION: Save vault (vault_version becomes 5). Manually overwrite payload bytes to
+        set vault_version=3. Reopen. Assert warning containing "version regressed" is printed
+        and vault aborts when user answers 'n'.
+      INTEGRATION: Run blindkey init (vault_version=0). Save 3 times. Open. Assert vault_version == 3.
+      INTEGRATION: Corrupt local state file (set last_seen=0). Reopen vault with version=3.
+        Assert no false rollback warning (3 >= 0).
+      INTEGRATION (non-interactive): Pipe stdin from /dev/null; trigger rollback condition;
+        assert vault exits with code 2 and no interactive prompt is issued.
+      INTEGRATION (TOFU): Delete the local state file entirely; open a vault with any
+        version; assert it opens without a rollback warning and the anchor is created
+        (trust-on-first-use — this is the documented limitation, not a bug).
+      DOCUMENTATION: docs/THREAT_MODEL.md must list fresh-device rollback (no anchor on
+        first open) as a residual risk of this constraint.
+
+  - id: C17
+    group: G6
+    title: "Single encrypted blob — no per-entry plaintext files"
+    description: |
+      The default vault storage format MUST be a single opaque encrypted file.
+      Entry names, counts, tags, URLs, and modification patterns MUST NOT be readable
+      outside the decrypted payload.
+      The vault MUST NOT create a separate file per entry.
+      The vault file MUST be safe to sync over untrusted storage (Git, Syncthing,
+      Dropbox) without leaking entry-level metadata to the storage backend.
+      PERMITTED EXCEPTION: the atomic-save protocol (C32) creates a transient temp file
+      and a `vault.vlt.bak` backup generation. Both are complete opaque encrypted blobs
+      with the identical zero-plaintext property; the backup is removed after the new
+      file verifies unless the user opts in to keeping it (`keep_backup = true`).
+    rationale: |
+      pass vulnerability: plaintext filenames in filesystem and git history expose the
+      complete entry taxonomy without any decryption.
+      Grubbs et al. (CCS 2015, IEEE S&P 2017): deterministic per-entry encryption
+      enables full database reconstruction (99% first names from ciphertext frequency).
+      Single blob: only leakage is total file size and modification timestamp.
+    sources:
+      - url: "https://eprint.iacr.org/2016/895"
+        note: "Grubbs et al. — leakage-abuse attacks, 99% first-name recovery"
+      - url: "https://palant.info/2022/12/26/whats-in-a-pr-statement-lastpass-breach-explained/"
+    test: |
+      INTEGRATION: Create vault with 10 entries. After the save completes (default
+        config: backup removed post-verification), assert `ls -1 <vault-dir>` shows
+        exactly 1 file: vault.vlt. No entry files. With `keep_backup = true`, the only
+        additional permitted file is vault.vlt.bak (itself an opaque encrypted blob).
+        The state file lives at the platform XDG path
+        (e.g., ~/.local/share/vault/<vault_id>.state on Linux), NOT in the vault dir.
+      INTEGRATION: Assert the XDG state file exists at the platform-specific path after
+        blindkey open (not in the vault directory).
+      INTEGRATION: Run `strings vault.vlt | grep -i "entry-name"` for a known entry named
+        "github-work". Assert zero matches.
+
+  # ── G7: Completeness of encryption ────────────────────────────────────────
+
+  - id: C18
+    group: G7
+    title: "Zero plaintext entry fields — including URLs, titles, timestamps"
+    description: |
+      Every field of every entry MUST reside inside the AEAD-encrypted payload.
+      Fields that MUST be encrypted (not exhaustive; all fields are encrypted):
+        title, username, password, url, notes, tags, otp_secret,
+        created_at, modified_at, expires_at, any custom_fields.
+      The ONLY plaintext content permitted in the vault file is:
+        (a) magic bytes + version (C7)
+        (b) KDF params block (C8)
+        (c) header_hash + header_hmac (C9)
+        (d) stanza headers: [type byte][size u32][wrapped_data_key_ciphertext]
+      Entry count, entry names, URL domains: MUST NOT appear outside the encrypted payload.
+    rationale: |
+      LastPass 2022 breach: URLs stored in hex-encoding, trivially decoded.
+      LastPass own statement: vault "contains unencrypted data, such as website URLs."
+      This enabled precision phishing against high-value targets without cracking.
+      Any plaintext field is a privacy failure against a passive observer of the file.
+    sources:
+      - url: "https://palant.info/2022/12/26/whats-in-a-pr-statement-lastpass-breach-explained/"
+        note: "LastPass plaintext URL evidence"
+    test: |
+      INTEGRATION: Create entry: title="github-prod", url="https://github.com/org",
+        password="supersecret123". Without unlocking:
+          `strings vault.vlt | grep -i "github"` → must return empty.
+          `strings vault.vlt | grep -i "github.com"` → must return empty.
+          `xxd vault.vlt | grep -i "$(echo -n 'github' | xxd -p)"` → must return empty.
+      UNIT: Inspect the Rust type for the plaintext header struct; assert no field of
+        type String, &str, or Vec<u8> holds entry content (type-level enforcement).
+
+  - id: C19
+    group: G7
+    title: "Inner header with double-encryption of Protected fields"
+    description: |
+      An inner header MUST be stored INSIDE the encrypted payload (not in plaintext header).
+      Inner header contents:
+        inner_stream_algorithm: u8       (1 = ChaCha20)
+        inner_stream_key:       [u8; 64] (generated fresh on every vault SAVE, from CSPRNG)
+      The 64-byte key is split at implementation time:
+        bytes  0–31: ChaCha20 cipher key (32 bytes)
+        bytes 32–63: ChaCha20 initial counter / IV material (implementation-defined;
+                     following KDBX 4 convention, the full 64 bytes are provided to the
+                     ChaCha20 construction to derive its keystream state)
+      Fields designated Protected (password, otp_secret) MUST receive an additional
+      ChaCha20 stream-cipher pass using inner_stream_key before storage in the AEAD payload.
+      Protected fields are processed in document order through a single ChaCha20 stream
+      (not independently keyed per field — the stream state advances sequentially).
+      The inner_stream_key MUST be regenerated on every vault save and is persisted ONLY
+      inside the encrypted inner header (never in the plaintext header).
+      IN-MEMORY USE: after the outer payload is decrypted, Protected fields MUST remain
+      inner-stream-encrypted in process memory and be decrypted only at the moment a
+      field is accessed, then re-protected or zeroized (C11).
+    rationale: |
+      KDBX 4 precedent: "inner header is encrypted along with the payload. This inner
+      header contains the inner random stream ID and key", and the key is regenerated
+      on each save. The layer's PRIMARY purpose is process-memory protection: a memory
+      dump, swap leak, or partial heap disclosure of the decrypted payload buffer does
+      not directly expose password bytes, because Protected fields stay ChaCha20-
+      encrypted in RAM until field access. This addresses the in-memory-secrets weakness
+      flagged in the KeePassXC Molotnikov audit. On disk this layer is defense-in-depth
+      only — the outer AEAD (C1) is the primary confidentiality boundary, and this
+      constraint does not claim otherwise.
+    sources:
+      - url: "https://keepass.info/help/kb/kdbx_4.html"
+        note: "KDBX 4 inner header and inner random stream"
+      - url: "https://palant.info/2023/03/29/documenting-keepass-kdbx4-file-format/"
+        note: "Inner random stream key location and per-save regeneration"
+    test: |
+      UNIT: Decrypt outer AEAD payload. Extract bytes at the offset of a Protected field.
+        Assert those bytes do NOT equal the original password (still ChaCha20-encrypted).
+      UNIT: Apply inner_stream ChaCha20 decryption to the Protected field bytes.
+        Assert result equals the original password.
+      UNIT: Save the same vault twice; assert the inner_stream_key stored in the inner
+        header differs between the two saves (regenerated per save).
+      UNIT: After unlock, inspect the in-memory entry structure via a test hook; assert
+        the Protected field bytes are not present in plaintext until the field accessor
+        is invoked.
+
+  # ── G8: Usability and install ──────────────────────────────────────────────
+
+  - id: C20
+    group: G8
+    title: "Single statically-linked binary — one-command install"
+    description: |
+      The vault MUST compile to a single statically-linked binary with no runtime
+      dependencies (no JVM, no Python, no Node.js).
+      Linux target: x86_64-unknown-linux-musl (verified with `ldd`: "not a dynamic executable").
+      Install MUST be achievable with one command:
+        `cargo install blindkey-cli`      (universal, all platforms)
+      First-time setup (blindkey init → first entry added) MUST complete in fewer than
+      5 interactive prompts and under 60 seconds on a clean install.
+    rationale: |
+      Complexity is a security risk: users who cannot install a tool use weaker alternatives.
+      A static binary eliminates the most common installation failure modes (missing .so,
+      wrong Python version, conflicting system packages).
+    sources:
+      - url: "https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html"
+    test: |
+      CI: `cargo build --target x86_64-unknown-linux-musl --release` exits 0.
+        `ldd target/x86_64-unknown-linux-musl/release/vault` output contains
+        "not a dynamic executable".
+      INTEGRATION (Docker, fresh ubuntu:22.04): Install `cargo install blindkey-cli`;
+        run `blindkey init` then `blindkey add github --username u --url https://g.com`,
+        supplying the master password and the entry password via the no-echo prompt
+        (PTY harness) or a stdin pipe — never as argv flags (C31);
+        assert completes in < 60s and requires <= 5 interactive steps.
+
+  - id: C21
+    group: G8
+    title: "Minimum viable CLI interface"
+    description: |
+      The vault MUST implement:
+        blindkey init [--file PATH]           Create vault (prompts for master password)
+        blindkey add  NAME [--interactive]    Add entry
+        blindkey get  NAME [--field FIELD]    Get field (clipboard default; --stdout opt-in, see C27)
+        blindkey gen  [--length N] [--charset alnum|ascii|words] [--words N]
+                                           Generate a CSPRNG password (see C26)
+        blindkey ls   [--search QUERY]        List/search entry names after unlock
+        blindkey edit NAME                    Edit entry
+        blindkey rm   NAME                    Delete entry (confirmation required)
+        blindkey lock                         Clear in-memory session
+        blindkey export --format json         Export decrypted entries (security warning required)
+        blindkey import --format txt|json     Import entries
+        blindkey upgrade-kdf                  Re-derive with current recommended params
+        blindkey tune                         Benchmark and recommend Argon2id params
+        blindkey merge OLD.vlt NEW.vlt        Manual merge of two conflicting vault versions
+        blindkey stanzas list                 Show enrolled unlock stanzas (types only — no secrets)
+        blindkey stanzas add TYPE             Enroll a hardware/OS-keystore stanza (C5; a save)
+        blindkey stanzas remove TYPE          Remove a stanza (password stanza is irremovable — C5)
+        blindkey enroll-tpm                   Seal a TPM stanza to current PCR values (optional)
+        blindkey re-enroll-tpm                Re-seal TPM stanza after firmware/kernel update
+      All commands exposing secrets MUST require a valid unlock session or prompt for
+      the master password. Unlock session MAY be cached in-memory (mlock'd) per process.
+      No command accepts a secret value as a command-line argument (see C31):
+      `blindkey add` / `blindkey edit` / `blindkey import` read secrets via no-echo prompt,
+      stdin, or `--password-fd`.
+      STABLE EXIT CODES (frozen for scripts; amended 2026-06-10 per UC-10 §7):
+        0  success
+        1  generic / unexpected error
+        2  rollback detected, not overridden (C16)
+        3  not a vault file, or created by a newer format version (C7)
+        4  corruption — header_hash, block HMAC, or AEAD tag failure (C9, C10, C1)
+        5  authentication — invalid credentials or tampered header (C9 step 3/4)
+        6  KDF parameters outside the safe range (C2 ceiling)
+        7  no clipboard available and --stdout not given (C27)
+        8  usage error (bad arguments/flags; clap MUST be configured to exit 8, not its
+           default 2, which is reserved for rollback by C16)
+        9  entry or field not found / ambiguous
+      Exit codes MUST NOT be repurposed; new codes append.
+    rationale: |
+      Covers 95%+ of daily use. `import --format txt` specifically enables migration from
+      unstructured flat-file credential stores. `tune` ensures KDF cost stays calibrated
+      as hardware improves over the vault's lifetime.
+    sources:
+      - url: "https://www.passwordstore.org/"
+        note: "pass CLI as baseline; we supersede it on all security dimensions"
+    test: |
+      INTEGRATION: `blindkey --help` exits 0 with non-empty usage text.
+      INTEGRATION: Each subcommand with `--help` exits 0 with non-empty usage text.
+      INTEGRATION (exit codes): trigger each failure class (bad magic, corrupt block,
+        wrong password, above-ceiling KDF params, rollback decline, headless `get`
+        without --stdout); assert exit codes 3, 4, 5, 6, 2, 7 respectively.
+      INTEGRATION: Full round-trip test:
+        blindkey init → blindkey add test-entry → blindkey get test-entry --field password
+        → blindkey ls → blindkey edit test-entry → blindkey rm test-entry
+        Assert each step succeeds; assert rm confirmation prompt appears.
+
+  - id: C22
+    group: G8
+    title: "Unlock under 500ms on reference hardware; progress indicator above 300ms"
+    description: |
+      With default Argon2id params (m=64 MiB, t=3, p=4), `blindkey get` unlock phase
+      (password entry to first plaintext byte available) MUST complete in < 500ms on a
+      machine with >= 4 CPU cores and >= 8 GiB RAM.
+      If estimated KDF time > 300ms, the vault MUST display a progress indicator
+      (e.g., "Deriving key… [spinner]") so the user does not think the tool hung.
+      `blindkey tune` MUST benchmark Argon2id on the current machine and print recommended
+      m/t/p values targeting 300ms ± 100ms, with the measured time in ms.
+    rationale: |
+      Security community convention (not an OWASP-specified target — OWASP documents
+      parameter sets, not timing targets): 250–500ms is the established interactive
+      unlock budget. A > 1s unlock will cause users to reduce KDF cost or abandon the
+      tool — a direct security regression. `blindkey tune` lets each deployment calibrate
+      to its hardware within this budget.
+    sources:
+      - url: "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
+    test: |
+      BENCHMARK: On 4-core / 8 GiB CI runner, time the Argon2id phase of `blindkey get`;
+        assert elapsed_ms < 500.
+      INTEGRATION: `blindkey tune` on the same machine; assert output contains
+        "ms" and three numeric values for m, t, p.
+      INTEGRATION: On a machine where KDF takes > 300ms, assert a non-empty progress
+        indicator appears on stderr before the password prompt returns.
+
+  # ── G9: Open source and auditability ──────────────────────────────────────
+
+  - id: C23
+    group: G9
+    title: "Zero network calls in normal operation — no telemetry"
+    description: |
+      The vault MUST make zero network connections during ALL subcommands:
+        init, add, get, ls, edit, rm, lock, export, import, upgrade-kdf, tune,
+        merge, enroll-tpm, re-enroll-tpm.
+      TPM and FIDO2 communicate with LOCAL hardware devices (not network); this is permitted.
+      The vault MUST NOT include any telemetry, analytics, crash reporting,
+      update-check, or license-validation code or dependency.
+    rationale: |
+      A tool that makes network calls can leak: usage patterns, vault file hashes,
+      credential access timing, or the mere fact that the user has sensitive data.
+      Zero-network is a hard security property, not a configuration option.
+    sources:
+      - url: "threat model: passive metadata leakage via telemetry"
+    test: |
+      CI (Linux): `strace -e trace=network ./blindkey get test-entry 2>&1`; assert the output
+        contains no lines matching socket/connect/sendto/recvfrom syscalls. Implementation:
+        `strace -e trace=network ./blindkey get test-entry 2>&1 | grep -E "^(socket|connect|sendto|recvfrom|bind|accept)"`;
+        assert output is empty.
+      STATIC: `grep -r "telemetry\|analytics\|sentry\|datadog\|segment\|mixpanel\|amplitude"
+        Cargo.toml Cargo.lock`; assert zero matches.
+
+  - id: C25  # Memory-hardening constraint — implement in Segment 3 (see segmentation_plan).
+    group: G4
+    title: "Constant-time comparisons, core-dump disabling, and auto-lock on idle"
+    description: |
+      CONSTANT-TIME COMPARISONS:
+        Any comparison involving secret material (HMAC tags, wrapped keys, passwords)
+        MUST use constant-time equality from the `subtle` crate (ConstantTimeEq trait).
+        Using `==` on secret bytes is forbidden — it is vulnerable to timing side-channels.
+
+      CORE DUMP DISABLING:
+        On process startup, the vault MUST call setrlimit(RLIMIT_CORE, 0) on Unix
+        (or the Windows equivalent: SetErrorMode(SEM_NOGPFAULTERRORBOX) + no crash reports)
+        to prevent secrets from appearing in core dump files.
+        On Linux, it MUST also write "0" to /proc/self/coredump_filter if accessible.
+
+      AUTO-LOCK ON IDLE:
+        The vault MUST auto-lock (clear all in-memory decrypted state, keys, and the
+        in-process session token) after a configurable idle timeout.
+        Default: 300 seconds (5 minutes) of no vault subcommand activity.
+        Configurable via ~/.vault.toml: `auto_lock_seconds` (min=30, max=3600, 0=disabled).
+        Lock event MUST zero all mlock'd pages via zeroize before releasing.
+    rationale: |
+      subtle crate: constant-time comparisons prevent timing-based secret recovery.
+      For example, comparing two HMAC tags with `==` can leak timing information about
+      how many bytes match, enabling forgery attacks. (research §7: "subtle crate for
+      constant-time comparisons")
+      Core dumps: a crashed vault process creates a core file containing full in-memory
+      secrets. setrlimit(RLIMIT_CORE, 0) prevents this. (research §5: "Disable core dumps")
+      Auto-lock: an unlocked vault left open on an unattended machine exposes all entries.
+      (research §5: "Auto-lock after configurable idle timeout")
+    sources:
+      - url: "https://github.com/dalek-cryptography/subtle"
+        note: "subtle crate — constant-time equality"
+      - url: "https://doc.libsodium.org/memory_management"
+        note: "libsodium memory management — mlock/mprotect patterns"
+    test: |
+      UNIT (constant-time): Compare two equal 32-byte secrets using ConstantTimeEq;
+        assert returns 1 (equal). Compare two different secrets; assert 0. Verify
+        the function is from the `subtle` crate (code review / grep).
+      STATIC: `grep -rn " == " src/` in modules handling HMAC tags, wrapped keys,
+        or password hashes must return zero results (linted via clippy custom rule or
+        code review gate).
+      INTEGRATION (Unix): Start vault; check /proc/<pid>/limits; assert Max core file
+        size is 0.
+      INTEGRATION: Unlock vault; wait 301 seconds without activity (or mock timer);
+        attempt `blindkey get` without re-entering password; assert prompt for password
+        (session has been locked).
+      UNIT: Set auto_lock_seconds=30 in config; unlock; wait 31s; assert locked.
+
+  - id: C24
+    group: G9
+    title: "Open source license; all dependencies free and cargo-audited"
+    description: |
+      The vault MUST be released under MIT OR Apache-2.0 (SPDX expression).
+      All crate dependencies MUST have licenses in:
+        MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, Unicode-DFS-2016.
+      No proprietary or source-available dependency is permitted.
+      CI MUST run `cargo audit` on every commit; fail on High or Critical advisories
+      in any crate in the dependency tree.
+      MSRV MUST be documented in Cargo.toml as `rust-version = "X.Y"`.
+    rationale: |
+      A closed-source dependency in the crypto path cannot be audited — one supply-chain
+      compromise is a vault compromise. Explicit MSRV prevents silent breakage.
+    sources:
+      - url: "https://rustsec.org/"
+    test: |
+      CI: `cargo audit` exits 0.
+      CI: `cargo deny check licenses` passes with policy permitting only listed SPDX IDs.
+      STATIC: `grep rust-version Cargo.toml` returns a non-empty result.
+
+  # ── G10: AI-era threat resistance ─────────────────────────────────────────
+
+  - id: C26
+    group: G10
+    title: "CSPRNG password generation with entropy floor — no human- or LLM-chosen secrets"
+    description: |
+      The vault MUST provide `blindkey gen` to generate passwords from a CSPRNG (OsRng via the
+      `getrandom` crate). It MUST NOT use a non-cryptographic PRNG (e.g. rand::thread_rng
+      without a CSPRNG backend) and MUST NOT call any LLM or network service to produce a
+      password.
+      Character selection MUST use rejection sampling to produce a uniform distribution over
+      the charset. Modulo reduction of a random byte over the charset length is FORBIDDEN
+      (it introduces bias toward lower-indexed characters).
+      Generation modes:
+        --charset alnum  : 62-char set [A-Za-z0-9]               (default length 20 ≈ 119 bits)
+        --charset ascii  : 94-char printable-ASCII set (default) (default length 20 ≈ 131 bits)
+        --charset words  : EFF Large Wordlist (7776 words, 12.9 bits/word), joined by '-'
+                           via --words N  (min 6 words ≈ 77 bits; default 6)
+        --length N       : N in [8, 256] for character modes; default 20
+      ENTROPY FLOOR ON USER-SUPPLIED PASSWORDS:
+        On `blindkey add` and `blindkey edit`, if a user-supplied password's estimated entropy is
+        below 60 bits, the vault MUST print a WARNING to stderr suggesting `blindkey gen`.
+        Entropy estimate: bits = guesses_log10(password) * log2(10), using the `zxcvbn` crate.
+        The vault MUST warn, NOT block — the user may still store a weak password (warn-don't-refuse).
+    rationale: |
+      AI-assisted cracking has made human-chosen and LLM-generated passwords measurably
+      predictable: Kaspersky tests cracked 87–88% of Llama/DeepSeek-generated passwords and
+      33% of ChatGPT-generated passwords on commodity GPU hardware
+      (research/llm_offensive_threats.md §5.1). The only password strength that is provable
+      rather than hopeful is uniform CSPRNG output with a documented bit count. Modulo bias
+      silently lowers that entropy, so rejection sampling is mandatory.
+    sources:
+      - url: "research/llm_offensive_threats.md#5--credential-specific-threats"
+        note: "AI password cracking — Kaspersky figures; LLM-predictable distributions"
+      - url: "https://www.eff.org/dice"
+        note: "EFF Large Wordlist (7776 words) for diceware-style passphrases"
+      - url: "https://docs.rs/getrandom/"
+        note: "OsRng / getrandom — OS CSPRNG source"
+    test: |
+      UNIT (bias): Generate 100,000 characters with `--charset ascii`. Run a chi-square
+        goodness-of-fit test over the 94-char set; assert p > 0.01 (no detectable modulo bias).
+      UNIT (charset/length): `blindkey gen --length 32 --charset alnum`; assert output is exactly
+        32 chars and every char is in [A-Za-z0-9].
+      UNIT (words): `blindkey gen --charset words --words 6`; assert exactly 6 tokens, each present
+        in the EFF wordlist, separated by '-'.
+      UNIT (floor warning): On `blindkey add` with password "password1", assert estimated entropy
+        < 60 bits, a WARNING containing "blindkey gen" is printed to stderr, and the command still
+        succeeds (entry is stored).
+      STATIC: grep the generator module for `getrandom`/`OsRng`; assert no `thread_rng` without
+        a CSPRNG backend and no `% charset_len` modulo reduction over the alphabet.
+
+  - id: C27
+    group: G10
+    title: "Model-blind secret delivery — no plaintext on a default LLM-readable channel"
+    description: |
+      v1 places NO LLM/AI agent inside the vault trust boundary (see non_goals). Secrets are
+      delivered to a human, not to a model.
+      DEFAULT DELIVERY: `blindkey get` MUST deliver the requested field to the OS clipboard by
+      default (consistent with C13), NOT to stdout. Printing a secret to stdout MUST require an
+      explicit `--stdout` flag, and that flag MUST print a WARNING to stderr:
+        "plaintext written to stdout; ensure no AI agent or untrusted process captures this stream."
+      NO-CLIPBOARD FALLBACK (amended 2026-06-10, promoted from UC-04 §7): when no OS
+      clipboard is available (headless SSH, no $DISPLAY/$WAYLAND_DISPLAY, compositor
+      without a data-control protocol), `blindkey get` without `--stdout` MUST refuse with
+      exit code 7 (C21) and the message:
+        "no clipboard available on this session; use --stdout (prints a security
+        warning) if you accept plaintext on stdout."
+      It MUST NOT silently degrade to stdout — the model-blind default never downgrades
+      itself.
+      NO SECRET TO ANY MODEL/NETWORK: the vault MUST contain no code path that transmits secret
+      material to a network endpoint or an LLM API (reinforces C23's zero-network property for
+      the specific case of secret payloads).
+      FORWARD CONSTRAINT (binding on any future agentic / MCP interface, even though v1 ships
+      none): a future agent interface MUST deliver secrets only via model-blind channels — OS
+      clipboard, OS keychain handoff, or direct field injection at the destination — such that
+      the LLM and its context window NEVER receive the plaintext secret. Returning plaintext on
+      any channel an LLM reads (including a tool result an agent ingests) is prohibited.
+      FORWARD CONSTRAINT (UI surfaces, binding on any future TUI/GUI/native shell, even though v1
+      ships none): a UI MUST default to copy-not-display (clipboard, C13); any on-screen reveal MUST
+      be explicit, authentication-gated, and time-boxed, rendered only to a buffer cleared on hide
+      (e.g. the terminal alternate-screen — never scrollback). The UI process MUST hold no long-lived
+      plaintext: it calls blindkey-core per delivery, and secret material MUST NOT be marshalled across
+      an FFI boundary into a managed-runtime heap (JS/Swift/Kotlin) that cannot be zeroized. The
+      secure path is identical for every shell — blindkey-core performs the delivery (see
+      research/ui_architecture.md and docs/specs/UC-18-native-ui.md).
+      SCOPE — HONEST LIMITS: model-blind delivery defends against INCIDENTAL capture — a
+      secret landing in an agent's tool-result stream, context window, or logs by default.
+      It is NOT a defense against a hostile or prompt-injected agent that already has
+      shell access to an unlocked session: such an agent can itself invoke
+      `blindkey get --stdout` or read the OS clipboard. That residual risk is bounded — not
+      eliminated — by auto-lock (C25), clipboard concealment (C33), and the timed clear
+      (C13), and MUST be documented in the threat model (see test). This constraint
+      raises the bar for accidental exposure; it does not move a compromised local agent
+      outside the same-user-malware adversary class.
+    rationale: |
+      Prompt injection is an unsolved problem: a systematic review across 78 studies found
+      every tested coding agent vulnerable, with adaptive attack success > 85%, and production
+      agents from multiple vendors were hijacked to exfiltrate credentials
+      (research/llm_offensive_threats.md §7). An LLM cannot reliably separate instructions from
+      data, so any secret the model can read, an attacker can instruct it to leak. The only
+      robust defense is to keep the secret out of the model's context entirely — the design
+      principle behind 1Password's Secure Agentic Autofill. Default-clipboard + opt-in `--stdout`
+      prevents an agent from trivially capturing `blindkey get` output as a tool result.
+    sources:
+      - url: "research/llm_offensive_threats.md#7--agentic-assistants--prompt-injection"
+        note: "Prompt-injection exfiltration; 78-study review; model-blind delivery principle"
+      - url: "https://1password.com/blog/closing-the-credential-risk-gap-for-browser-use-ai-agents"
+        note: "Secure Agentic Autofill — LLM never sees/handles the credential"
+    test: |
+      INTEGRATION: `blindkey get X --field password` (no --stdout); assert the secret value does
+        NOT appear on stdout and the OS clipboard contains it.
+      INTEGRATION: `blindkey get X --field password --stdout`; assert the secret appears on stdout
+        AND the warning string "plaintext written to stdout" appears on stderr.
+      INTEGRATION (headless): with no clipboard available (e.g. unset DISPLAY/WAYLAND_DISPLAY
+        on Linux), `blindkey get X` without --stdout exits with code 7, prints the "no clipboard
+        available" message, and emits NO secret bytes on any stream.
+      STATIC: grep the dependency tree and secret-handling modules for any HTTP client, raw
+        socket, or LLM SDK; assert zero matches in code paths that touch secret material
+        (reinforces C23).
+      DOC: the README / threat-model section MUST state that LLM agents are outside the v1 trust
+        boundary, MUST document the model-blind delivery requirement for any future interface
+        (agentic or UI surface; the UI-surface reveal/no-marshal tests are in
+        docs/specs/UC-18-native-ui.md §6), AND MUST state explicitly that model-blind delivery
+        does not defend against a hostile agent with shell access to an unlocked session
+        (residual risk bounded by C25/C33/C13).
+
+  # ── G11: Untrusted input and output robustness ────────────────────────────
+  # Promoted 2026-06-10 from research/security_coverage_gaps.md (see its promotion
+  # ledger): A2→C28, A3→C29, A4→C30, B1→C31, C1→C32, B2→C33, D1→C34;
+  # A1 (KDF ceiling) and E2 (Unicode NFC) were folded into C2.
+
+  - id: C28
+    group: G11
+    title: "Terminal output sanitization — no raw control or ANSI/OSC sequences from stored fields"
+    description: |
+      Any stored field value (title, username, url, notes, tags, custom fields — and any
+      error message that echoes field content) written to a terminal MUST be sanitized:
+        - C0 control characters (0x00–0x1F except \n and \t) and C1 controls (0x80–0x9F)
+          MUST be stripped or rendered as visible escapes (e.g. 0x1B → "␛" or "\\x1b").
+        - ANSI CSI/OSC escape sequences MUST never reach the terminal verbatim.
+      Applies to `blindkey ls`, `blindkey get --stdout`, `blindkey edit` previews, and diagnostic
+      output — regardless of whether the stream is a TTY (piped output can still reach a
+      terminal via a pager).
+    rationale: |
+      Entry fields are attacker-influenceable bytes (imported lists, shared or phished
+      entries). Embedded escape sequences can rewrite terminal content, spoof prompts,
+      or inject into the clipboard on some terminals. CVE-2025-55754 (Apache Tomcat):
+      ANSI escape injection "could inject a malicious command into the clipboard that
+      executes if the administrator pastes". Recurring CWE-150 vulnerability class.
+    sources:
+      - url: "https://www.sentinelone.com/vulnerability-database/cve-2025-55754/"
+        note: "ANSI escape-sequence injection precedent"
+      - url: "https://cwe.mitre.org/data/definitions/150.html"
+        note: "CWE-150 — improper neutralization of escape sequences"
+    test: |
+      UNIT: Store an entry titled "evil\x1b]52;c;payload\x07name". Run `blindkey ls`;
+        assert raw bytes 0x1B and 0x07 do not appear in the output; assert a stripped or
+        visible-escape rendering appears instead.
+      UNIT: Notes field containing CSI sequences ("\x1b[2J\x1b[H"); `blindkey get --stdout`;
+        assert output contains no raw 0x1B byte.
+      UNIT: Trigger an error message that echoes a field containing "\x1b[31m";
+        assert the raw escape does not reach stderr.
+
+  - id: C29
+    group: G11
+    title: "Export injection hardening — CSV formula escaping and strict JSON escaping"
+    description: |
+      For any tabular/CSV export format (current or future):
+        - A field whose first character is '=', '+', '-', or '@' (or a tab/CR followed
+          by one) MUST be prefix-escaped with a single quote (') before writing.
+        - Fields MUST be quoted per RFC 4180, with embedded quotes doubled.
+        - C0/C1 control characters MUST be stripped from exported field values.
+      For `blindkey export --format json`: output MUST be produced by a strict JSON
+      serializer (never string concatenation), with control characters escaped per
+      RFC 8259. The pre-export security warning required by C21 remains mandatory.
+    rationale: |
+      Password managers have shipped this exact vulnerability: CVE-2019-20184 (KeePass
+      2.4.1 CSV injection). A field beginning with '=' becomes a live formula when the
+      export is opened in Excel/Sheets — data exfiltration up to RCE (OWASP CSV
+      Injection; CWE-1236). This is password-manager-specific history, not hypothetical.
+    sources:
+      - url: "https://owasp.org/www-community/attacks/CSV_Injection"
+      - url: "https://cwe.mitre.org/data/definitions/1236.html"
+        note: "CWE-1236 — improper neutralization of formula elements"
+      - url: "https://medium.com/@Pablo0xSantiago/cve-2019-20184-keepass-2-4-1-csv-injection-33f08de3c11a"
+        note: "KeePass CSV-injection precedent"
+    test: |
+      UNIT: Entry with username '=HYPERLINK("http://evil","x")'. Export to CSV; assert
+        the written field begins with "'=" (prefix-escaped) and is RFC 4180 quoted.
+      UNIT: Fields beginning with '+', '-', '@' are likewise prefix-escaped.
+      UNIT: JSON export of a field containing 0x07 and '"' parses with a strict JSON
+        parser and round-trips to the original value after unescaping.
+
+  - id: C30
+    group: G11
+    title: "Parser robustness — forbid(unsafe_code), fuzzing in CI, bounded allocations"
+    description: |
+      blindkey-core MUST declare #![forbid(unsafe_code)] except in a small, explicitly
+      vetted FFI/syscall boundary (mlock/zeroize syscall wrappers; hardware FFI lives in
+      blindkey-hardware), each unsafe site carrying a written justification comment.
+      Every length/count field parsed from a vault file (stanza_count, stanza_data_len,
+      block size, chunk sizes) MUST be validated against the remaining input size BEFORE
+      any allocation; all size arithmetic MUST be checked (no silent overflow).
+      cargo-fuzz harnesses MUST exist for the header parser, each stanza type parser,
+      and the HmacBlockStream reader (scaffolded in fuzz/). CI MUST run each harness for
+      a bounded smoke period on every PR. The parsers MUST never panic, hang, or
+      over-allocate on arbitrary input.
+    rationale: |
+      The vault file is attacker-influenceable (synced over untrusted storage). A crash
+      on open is a sync-delivered DoS; an out-of-bounds read in unsafe code is worse.
+      Fuzzing attacker-facing format parsers is standard practice — OSS-Fuzz routinely
+      finds such bugs — and Rust's memory-safety guarantee only holds where unsafe is
+      forbidden.
+    sources:
+      - url: "https://rust-fuzz.github.io/book/cargo-fuzz.html"
+        note: "cargo-fuzz harness practice"
+      - url: "https://google.github.io/oss-fuzz/"
+        note: "Continuous fuzzing for format parsers"
+    test: |
+      STATIC: `grep -n "forbid(unsafe_code)" crates/blindkey-core/src/lib.rs` returns a
+        match; `grep -rn "unsafe" crates/blindkey-core/src/` outside the vetted syscall
+        wrapper module returns zero results.
+      CI: `cargo fuzz run header_parse -- -max_total_time=60` (likewise stanza_parse,
+        block_stream) completes without crashes on every PR.
+      UNIT: A header declaring stanza_data_len=0xFFFFFFFF inside a 100-byte file is
+        rejected with a length error before any allocation of that size is attempted.
+
+  - id: C31
+    group: G8
+    title: "No secrets on argv — prompt, stdin, or file descriptor only"
+    description: |
+      No vault command may accept a secret value (master password, entry password,
+      otp_secret, recovery material) as a command-line argument, and no such flag may
+      exist at all — a user must not be able to leak a secret via argv even deliberately.
+      Accepted input channels for secrets:
+        (a) interactive no-echo TTY prompt (default),
+        (b) stdin pipe (non-interactive use),
+        (c) an explicit `--password-fd N` file descriptor.
+      Generated passwords (`blindkey gen`) are program OUTPUT, not input — unaffected.
+    rationale: |
+      argv is visible in shell history files, `ps aux`, and /proc/<pid>/cmdline readable
+      by any same-user process — and it is exactly the channel a shell log or an agent
+      transcript captures. The original C20 acceptance example passed `--password p` on
+      argv; this constraint removes that self-contradiction. Mirrors pass/gopass practice.
+    sources:
+      - url: "https://www.passwordstore.org/"
+        note: "pass/gopass: secrets via prompt or stdin, never argv"
+    test: |
+      INTEGRATION: `blindkey add github --password hunter2` exits non-zero with an unknown-
+        argument error (the flag does not exist).
+      INTEGRATION: `printf 'hunter2\n' | blindkey add github` succeeds (stdin path).
+      INTEGRATION (Linux): While `blindkey add` waits at the password prompt, read
+        /proc/<pid>/cmdline; assert it contains no secret bytes.
+
+  - id: C32
+    group: G6
+    title: "Atomic, durable saves with advisory locking and a verified backup generation"
+    description: |
+      The vault MUST never write the vault file in place. Save sequence:
+        1. Serialize and encrypt to a temp file in the SAME directory as the target.
+        2. fsync(temp_fd).
+        3. Preserve the previous generation as `vault.vlt.bak`.
+        4. Atomically rename(temp, vault.vlt).
+        5. fsync the containing directory.
+        6. Re-open and verify the new file (header_hash + header_hmac); only then remove
+           vault.vlt.bak (default) or retain it if `keep_backup = true` in ~/.vault.toml.
+      The vault MUST hold an advisory lock (flock(2) / LockFileEx) on the vault file for
+      the duration of an unlock session; a second writer MUST fail fast with a clear
+      "vault is in use" error rather than corrupt or interleave writes.
+      (C17 documents that the temp file and vault.vlt.bak are the only permitted
+      additional files; both are complete opaque encrypted blobs.)
+    rationale: |
+      A single opaque blob (C17) concentrates availability risk: one torn write loses
+      every credential. Crash mid-save, full disk, and concurrent processes are ordinary
+      events, not attacks; temp-fsync-rename-dirsync is the standard durability pattern.
+      C16 detects rollback, not a half-written file. This is data-loss prevention as
+      much as security.
+    sources:
+      - url: "https://lwn.net/Articles/457667/"
+        note: "Durable-rename pattern: fsync file, rename, fsync directory"
+    test: |
+      INTEGRATION (fault injection): Kill -9 the vault process at randomized points
+        during 100 saves; after each kill, assert the vault opens successfully from
+        either vault.vlt or vault.vlt.bak — zero unrecoverable states.
+      INTEGRATION: Hold an unlock session in process A; attempt `blindkey add` in process
+        B; assert B fails fast with an error containing "in use" and the file is
+        unchanged.
+      UNIT: Interrupt a save after step 4 but before step 6 completes; assert
+        vault.vlt.bak still exists and opens with the previous vault_version.
+
+  - id: C33
+    group: G4
+    title: "Clipboard concealment — exclude secrets from clipboard history and cloud sync"
+    description: |
+      Every clipboard write of secret material MUST be marked so OS clipboard-history
+      and cloud-clipboard features skip it:
+        macOS:   declare org.nspasteboard.ConcealedType (and TransientType) alongside
+                 the string type.
+        Windows: set ExcludeClipboardContentFromMonitorProcessing,
+                 CanIncludeInClipboardHistory=false, CanUploadToCloudClipboard=false.
+        Linux:   best-effort — set x-kde-passwordManagerHint="secret" where supported;
+                 document that X11 clipboards are readable by any client and no hint is
+                 enforceable there.
+      The C13 timed clear remains mandatory as the backstop on all platforms.
+      Platform limitations MUST be documented in the threat model (clipboard managers
+      that ignore concealment hints still capture the secret during the window).
+    rationale: |
+      C13's 30s clear does not help if Windows Cloud Clipboard or a history manager
+      captured the secret in the first second and synced it to another device or a
+      persistent buffer the clear never touches. Concealment marks are the documented
+      OS mechanism password managers use (1Password and KeePassXC set these types).
+    sources:
+      - url: "http://nspasteboard.org/"
+        note: "org.nspasteboard.ConcealedType convention"
+      - url: "https://learn.microsoft.com/en-us/windows/win32/dataxchg/clipboard-formats"
+        note: "Windows clipboard monitor-processing / history / cloud exclusion formats"
+    test: |
+      INTEGRATION (macOS): Copy a password via `blindkey get`; read the pasteboard types;
+        assert org.nspasteboard.ConcealedType is present.
+      INTEGRATION (Windows): Copy a password; enumerate clipboard formats; assert
+        ExcludeClipboardContentFromMonitorProcessing is set and
+        CanIncludeInClipboardHistory is false.
+      DOCUMENTATION: docs/THREAT_MODEL.md lists clipboard managers that ignore
+        concealment hints as a residual risk.
+
+  - id: C34
+    group: G9
+    title: "Reproducible builds and signed releases with provenance"
+    description: |
+      Release artifacts MUST be verifiable end-to-end:
+        - Builds MUST be reproducible: pinned toolchain (rust-toolchain.toml),
+          `cargo build --locked --release`, documented build environment; an independent
+          rebuild MUST produce a bit-identical binary for the musl target.
+        - Every release artifact MUST be signed with Sigstore cosign (keyless, GitHub
+          OIDC) and accompanied by SLSA build provenance and a SHA-256 checksums file.
+        - docs/VERIFYING_RELEASES.md MUST document the exact cosign/checksum commands a
+          user runs to verify a download before executing it.
+      The release pipeline MUST fail closed: if signing or provenance generation fails,
+      no artifact is published.
+    rationale: |
+      `cargo audit` / `cargo deny` (C3, C24) vet the source; nothing else lets a user
+      verify the BINARY they download matches that source. A compromised CI or release
+      account could otherwise ship a backdoored artifact undetectably. This is the
+      distribution analogue of C9's header HMAC: integrity the user can check without
+      trusting the channel.
+    sources:
+      - url: "https://slsa.dev/spec/v1.0/faq"
+        note: "SLSA build provenance"
+      - url: "https://docs.sigstore.dev/cosign/signing/overview/"
+        note: "cosign keyless signing"
+    test: |
+      CI: Two clean-room builds of the same tag on separate runners produce bit-identical
+        SHA-256 digests for the x86_64-unknown-linux-musl binary.
+      CI (fault injection): Force cosign signing to fail in the release workflow; assert
+        the workflow fails and no artifact is published.
+      INTEGRATION: The exact verification commands documented in
+        docs/VERIFYING_RELEASES.md succeed against a published artifact and signature.
+
+  # ── G12: Search and discovery (UC-19) ─────────────────────────────────────
+  - id: C35
+    group: G12
+    title: "Search corpus excludes secret values"
+    description: |
+      Fuzzy omni-search MUST match only NON-SECRET metadata: an entry's title,
+      username, url, and tags. Secret and secret-adjacent fields — password,
+      otp_secret, protected custom fields, and the free-form notes field (which
+      users paste arbitrary content, including secrets, into) — MUST NOT be added
+      to the searchable corpus and MUST NOT be passed to the matcher. The set of
+      searchable fields MUST be a closed enumeration with no secret variant.
+    rationale: |
+      A matcher cannot leak a secret it never sees. Making the corpus a closed,
+      metadata-only set turns "search never exposes a secret" into a structural
+      property rather than a runtime check. This is the security premise that lets
+      the convenience of fuzzy search add zero exposure.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.2 corpus, §3.7 security properties"
+    test: |
+      UNIT: an entry whose query substring occurs ONLY inside its secret value (or
+        notes) returns zero hits; the same query against its title/username/url/tag
+        matches. The searchable-field enum has no password/otp/notes variant.
+
+  - id: C36
+    group: G12
+    title: "No persisted search index; ranking state is ciphertext at rest"
+    description: |
+      Search MUST build no persisted on-disk index (no trigram/inverted/BK-tree
+      file, no cached results). Matching is performed in memory over the
+      already-decrypted entry set. Any usage/ranking state (frecency) MUST be
+      stored INSIDE the encrypted payload, so it is ciphertext under the outer
+      AEAD at rest — never a plaintext sidecar.
+    rationale: |
+      A persisted index is a plaintext-shaped side-channel over sensitive metadata
+      (substring/n-gram membership, lengths, composition) that survives outside the
+      encrypted store. At this scale (hundreds–low-thousands of entries) an index is
+      also unnecessary: a linear scan is sub-millisecond.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.4 frecency store, §4 alternatives (index rejected)"
+    test: |
+      UNIT: the frecency store round-trips through the encrypted payload
+        (serialize → parse) and the plaintext usage bytes are not present in the
+        outer ciphertext.
+      INTEGRATION: `find --stdout` performs no disk write; no index file is created.
+
+  - id: C37
+    group: G12
+    title: "Query buffer is wiped on lock; queries are never logged"
+    description: |
+      The live search query buffer MUST be zeroized when the search is dismissed or
+      the vault is locked (it echoes metadata fragments). Search queries, matched
+      titles, result counts, and selections MUST NOT be written to logs, telemetry,
+      crash dumps, stderr diagnostics, or error messages — including on a no-match.
+    rationale: |
+      The query and results reveal what the vault contains. Wiping the buffer on
+      lock and never logging the query keeps that exposure inside the live, unlocked
+      session only.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.7; aligns C12/C19/C25"
+    test: |
+      UNIT/INTEGRATION: the GUI query buffer is zeroized on lock; the CLI never
+        echoes the query (a no-match error does not contain the query string); no
+        log/print path on the search code carries query or result text.
+
+  - id: C38
+    group: G12
+    title: "Search latency stays under 100 ms with no debounce"
+    description: |
+      A keystroke-to-result fuzzy match over the in-memory corpus MUST complete in
+      under 100 ms for up to 2000 entries, filtered SYNCHRONOUSLY on every keystroke
+      (no debounce). The matcher instance and scratch buffers are reused across
+      keystrokes to keep per-keystroke allocation low.
+    rationale: |
+      Below Nielsen's 0.1 s "instantaneous" threshold, type-to-filter feels direct.
+      For a small in-RAM corpus a synchronous scan is microseconds–low-milliseconds,
+      so debounce would only add perceived lag.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.1, §3.6; Miller 1968 / Nielsen limits"
+    test: |
+      UNIT (bench): full-corpus fuzzy match for 1–8 char queries at N=2000 completes
+        in < 100 ms (asserted even in a debug build).
+
+  - id: C39
+    group: G12
+    title: "Selecting a result delivers model-blind"
+    description: |
+      Selecting/acting on a search result MUST deliver the secret via the existing
+      model-blind clipboard path (auto-clearing, transient/concealed — C13/C27/C33),
+      never via a default stdout write. Any stdout output of search is titles-only
+      and never includes a secret; printing a secret remains an explicit, warned
+      opt-in on the dedicated get path.
+    rationale: |
+      Search becomes the most common way to reach a secret; it must inherit, not
+      bypass, the model-blind delivery guarantee that the rest of the vault upholds.
+    sources:
+      - url: "docs/specs/UC-19-omni-search.md"
+        note: "§3.5, §3.7; reuses C13/C27/C33"
+    test: |
+      INTEGRATION: `find` (default) copies via the clipboard helper, not stdout;
+        `find --stdout` lists titles only and contains no secret value.
+
+  # ── G13: Desktop GUI shell (UC-20) ────────────────────────────────────────
+  - id: C40
+    group: G13
+    title: "Desktop GUI uses reactive repaint only"
+    description: |
+      `blindkey-gui` MUST stay in egui's reactive repaint mode: the UI repaints on
+      input, focus changes, or an explicit `request_repaint` after a state change —
+      never in continuous every-frame mode. The only periodic repaint while unlocked
+      is the auto-lock idle timer, scheduled at most once per second via
+      `request_repaint_after(1s)` when `auto_lock_secs > 0`. With auto-lock
+      disabled, an idle unlocked window MUST NOT schedule repaints.
+    rationale: |
+      A credential utility is not a game loop. Continuous repaint burns CPU on every
+      machine and offers no security benefit. Reactive mode keeps idle cost near
+      zero while preserving instant response to typing and clicks.
+    sources:
+      - url: "docs/specs/UC-20-desktop-gui-hardening.md"
+        note: "§3.4 reactive invariants; egui README reactive mode"
+    test: |
+      REVIEW: `VaultApp::update` has no unconditional `request_repaint()` at the end
+        of the frame. INTEGRATION (manual or sampled): unlocked vault with
+        `auto_lock_secs = 0`, no input for 5 s → process CPU ~0%. With
+        `auto_lock_secs > 0`, the only periodic schedule is `request_repaint_after`
+        with a ≥1 s duration.
+
+  - id: C41
+    group: G13
+    title: "Desktop GUI renderer is lightweight or low-latency"
+    description: |
+      `blindkey-gui` MUST pin the **glow** OpenGL renderer in the workspace
+      `eframe` dependency (`default-features = false`, `features` include
+      `glow`, plus platform window features `wayland`/`x11` on Linux). The
+      `persistence` feature MUST NOT be enabled on `eframe` for `blindkey-gui` —
+      no UI state (queries, selection, window layout) is written to disk by the
+      framework. If the project later switches to the **wgpu** renderer (eframe
+      ≥0.34), `NativeOptions` MUST set
+      `desired_maximum_frame_latency: Some(1)` on the wgpu surface configuration.
+    rationale: |
+      glow keeps release binaries smaller and idle RAM lower on weak hardware —
+      the default posture for "fast on any machine." Disabling persistence closes a
+      metadata side-channel. Low-latency wgpu config is the documented upgrade path
+      when wgpu is chosen after benchmarking.
+    sources:
+      - url: "docs/specs/UC-20-desktop-gui-hardening.md"
+        note: "§3.1 renderer pin; eframe persistence feature"
+      - url: "https://docs.rs/eframe/latest/eframe/"
+        note: "glow vs wgpu features"
+    test: |
+      UNIT: workspace `Cargo.toml` `eframe` dependency lists `glow` and excludes
+        `persistence`. INTEGRATION: `cargo tree -p blindkey-gui -i eframe` resolves
+        through the glow backend. If wgpu is enabled in a future bump, a unit or
+        review test asserts `desired_maximum_frame_latency == Some(1)`.
+
+  - id: C42
+    group: G13
+    title: "Desktop GUI caches fuzzy search between repaints"
+    description: |
+      While the omni-search query string and the vault entry set are unchanged,
+      `blindkey-gui` MUST NOT call `Vault::find` again on incidental repaints (auto-lock
+      timer ticks, focus changes). Search results are recomputed only when the query
+      changes or entries are added, edited, removed, or imported. The cache is
+      cleared on lock.
+    rationale: |
+      Redundant fuzzy scans waste CPU without improving UX. C38 already bounds a
+      single scan; caching preserves that budget when the query is stable.
+    sources:
+      - url: "docs/specs/UC-20-desktop-gui-hardening.md"
+        note: "§3.2 SearchCache"
+    test: |
+      UNIT/INTEGRATION: with a fixed query and stable entry set, two consecutive
+        search resolutions return identical ordering without a second `find` call
+        (mock counter or test hook). Changing the query or mutating entries
+        invalidates the cache.
+
+  - id: C43
+    group: G13
+    title: "Desktop GUI virtualizes long entry lists"
+    description: |
+      When the filtered entry list exceeds **500** rows, `blindkey-gui` MUST lay out
+      and paint only the viewport-visible slice (plus a small margin), not every
+      row each frame. For N ≤ 500 the simple full-list path MAY remain. The
+      threshold is a named constant (`LIST_VIRTUALIZE_THRESHOLD = 500`).
+    rationale: |
+      egui `ScrollArea` lays out all children every frame; unbounded row count
+      breaks the frame budget on large vaults even when C38 keeps search fast.
+    sources:
+      - url: "docs/specs/UC-20-desktop-gui-hardening.md"
+        note: "§3.3 virtualization"
+      - url: "https://github.com/emilk/egui/blob/main/README.md"
+        note: "ScrollArea perf caveat"
+    test: |
+      INTEGRATION: with 600 synthetic entries displayed, row-layout/paint hooks
+        run for at most `LIST_VIRTUALIZE_THRESHOLD + margin` rows per frame (test
+        hook or debug counter). N ≤ 500 behavior unchanged.
+
+  - id: C44
+    group: G13
+    title: "Desktop GUI password fields are masked for display and accessibility"
+    description: |
+      Every `egui::TextEdit` that accepts a master password, entry password, or
+      OTP/base32 secret in `blindkey-gui` MUST use password masking (`.password(true)`
+      or equivalent) so glyphs are not rendered in plaintext and accessibility APIs
+      do not expose the typed value. On-screen reveal of an entry password remains
+      opt-in via the existing reveal toggle and MUST re-mask on hide.
+    rationale: |
+      GPU textures and accessibility bridges are presentation leak surfaces.
+      Default masking extends copy-not-display (C27) to the typing and screen-reader
+      paths.
+    sources:
+      - url: "docs/specs/UC-20-desktop-gui-hardening.md"
+        note: "§3.5 VG-S6"
+      - url: "research/ui_architecture.md"
+        note: "§1 secret-display boundary"
+    test: |
+      REVIEW: unlock, editor password, and OTP fields use `password(true)`.
+        INTEGRATION (manual a11y spot-check): VoiceOver/NVDA reads the field label,
+        not the secret characters, while typing.
+
+  - id: C45
+    group: G13
+    title: "Desktop GUI remains a thin shell over blindkey-core"
+    description: |
+      `blindkey-gui` MUST NOT import or call cryptographic primitives, format
+      parsers, envelope routines, or KDF functions directly. All unlock, search,
+      import, save, clipboard delivery, and audit operations go through `blindkey-core`
+      public APIs. Side effects that mutate the vault or touch secrets are collected
+      in an `Action` enum and executed after UI panel closures, never inside `egui`
+      widget closures.
+    rationale: |
+      Preserves the UC-18 audited boundary: one core, thin shells. Keeps borrow-safe
+      UI code from accidentally interleaving saves with layout.
+    sources:
+      - url: "docs/specs/UC-18-native-ui.md"
+        note: "§3.1 thin shell"
+      - url: "docs/specs/UC-20-desktop-gui-hardening.md"
+        note: "§3.6 frame workflow"
+    test: |
+      REVIEW: `blindkey-gui` has `#![forbid(unsafe_code)]` and no direct imports of
+        `chacha20poly1305`, `argon2`, or `vault_core::format` crypto modules.
+        `vault.save()` and `clip::copy` are not called inside `ui.add` closures.
+
+  # ── G14: Desktop GUI gaps closure (UC-21) ─────────────────────────────────
+  - id: C46
+    group: G14
+    title: "Desktop GUI time-boxes on-screen password reveal"
+    description: |
+      When the user toggles on-screen password reveal in `blindkey-gui`, the plaintext view
+      MUST auto re-mask within **15 seconds** (`REVEAL_TIMEOUT_SECS`). While reveal is
+      active, periodic repaint is limited to ≤1 Hz via `request_repaint_after(1s)`.
+    test: |
+      UNIT: `enforce_reveal_timeout` clears `reveal` after deadline. INTEGRATION test
+        in `uc21_constraints.rs` asserts wiring.
+
+  - id: C47
+    group: G14
+    title: "Desktop GUI optional lock on window blur"
+    description: |
+      `blindkey-gui` MUST support `lock_on_blur` in `~/.blindkey/config` (default **off**).
+      When enabled and the main viewport `focused == false`, the vault locks immediately.
+    test: |
+      UNIT: config round-trip for `lock_on_blur`. INTEGRATION: `enforce_focus_lock` wired.
+
+  - id: C48
+    group: G14
+    title: "Desktop GUI unlocks keyfile-2FA vaults"
+    description: |
+      When `Vault::requires_keyfile` is true, the unlock screen MUST offer keyfile path
+      selection and open via `Vault::open_keyfile`, or recovery via `Vault::open` with
+      the recovery code when the user selects recovery mode.
+    test: |
+      INTEGRATION: CLI keyfile test parity; GUI wiring test `c48_keyfile_unlock_wired`.
+
+  - id: C49
+    group: G14
+    title: "Desktop GUI enrolls keyfile 2FA"
+    description: |
+      From an unlocked non-2FA vault, `blindkey-gui` MUST offer keyfile enrollment mirroring
+      `blindkey enroll keyfile`: generate/adopt keyfile, `enroll_keyfile_2fa`, `save`, display
+      one-time recovery code in a modal.
+    test: |
+      UNIT: `recovery_code()` shape test. INTEGRATION: `c49_keyfile_enroll_wired`.
+
+  - id: C50
+    group: G14
+    title: "Desktop GUI shows pre-1.0 security notice"
+    description: |
+      Until dismissed, `blindkey-gui` shows a pre-1.0 audit warning banner after unlock.
+      Dismissal persists as `dismissed_pre10=1` in `~/.blindkey/config`.
+    test: |
+      INTEGRATION: `c50_pre10_banner_wired`.
+
+  - id: C51
+    group: G14
+    title: "Desktop GUI configurable clipboard clear timeout"
+    description: |
+      `clipboard_timeout_secs` in GUI config (choices 15/30/60; default 30). Copy status
+      MUST warn that clipboard is visible to other apps during the timeout.
+    test: |
+      INTEGRATION: `c51_clipboard_timeout_wired`; copy uses configured timeout.
+
+  - id: C52
+    group: G14
+    title: "Desktop GUI virtualizes lists above 100 rows"
+    description: |
+      `LIST_VIRTUALIZE_THRESHOLD` MUST be **100** (lowered from 500 in UC-20).
+    test: |
+      UNIT: `list_virtualize.rs` constant and slice tests.
+
+  - id: C53
+    group: G14
+    title: "Desktop GUI documents metadata-only search scope"
+    description: |
+      The omni-search field MUST state that search covers metadata only — never password
+      or note values (C35 reinforcement).
+    test: |
+      INTEGRATION: `c53_search_scope_hint`.
+
+  - id: C54
+    group: G14
+    title: "Desktop GUI password fields have explicit labels"
+    description: |
+      Every password `TextEdit` in unlock/enroll/editor flows MUST have a preceding
+      `ui.label(...)` for screen-reader discoverability (complements C44).
+    test: |
+      INTEGRATION: `c54_password_labels`, `c54_password_fields_preceded_by_labels`; manual checklist
+      in docs/guides/accessibility.md.
+
+  # ── G15: Enterprise readiness (UC-22) ─────────────────────────────────────
+  - id: C55
+    group: G15
+    title: "Audit readiness script passes on release toolchain"
+    description: |
+      `scripts/audit-readiness.sh` MUST exit 0 when run from a clean tree with the
+      project toolchain: release C38/C59 search tests, clippy `-D warnings`, and
+      `cargo audit` / `cargo deny check` when those tools are installed.
+    test: |
+      INTEGRATION: `./scripts/audit-readiness.sh` exits 0 on maintainer machine/CI.
+
+  - id: C56
+    group: G15
+    title: "Audit intake document exists"
+    description: |
+      `docs/AUDIT_READINESS.md` MUST list CP-7 review scope (format, KDF, memory,
+      FFI, AI-era delivery, GUI boundary) and point to constraint index + threat model.
+    test: |
+      REVIEW: file exists; linked from SECURITY.md.
+
+  - id: C57
+    group: G15
+    title: "Enterprise deployment environment variables"
+    description: |
+      `blindkey-gui` MUST honor `BLINDKEY_VAULT_PATH` (vault file), `BLINDKEY_CONFIG_DIR`
+      (config directory), and `BLINDKEY_LOCK_ON_BLUR=1` (force lock-on-blur). Documented
+      in `docs/guides/enterprise-deployment.md`.
+    test: |
+      UNIT: `gui_config::resolve_vault_path` and env overrides wired;
+        `uc22_constraints.rs` grep tests.
+
+  - id: C58
+    group: G15
+    title: "C38 search benchmark runs in release only"
+    description: |
+      `latency_under_budget_at_scale` MUST return immediately in debug builds and
+      enforce the 100 ms budget only under `cargo test --release`.
+    test: |
+      UNIT: test body starts with `if cfg!(debug_assertions) { return; }`.
+
+  - id: C59
+    group: G15
+    title: "Search at N=5000 under 200 ms in release"
+    description: |
+      `latency_at_five_thousand` MUST pass with N=5000 and query probes under
+      **200 ms** each in release builds (enterprise-scale metadata search).
+    test: |
+      INTEGRATION: `cargo test -p blindkey-core --release latency_at_five_thousand`.
+
+  - id: C60
+    group: G15
+    title: "Enterprise posture documentation"
+    description: |
+      `docs/ENTERPRISE_POSTURE.md` and `docs/guides/enterprise-deployment.md` MUST
+      exist, state v1 non-goals (team vaults, SSO, SOC2), and list deployment hardening.
+    test: |
+      REVIEW: files exist; README or INSTALL links enterprise-deployment guide.
+
+  # ── G16: Sealed file containers (UC-23, post-1.0) ─────────────────────────
+  # FORWARD constraints (C27 precedent): they bind any sealed-file-container
+  # feature from the moment it exists, and are vacuously satisfied while it does
+  # not. Landed before implementation, Gate-0 style, per docs/specs/UC-23 §6.
+  # Design source: .sdlc/features/sealed-file-storage/patterns.yaml +
+  # research/encrypted_cloud_storage_research.md.
+
+  - id: C61
+    group: G16
+    title: "Sealed containers reuse the vault crypto path — no second crypto stack"
+    description: |
+      IF Blindkey ships a sealed file container feature (UC-23), it MUST reuse the
+      existing STREAM envelope (C1), KDF policy (C2), header rules (C7), and
+      multi-stanza unlock — no new cryptographic primitives, no parallel KDF path,
+      no separate key or recovery format. A fresh random data key is generated per
+      seal; no deterministic or convergent-encryption mode may exist at any flag.
+    test: |
+      FORWARD (vacuous until UC-23 ships). Then: REVIEW — no new crypto deps in
+      Cargo.toml; container headers parse via the existing stanza machinery.
+      UNIT — sealing identical input twice yields different ciphertexts.
+
+  - id: C62
+    group: G16
+    title: "Zero plaintext metadata in sealed containers"
+    description: |
+      A sealed container MUST expose only: the magic/version header (C7), stanza
+      records, and (padded) total length. All inner metadata — file names, paths,
+      sizes, counts, permissions, mtimes — lives inside the AEAD payload. This is
+      not configurable; there is no "skip filename encryption" mode (the 7-Zip trap).
+    test: |
+      FORWARD. Then: UNIT — ciphertext grep for every inner path segment of a
+      test corpus finds no plaintext trace.
+
+  - id: C63
+    group: G16
+    title: "Bounded-memory streaming seal and open"
+    description: |
+      Seal and open MUST stream with peak memory independent of input size
+      (O(chunk)); plaintext is never spilled to unencrypted temporary files during
+      seal; plaintext chunk buffers are zeroizing (C11); the KDF runs exactly once
+      per operation regardless of file count.
+    test: |
+      FORWARD. Then: INTEGRATION — seal an input larger than available RAM under a
+      fixed RSS ceiling; profile asserts a single Argon2id invocation.
+
+  - id: C64
+    group: G16
+    title: "Fail-closed extraction — no partial plaintext survives auth failure"
+    description: |
+      Any authentication failure during open MUST leave zero partial plaintext on
+      disk: extraction stages under a private directory removed on error; files
+      surface via temp+rename (C32 discipline) only after their final chunk
+      authenticates. Error output MUST NOT vary with failure position (no format
+      oracle). `--stdout` piping (where a write cannot be undone) MUST
+      buffer-and-verify, and refuse above a bounded size threshold.
+    test: |
+      FORWARD. Then: UNIT — chunk-corruption position matrix leaves the extraction
+      root free of partial bytes with byte-identical error text.
+
+  - id: C65
+    group: G16
+    title: "Path-traversal-safe extraction of hostile containers"
+    description: |
+      A validly-sealed container is still untrusted input (UC-10 stance): every
+      inner path MUST be validated before write — absolute paths, `..` components,
+      and symlink-escape targets rejected; no write outside the destination root.
+      The inner archive parser follows C30 rules (bounded reads, length caps, fuzz
+      target from day one).
+    test: |
+      FORWARD. Then: FUZZ/UNIT — zip-slip corpus (`../escape`, `/abs`, symlink
+      chains) creates nothing outside the target root; `file_archive_parse` fuzz
+      target green.
+
+  - id: C66
+    group: G16
+    title: "Size padding default-on for sealed containers"
+    description: |
+      Sealed containers MUST apply Padmé padding (S-12 `PadMode`) by default;
+      exact-size output requires an explicit opt-out flag. (Deliberately stricter
+      than the credential vault's opt-in default: new format, no back-compat
+      burden, and version-retaining hosts turn re-seals into a size-trajectory
+      channel.)
+    test: |
+      FORWARD. Then: UNIT — two inputs in the same Padmé bucket seal to identical
+      lengths by default; only the explicit opt-out yields exact-size output.
+
+# ──────────────────────────────────────────────────────────────────────────────
+constraint_satisfiability:
+  # IVD Rule 6 — SATISFIABILITY CHECK
+  # Required when 3 or more constraints exist. Documents every identified conflict,
+  # its resolution, and binding priority ordering.
+  # No constraint may be silently violated when it conflicts with another.
+  density: high  # 66 constraints, 16 groups (C61-C66 forward/vacuous until UC-23 ships)
+  conflicts_identified: 9
+  conflicts:
+
+    - id: SC1
+      between: [C2, C22]
+      description: |
+        C2 requires Argon2id m=64 MiB default. C22 requires unlock < 500ms on reference
+        hardware. On slower hardware, 64 MiB may exceed 500ms.
+      resolution: |
+        m=64 MiB, t=3, p=4 achieves ~300ms on a 4-core 2020+ laptop (measured; OWASP
+        guidance confirms). The 500ms ceiling is a target, not a hard security floor.
+        `blindkey tune` (C22) allows the user to recalibrate parameters for their hardware
+        while C2's minimum floor (m=19 MiB) is the non-negotiable security constraint.
+      priority: C2 > C22  # Security floor supersedes usability target if they conflict.
+
+    - id: SC2
+      between: [C18, C21]
+      description: |
+        C18 mandates zero plaintext fields (including entry names). C21 requires
+        `blindkey ls --search QUERY` to search across entries.
+      resolution: |
+        Search requires vault unlock (full payload decryption into mlock'd memory;
+        search performed in-memory only). No plaintext search index is created.
+        Search is O(n) over all decrypted entries — acceptable for vaults < 10,000
+        entries. This tradeoff is documented in the user guide.
+      priority: C18 > C21  # No plaintext fields is absolute; search UX is secondary.
+
+    - id: SC3
+      between: [C17, implicit_sync_merge_usability]
+      description: |
+        Single blob (C17) means sync conflicts between two concurrent writers produce
+        a full file conflict — no fine-grained per-entry merge.
+      resolution: |
+        v1 uses last-write-wins (vault_version comparison from C16). The vault provides
+        `blindkey merge OLD.vlt NEW.vlt` for manual conflict resolution. Per-entry
+        deterministic encryption (which would enable finer merge) is explicitly prohibited
+        (leakage-abuse attacks — Grubbs et al. 2017, 99% first-name recovery).
+        This is a deliberate security-over-convenience decision, documented.
+      priority: C17 > merge_convenience
+
+    - id: SC4
+      between: [C5, stated_goal_"beats_everything_in_security"]
+      description: |
+        Hardware stanzas are optional (C5). A vault with only a password stanza is
+        weaker than one with hardware. Does "beats any existing tool" apply to default?
+      resolution: |
+        The mandatory password stanza with Argon2id m=64 MiB, t=3, p=4 is already
+        stronger than the default of every existing free tool:
+          - KeePassXC default: Argon2d, 64 MiB (correct memory, wrong variant)
+          - pass: GnuPG (asymmetric, no KDF at unlock)
+          - Bitwarden self-hosted: PBKDF2-SHA-256, 600,000 iterations (fast vs Argon2id)
+        The hardware stanzas are the highest-security path: zero-cost to enable, default-off
+        for accessibility. "Beats everything" applies to the default password path and is
+        fully satisfied by Argon2id + zero-plaintext + rollback detection + zeroize.
+
+    - id: SC5
+      between: [C27, C21]
+      description: |
+        C27 forbids returning plaintext secrets on a default LLM-readable channel (stdout).
+        C21 requires `blindkey export --format json`, which by design emits decrypted entries,
+        and `blindkey get` is a daily-use command whose output a script may need on stdout.
+      resolution: |
+        Export and stdout output remain available but are EXPLICIT, WARNED opt-ins, never the
+        default. `blindkey export` already requires a security warning (C21); `blindkey get` writes to
+        the clipboard unless `--stdout` is passed, and `--stdout` prints the C27 stderr warning.
+        No command emits a secret to stdout or to a file silently. This satisfies both: human/
+        script workflows are preserved, while no plaintext reaches an LLM-readable channel by
+        default.
+      priority: C27_default > C21_convenience  # Default channel must be model-blind; opt-out is explicit.
+
+    - id: SC6
+      between: [C1, C4]
+      description: |
+        C1 requires nonce_prefix regeneration on every body write to prevent XChaCha20 keystream
+        reuse across saves. C4 requires that password rotation (re-wrapping the stanza) does NOT
+        re-encrypt the body — its test asserts "payload ciphertext bytes are byte-for-byte identical
+        before and after" a password change. If nonce_prefix were regenerated on every save
+        (including stanza-only rewrites), the body would need to be re-encrypted to match the new
+        HKDF salt, breaking C4's O(1) rotation property.
+      resolution: |
+        Bind nonce_prefix regeneration to body writes, not to all saves. master_seed is
+        bound to body writes for the same reason (Gate 0 G0.2: it salts the C10
+        block-HMAC keys, which must stay valid across header-only saves — the original
+        resolution's "new master_seed" on a header-only rewrite would have orphaned
+        every stored block HMAC). The C5 YubiKey challenge therefore also rotates per
+        body-writing save, with graceful staleness per C5/G0.7. A password rotation
+        rewrites the header only (new stanza data, new header_hash, new header_hmac)
+        and leaves master_seed, nonce_prefix, and the entire body — ciphertext AND
+        block HMACs — unchanged (block-HMAC keys derive from the data key, which never
+        changes). C1's cross-save independence test targets body-writing saves only;
+        the C4 test remains fully satisfied.
+      priority: C4 > C1_rotation_scope  # O(1) password rotation is an explicit design goal; freshness binds to body writes.
+
+    - id: SC7
+      between: [C31, C20, C21]
+      description: |
+        C31 forbids secrets on argv. C20 requires first-time setup in <= 5 interactive
+        prompts and < 60s including non-interactive CI use, and C21's commands must
+        remain scriptable.
+      resolution: |
+        Non-interactive paths use stdin pipes or `--password-fd N` — both invisible to
+        argv, `ps`, and shell history. Interactive paths use the no-echo prompt, which
+        counts toward C20's prompt budget. Scriptability is fully preserved without a
+        secret ever appearing in a process argument list. C20's acceptance test was
+        rewritten accordingly (it previously passed `--password p` on argv — a
+        self-contradiction this resolution removes).
+      priority: C31 > scripting_convenience
+
+    - id: SC8
+      between: [C2, C8]
+      description: |
+        C8 mandates that the binary read KDF params from the file verbatim and never
+        override them with compiled-in defaults; C2's ceiling mandates rejecting params
+        above a maximum before running Argon2id. Is bounds-rejection an "override"?
+      resolution: |
+        No. No value is ever substituted: the file remains authoritative for every
+        in-range value, and out-of-range params cause an explicit abort with an error —
+        never a silent fallback to compiled-in defaults. C8 forbids overriding; C2
+        mandates validating; rejection-with-error satisfies both. The ceiling check
+        deliberately runs BEFORE Argon2id — and therefore before the C9 header HMAC can
+        be verified, since verifying it requires unwrapping the data key from a stanza,
+        which on the password path requires the KDF output — because the
+        memory-exhaustion DoS happens at allocation time. header_hash alone cannot
+        gate this (it is unkeyed and attacker-recomputable).
+      priority: C2_bounds_validation > C8_verbatim_use  # validate bounds, then use the file's values verbatim
+
+    - id: SC9
+      between: [C64, C27]
+      description: |
+        C27's script-friendliness lineage implies pipe-based output (`open --stdout`)
+        for UC-23 sealed containers, but a pipe write cannot be undone if a chunk
+        authentication failure surfaces AFTER earlier chunks were already emitted —
+        violating C64's "no partial plaintext survives auth failure" for the
+        stdout channel.
+      resolution: |
+        C64 wins. `--stdout` MUST buffer the fully-decrypted, fully-authenticated
+        payload before emitting a single byte, and MUST refuse (with guidance
+        toward `open -C dir`) above a bounded size threshold where buffering is
+        no longer tenable. Streaming-to-pipe-before-verification is never offered,
+        at any flag. Threshold calibrated during implementation (IVD Rule 5).
+      priority: C64_fail_closed > C27_pipe_convenience  # forward conflict — binds when UC-23 ships
+
+  joint_satisfaction_test: |
+    Phase A (UC-23): `crates/blindkey-core/tests/uc23_joint_satisfaction.rs` — seal one
+    hostile+large corpus once; assert C61–C66 on that single artifact (docs/specs/UC-23-sealed-file-storage.md §5.6).
+
+  all_constraints_simultaneously_satisfiable: true
+  note: |
+    All 66 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
+    described in vault/research/vault_spec.md. No cryptographic incompatibilities exist
+    among the selected primitives (XChaCha20-Poly1305, Argon2id, HKDF-SHA-256, HMAC-SHA-256).
+    The eight identified conflicts are resolved by explicit priority ordering above.
+    C26 (CSPRNG generation) and C27 (model-blind delivery) add no cryptographic primitives —
+    C26 reuses OsRng; C27 is a delivery/trust-boundary policy — so they introduce no new
+    library or algorithm conflicts. The constraints promoted on 2026-06-10 (C28–C34, plus
+    the ceiling and NFC additions to C2) are input/output-sanitization, process, and
+    distribution requirements; they likewise add no cryptographic primitives.
+    The UC-19 search group (C35–C39, added 2026-06-17) adds no cryptographic primitives
+    either: C35/C37 are corpus/handling policy, C36 stores ranking state inside the existing
+    AEAD payload (no new key or index), C38 is a latency budget, and C39 reuses the C13/C27/C33
+    clipboard path. They are consistent with SC2 (search is in-memory, no plaintext index) and
+    introduce no new conflicts.
+    The UC-20 desktop GUI group (C40–C45, added 2026-06-18) adds no cryptographic primitives:
+    C40/C42/C43 are repaint and layout performance policy, C41 is a build/renderer configuration
+    rule, C44 extends C27's presentation boundary to password widgets and a11y, and C45 restates
+    the UC-18 thin-shell boundary for `blindkey-gui`. C42 complements C38 (cache avoids redundant
+    scans; C38 still bounds a single scan). C41's persistence ban complements C36/C17 (no extra
+    on-disk artifacts). No new conflicts identified.
+
+# ──────────────────────────────────────────────────────────────────────────────
+implementation_notes:
+  segmentation_plan: |
+    IVD Rule 1 — HIGH constraint density (66 constraints) requires segmented
+    implementation. Implement one segment, re-read its constraints from disk,
+    verify they all pass, then proceed to the next segment. Never implement
+    across segments without verifying the preceding segment first.
+
+    SEGMENT 1 — Cryptographic core (G1 + G2)
+      Implement and verify: C1, C2, C3, C4, C5, C6
+      Re-read C1–C6 from disk before each sub-segment.
+
+    SEGMENT 2 — File format (G3) + parser robustness (G11 input half)
+      Implement and verify: C7, C8, C9, C10, C30
+      Re-read C7–C10, C30 from disk before each sub-segment.
+
+    SEGMENT 3 — Memory hardening (G4)
+      Implement and verify: C11, C12, C13, C25, C33
+      Re-read C11–C13, C25, C33 from disk before each sub-segment.
+
+    SEGMENT 4 — Hardware factors (G5) + Rollback & save safety (G6)
+      Implement and verify: C14, C15, C16, C17, C32
+      Re-read C14–C17, C32 from disk before each sub-segment.
+
+    SEGMENT 5 — Encryption completeness (G7)
+      Implement and verify: C18, C19
+      Re-read C18–C19 from disk before each sub-segment.
+
+    SEGMENT 6 — Usability + OSS (G8 + G9) + output robustness (G11 output half)
+      Implement and verify: C20, C21, C22, C23, C24, C28, C29, C31, C34
+      Re-read C20–C24, C28, C29, C31, C34 from disk before each sub-segment.
+
+    SEGMENT 7 — AI-era threat resistance (G10)
+      Implement and verify: C26, C27
+      Re-read C26–C27 from disk before each sub-segment.
+      Note: C27's default-clipboard behavior depends on C13 (clipboard) being in place;
+      sequence C27 after Segment 3. C26 depends only on OsRng (Segment 1 primitives).
+
+    SEGMENT 8 — Search and discovery (G12)
+      Implement and verify: C35, C36, C37, C38, C39
+      Re-read C35–C39 from disk before each sub-segment.
+
+    SEGMENT 9 — Desktop GUI shell (G13)
+      Implement and verify: C40, C41, C42, C43, C44, C45
+      Re-read C40–C45 from disk before each sub-segment.
+      Note: depends on UC-19 (C35–C39) and UC-18 shipped `blindkey-gui`; sequence after
+      Segments 7–8. C41 (glow pin) lands before C42/C43 perf work.
+
+    SEGMENT 10 — Desktop GUI gaps closure (G14)
+      Implement and verify: C46, C47, C48, C49, C50, C51, C52, C53, C54
+      Re-read C46–C54 from disk before each sub-segment.
+      Note: depends on Segment 9 (UC-20) and UC-09 keyfile APIs in blindkey-core.
+
+    SEGMENT 11 — Enterprise readiness (G15)
+      Implement and verify: C55, C56, C57, C58, C59, C60
+      Re-read C55–C60 from disk before each sub-segment.
+
+    SEGMENT 12 — Sealed file containers (G16, UC-23, post-1.0)
+      Implement and verify: C61, C62, C63, C64, C65, C66
+      Re-read C61–C66 from disk before each sub-segment (IVD Rule 1 — 6 constraints).
+      Run joint_satisfaction_test on one hostile+large artifact before declaring Phase A done.
+      Gate: intent amendment merged (Gate-0) before any code in this segment.
+
+    IVD Rule 2 — POST-IMPLEMENTATION AUDIT: Re-read this entire file from disk
+    (not from memory). For each constraint (C1–C66), diff the implementation
+    against the constraint and report: PASS / FAIL / NEEDS_REVIEW.
+    Do not declare the implementation complete until every constraint is PASS
+    or NEEDS_REVIEW with written justification. Undeclared FAILs are not acceptable.
+
+  implementation_roadmap:
+    # Suggested milestone order for a first contribution or fork.
+    - "1. File format types & serialisation (C7, C8, C9, C10) + parser hardening & fuzz harnesses (C30)"
+    - "2. Cryptographic core — KDF incl. floor/ceiling/NFC, AEAD, HKDF, envelope (C1–C6)"
+    - "3. Memory hardening layer — zeroize, mlock, constant-time, core dumps (C11–C13, C25) + clipboard concealment (C33)"
+    - "4. Vault read/write — open, save, upgrade-kdf (C2, C4, C5, C16) + atomic saves & locking (C32)"
+    - "5. CLI surface — init, add, get, ls, edit, rm, export, import, tune, gen (C20–C22, C26) + output sanitization, export escaping, no-argv-secrets (C28, C29, C31)"
+    - "6. Hardware factors — FIDO2, YubiKey CR, TPM (C14, C15; optional)"
+    - "7. OS keystore stanzas — macOS Secure Enclave, Windows DPAPI/CNG (C5; optional)"
+    - "8. Import from common formats — pass/gopass, KeePassXC CSV, JSON (C21 import)"
+    - "9. AI-era hardening — CSPRNG password generator + model-blind secret delivery (C26, C27)"
+    - "10. Distribution trust — reproducible builds, signed releases, provenance (C34)"
+    - "11. IVD Rule 2 post-implementation audit — PASS / FAIL / NEEDS_REVIEW per constraint"

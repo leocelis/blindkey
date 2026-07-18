@@ -1,10 +1,10 @@
 # Constraint test index (IVD Rule 3)
 
-Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) — **66 constraints**, **16 groups**, intent **v1.8.0**.
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **66 constraints**, **16 groups**, intent **v1.8.0**.
 C61–C66 (G16, [UC-23 sealed file storage](specs/UC-23-sealed-file-storage.md)) ship in **S-22**
 (Phase A–C). The CP-7 sweep below is **66/66 PASS** at the automated gate; C63 RSS ceiling
 on Linux release tests (`c63_rss_ceiling_large_on_disk_seal`); throughput bench via
-`VAULT_SEAL_BENCH_MIN_MIB_S` in `audit-readiness.sh`.
+`BLINDKEY_SEAL_BENCH_MIN_MIB_S` in `audit-readiness.sh`.
 
 Tests are **distributed** across crate suites (not a single monolithic file). Run everything with:
 
@@ -19,19 +19,19 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 
 | ID | Title (short) | Status | Evidence |
 |----|---------------|--------|----------|
-| C1 | XChaCha20-Poly1305 STREAM payload | PASS | `vault-core/src/crypto/`, format round-trip tests |
+| C1 | XChaCha20-Poly1305 STREAM payload | PASS | `blindkey-core/src/crypto/`, format round-trip tests |
 | C2 | Argon2id KDF floor/ceiling + NFC | PASS | `crypto/kdf.rs` unit tests, open rejects hostile params |
 | C3 | Supply-chain policy (audit/deny) | PASS | `constraint_gaps.rs` (`c3_*`), `just audit` |
 | C4 | Constant data key + stanza re-wrap | PASS | `constraint_gaps.rs`, envelope tests |
 | C5 | HKDF wrapping key derivation | PASS | `crypto/envelope.rs` unit tests |
-| C6 | Hardware stanza HKDF recipe | PASS | `constraint_gaps.rs`, `vault-hardware` |
+| C6 | Hardware stanza HKDF recipe | PASS | `constraint_gaps.rs`, `blindkey-hardware` |
 | C7 | Header parser bounds | PASS | `format/header.rs`, `robustness.rs`, fuzz |
 | C8 | Plaintext header fields | PASS | format unit tests |
 | C9 | Keyed header HMAC | PASS | `robustness.rs`, tamper tests |
 | C10 | HmacBlockStream | PASS | block stream tests + fuzz |
 | C11 | mlock / locked memory | PASS | `memory/` unit tests |
-| C12 | Zeroize on drop | PASS | `memory/` + `vault-sys` |
-| C13 | Timed clipboard clear (helper) | PASS | `vault-clip` + `clipboard.rs`, `cli.rs` hold-clipboard |
+| C12 | Zeroize on drop | PASS | `memory/` + `blindkey-sys` |
+| C13 | Timed clipboard clear (helper) | PASS | `blindkey-clip` + `clipboard.rs`, `cli.rs` hold-clipboard |
 | C14 | FIDO2 PRF stanza (libfido2) | PASS | `fido2_mock.rs` enroll/unlock; salt/HKDF; libfido2 FFI M7 |
 | C15 | TPM PCR-sealed stanza + re-enroll | PASS | `tpm_mock.rs`, `enroll-tpm`/`re-enroll-tpm` CLI + `--help` |
 | C16 | Monotonic vault_version + rollback warn | PASS | `rollback/`, `vault.rs` tests |
@@ -39,19 +39,19 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C18 | Zero plaintext in stanzas | PASS | `payload.rs`, vault tests |
 | C19 | Zero plaintext in entries at rest | PASS | entry encryption tests |
 | C20 | CLI exact command surface | PASS | `cli.rs` integration tests |
-| C21 | Minimum viable CLI + stanzas + exit codes | PASS | `cli.rs`, `main.rs`, `vault stanzas list/remove` |
-| C22 | `vault tune` KDF calibration | PASS | `crypto/tune.rs`, CLI tune tests |
+| C21 | Minimum viable CLI + stanzas + exit codes | PASS | `cli.rs`, `main.rs`, `blindkey stanzas list/remove` |
+| C22 | `blindkey tune` KDF calibration | PASS | `crypto/tune.rs`, CLI tune tests |
 | C23 | Zero network in CLI | PASS | `constraint_policy.rs` |
 | C24 | OSS license + dependency policy | PASS | `constraint_policy.rs`, `deny.toml` |
 | C25 | Constant-time secret compare | PASS | `memory/` + clipboard helper |
 | C26 | CSPRNG generation | PASS | `gen.rs` unit tests |
-| C27 | Model-blind retrieval + headless exit 7 | PASS | `cli.rs` C27 test, `vault-clip::clipboard_available` |
+| C27 | Model-blind retrieval + headless exit 7 | PASS | `cli.rs` C27 test, `blindkey-clip::clipboard_available` |
 | C28 | Terminal output sanitization | PASS | `terminal.rs` (`c28_*`), `cli.rs` ls/get integration |
 | C29 | Export JSON injection hardening (v1 JSON only) | PASS | `export.rs` (`c29_*`), `cli.rs` export integration |
 | C30 | Parser forbid(unsafe) + fuzz harnesses | PASS | `lib.rs`, fuzz targets, `just fuzz` |
 | C31 | No secrets on argv | PASS | `cli.rs` argv rejection tests |
 | C32 | Atomic durable saves + flock | PASS | `vault.rs` save tests |
-| C33 | Clipboard concealment hints | PASS | `vault-clip` arboard `exclude_from_history` (+ CLI fallback) |
+| C33 | Clipboard concealment hints | PASS | `blindkey-clip` arboard `exclude_from_history` (+ CLI fallback) |
 | C34 | Reproducible builds + release checksums | PASS | CP-6: `reproducible-build.sh`, `docs/RELEASE.md` |
 | C35 | Metadata-only omni-search | PASS | `search.rs`, CLI find tests |
 | C36 | Frecency ranking | PASS | `frecency.rs` tests |
@@ -92,24 +92,24 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 
 | Constraints | Primary test location | Notes |
 |-------------|----------------------|-------|
-| C1–C3 | `crates/vault-core/src/crypto/`, `tests/constraint_gaps.rs` (`c3_*`) | Crypto + supply-chain policy |
-| C4, C6 | `crates/vault-core/tests/constraint_gaps.rs`, `envelope/` unit tests | Data key + re-wrap |
-| C7–C10, C30 | `crates/vault-core/src/format/`, `tests/robustness.rs`, `fuzz/` | Parser hardening |
-| C11–C13, C25, C33 | `vault-clip/`, `vault-core/src/memory/`, CLI/GUI clipboard | Memory + delivery |
-| C14, C15 | `vault-hardware` (`fido2_mock`, `tpm_mock`, `tpm_policy`), CLI TPM commands | FIDO2 recipe + TPM policy |
-| C16, C32 | `crates/vault-core/src/rollback/`, `vault.rs` tests | Rollback + atomic save |
-| C17 | `crates/vault-core/tests/constraint_gaps.rs` (`c17_*`) | Single opaque blob |
-| C18–C19 | `crates/vault-core/src/format/payload.rs`, `vault.rs` | Zero plaintext |
-| C20–C22 | `crates/vault-cli/tests/cli.rs`, `crypto/tune.rs` | CLI + KDF tune |
-| C23, C24 | `crates/vault-cli/tests/constraint_policy.rs` | Zero network + OSS license |
-| C26 | `crates/vault-core/src/gen.rs` | CSPRNG generator |
-| C27–C31 | `crates/vault-cli/tests/cli.rs`, `terminal.rs`, `export.rs` | Model-blind + argv + sanitize |
+| C1–C3 | `crates/blindkey-core/src/crypto/`, `tests/constraint_gaps.rs` (`c3_*`) | Crypto + supply-chain policy |
+| C4, C6 | `crates/blindkey-core/tests/constraint_gaps.rs`, `envelope/` unit tests | Data key + re-wrap |
+| C7–C10, C30 | `crates/blindkey-core/src/format/`, `tests/robustness.rs`, `fuzz/` | Parser hardening |
+| C11–C13, C25, C33 | `blindkey-clip/`, `blindkey-core/src/memory/`, CLI/GUI clipboard | Memory + delivery |
+| C14, C15 | `blindkey-hardware` (`fido2_mock`, `tpm_mock`, `tpm_policy`), CLI TPM commands | FIDO2 recipe + TPM policy |
+| C16, C32 | `crates/blindkey-core/src/rollback/`, `vault.rs` tests | Rollback + atomic save |
+| C17 | `crates/blindkey-core/tests/constraint_gaps.rs` (`c17_*`) | Single opaque blob |
+| C18–C19 | `crates/blindkey-core/src/format/payload.rs`, `vault.rs` | Zero plaintext |
+| C20–C22 | `crates/blindkey-cli/tests/cli.rs`, `crypto/tune.rs` | CLI + KDF tune |
+| C23, C24 | `crates/blindkey-cli/tests/constraint_policy.rs` | Zero network + OSS license |
+| C26 | `crates/blindkey-core/src/gen.rs` | CSPRNG generator |
+| C27–C31 | `crates/blindkey-cli/tests/cli.rs`, `terminal.rs`, `export.rs` | Model-blind + argv + sanitize |
 | C34 | `scripts/reproducible-build.sh`, `scripts/publish-crates.sh`, `docs/RELEASE.md` | Release trust + crates.io |
-| C35–C39 | `crates/vault-core/src/search.rs`, `frecency.rs`, CLI `find` tests | Omni-search |
-| C40–C45 | `crates/vault-gui/tests/uc20_constraints.rs` | Desktop hardening |
-| C46–C54 | `crates/vault-gui/tests/uc21_constraints.rs` | Session hygiene + keyfile GUI |
-| C55–C60 | `crates/vault-gui/tests/uc22_constraints.rs`, `scripts/audit-readiness.sh` | Fleet deploy + quality gate |
-| C61–C66 | `crates/vault-core/tests/uc23_joint_satisfaction.rs`, `sealed_constraints.rs`, CLI/GUI/TUI UC-23 suites | UC-23 sealed file storage per [spec §5](specs/UC-23-sealed-file-storage.md) |
+| C35–C39 | `crates/blindkey-core/src/search.rs`, `frecency.rs`, CLI `find` tests | Omni-search |
+| C40–C45 | `crates/blindkey-gui/tests/uc20_constraints.rs` | Desktop hardening |
+| C46–C54 | `crates/blindkey-gui/tests/uc21_constraints.rs` | Session hygiene + keyfile GUI |
+| C55–C60 | `crates/blindkey-gui/tests/uc22_constraints.rs`, `scripts/audit-readiness.sh` | Fleet deploy + quality gate |
+| C61–C66 | `crates/blindkey-core/tests/uc23_joint_satisfaction.rs`, `sealed_constraints.rs`, CLI/GUI/TUI UC-23 suites | UC-23 sealed file storage per [spec §5](specs/UC-23-sealed-file-storage.md) |
 
 ## Manual review
 

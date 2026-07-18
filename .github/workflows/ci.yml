@@ -1,4 +1,5 @@
-# Minimal CI — mirrors `just check` (fmt + clippy + tests).
+# CI — mirrors `just check` across every platform Vault ships a binary for, plus the
+# supply-chain and reproducible-build gates that `just audit-ready` runs before a release.
 name: CI
 
 on:
@@ -12,7 +13,11 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -23,3 +28,42 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-features
+
+  # Windows support in blindkey-sys is cfg(not(unix)) no-op fallbacks (mlock/RLIMIT_CORE are
+  # unix-only); this job tracks real Windows build/test signal without gating merges until
+  # platform parity is deliberately scoped and verified.
+  check-windows-experimental:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny,cargo-vet
+      - run: cargo audit
+      - run: cargo deny check
+      - run: cargo vet
+
+  reproducible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+      - uses: Swatinem/rust-cache@v2
+      - run: ./scripts/reproducible-build.sh

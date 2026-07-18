@@ -2,25 +2,25 @@
 
 > **Tech spec** · Implemented · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-19 · **New constraints:** C35–C39; touches C12, C13, C19, C25, C27, C33
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
 Make every secret reachable in **one keystroke-fast pass**: open search, start typing, the right
 entry rises to the top, press Enter, the password is on the clipboard. Fuzzy (typo- and
 abbreviation-tolerant), keyboard-only, and instant — over the entry set already decrypted into
-RAM on unlock ([UC-03](UC-03-store-secret.md) / [vault.rs](../../crates/vault-core/src/vault.rs)).
+RAM on unlock ([UC-03](UC-03-store-secret.md) / [vault.rs](../../crates/blindkey-core/src/vault.rs)).
 This is the "omni search experience that finds in the keys" — the friendly half of the `keys.txt`
 use case, built so the security half costs nothing.
 
 The matcher sees **metadata only** — `title`, `username`, `url`, `tags`. Secret values are never
 added to the searchable corpus and never passed to the matcher (C35). This upgrades the current
-substring `Vault::search` ([vault.rs:381](../../crates/vault-core/src/vault.rs:381), title+tags,
+substring `Blindkey::search` ([vault.rs#L381](../../crates/blindkey-core/src/vault.rs#L381), title+tags,
 `contains`) to ranked fuzzy matching shared by the CLI and GUI.
 
 Goals:
 
-1. `vault find` (CLI/TUI) and a GUI omni-bar: type → ranked fuzzy results → Enter copies the
+1. `blindkey find` (CLI/TUI) and a GUI omni-bar: type → ranked fuzzy results → Enter copies the
    password via the existing model-blind clipboard path (C13/C27/C33).
 2. Fuzzy scoring with the proven signal hierarchy (consecutive > word-boundary > camelCase/
    delimiter > affine gaps > exact/prefix), smart-case, match-index highlighting.
@@ -63,7 +63,7 @@ Full citations are in the references listed in §2 above (Navarro, Miller, BK-tr
 
 ## 3. Proposed design
 
-### 3.1 Matcher abstraction (`vault-core::search`)
+### 3.1 Matcher abstraction (`blindkey-core::search`)
 
 A thin trait isolates the dependency so the algorithm choice is swappable and unit-testable:
 
@@ -127,25 +127,25 @@ lexicographic — stable, non-jittering selection (P8).
 ### 3.5 CLI surface
 
 ```
-vault find QUERY            # copy the BEST fuzzy match's password to the clipboard (model-blind)
-vault find QUERY --stdout   # non-interactive: print ranked titles (no secret), scriptable
-vault find                  # (no query) browse all entries, most-used first
+blindkey find QUERY            # copy the BEST fuzzy match's password to the clipboard (model-blind)
+blindkey find QUERY --stdout   # non-interactive: print ranked titles (no secret), scriptable
+blindkey find                  # (no query) browse all entries, most-used first
 ```
 
-- **Default (copy):** rank by `Vault::find`, copy the top hit's password via the existing
+- **Default (copy):** rank by `Blindkey::find`, copy the top hit's password via the existing
   clipboard path (auto-clear, C13/C27/C33 — C39), print the matched title + the next few matches to
   stderr, and `record_use` the chosen entry so frecency learns (persisted on save). This is the
-  fast keyboard flow on the CLI: `vault find githb` → password on the clipboard.
+  fast keyboard flow on the CLI: `blindkey find githb` → password on the clipboard.
 - **`--stdout`:** print ranked titles only (no secret, no clipboard, no state change) — scriptable.
 - The query is never echoed back or logged, including on a miss (C37).
-- The existing `vault ls --search` stays the literal substring lister (scripts depend on it); `find`
+- The existing `blindkey ls --search` stays the literal substring lister (scripts depend on it); `find`
   is the ranked fuzzy surface. **(Q2 resolved: `ls --search` stays literal.)**
 
 > **Refinement (IVD Rule 5, implemented):** the original draft bundled a full interactive ratatui
-> picker into `vault find`. Shipped instead: the non-interactive resolver above (fully CI-testable,
+> picker into `blindkey find`. Shipped instead: the non-interactive resolver above (fully CI-testable,
 > no TTY dependency, no TUI stack pulled into the one-shot CLI). The **rich interactive type-to-
 > filter experience lands in the GUI omni-bar (§3.6)**; an interactive terminal picker is a clean
-> follow-up in the existing `vault-tui` crate (which already owns the ratatui + alt-screen secret-
+> follow-up in the existing `blindkey-tui` crate (which already owns the ratatui + alt-screen secret-
 > hygiene stack), not the CLI binary.
 
 ### 3.6 GUI surface

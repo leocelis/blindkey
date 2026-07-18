@@ -1,4 +1,4 @@
-# Security Coverage Gaps — Areas the Vault Should Cover (and Currently Doesn't)
+# Security Coverage Gaps — Areas the Blindkey Should Cover (and Currently Doesn't)
 
 > **Historical research (June 2026).** This document audited the intent at **27 constraints**
 > (later **34**, now **60** in intent v1.7.0). The Promotion ledger and matrix table reflect
@@ -10,7 +10,7 @@
 > standard where one exists), and paired with a *proposed direction*.
 >
 > **These are findings, not changes.** Per design-before-implementation discipline, nothing
-> here is added to `vault_intent.yaml` until explicitly approved. Proposed constraint IDs
+> here is added to `blindkey_intent.yaml` until explicitly approved. Proposed constraint IDs
 > (C28+) are placeholders to make discussion concrete.
 > **Update 2026-06-10:** the high-severity subset was explicitly approved and promoted — see the
 > *Promotion ledger* under the coverage matrix for the authoritative gap→constraint mapping. The
@@ -63,7 +63,7 @@ data-integrity, distribution trust, and project governance* — exactly the cate
 
 ### Promotion ledger (2026-06-10)
 
-Maintainer-approved promotion of the high-severity set into `vault_intent.yaml` ("Part 1"):
+Maintainer-approved promotion of the high-severity set into `blindkey_intent.yaml` ("Part 1"):
 **A1 → C2 (ceiling)** and **E2 → C2 (NFC)** were folded into the existing KDF constraint;
 **A2 → C28**, **A3 → C29**, **A4 → C30**, **B1 → C31**, **C1 → C32**, **B2 → C33**, **D1 → C34**
 were added under the new group **G11** (C28–C30) and existing groups G4/G6/G8/G9.
@@ -99,8 +99,8 @@ e.g. a shared login, a phished entry, an imported list). Both directions are cla
   allocating; print "KDF parameters exceed safe limits — possible hostile or corrupt file."
 
 ### A2 — Terminal / ANSI escape injection on display — **ADDRESSED (C28)**
-- **Attack:** entry titles/usernames/notes are arbitrary user bytes. When `vault ls` or
-  `vault get` prints them to a TTY, embedded ANSI/OSC escape sequences can rewrite the terminal,
+- **Attack:** entry titles/usernames/notes are arbitrary user bytes. When `blindkey ls` or
+  `blindkey get` prints them to a TTY, embedded ANSI/OSC escape sequences can rewrite the terminal,
   spoof output, or (on some terminals) **inject into the clipboard** or trigger actions.
 - **Precedent:** ✓ verified — CVE-2025-55754 (Apache Tomcat): ANSI escape-sequence injection
   that *"could inject a malicious command into the clipboard that executes if the administrator
@@ -111,7 +111,7 @@ e.g. a shared login, a phished entry, an imported list). Both directions are cla
   field content.
 
 ### A3 — Export injection (CSV / formula) — **ADDRESSED (C29; CSV export not offered in v1)**
-- **Attack:** `vault export` (C21) emits decrypted entries. If a CSV export is added (or a JSON
+- **Attack:** `blindkey export` (C21) emits decrypted entries. If a CSV export is added (or a JSON
   field is later opened in a spreadsheet), a field beginning with `=`, `+`, `-`, or `@` becomes a
   **live formula** when the file is opened in Excel/Sheets — data exfiltration to RCE.
 - **Precedent:** ✓ verified — CVE-2019-20184 (KeePass 2.4.1 CSV injection); OWASP *CSV Injection*;
@@ -143,7 +143,7 @@ The crypto can be flawless while the secret leaks out the side.
 - **Attack:** passing a secret as a command-line flag exposes it to (a) shell history files,
   (b) `ps aux` / `/proc/<pid>/cmdline` readable by other processes, (c) shoulder-surfing.
 - **The spec contradicts itself here:** ✓ verified — C20's own acceptance test runs
-  `vault add github --username u --password p`, i.e. **password on argv**. That example would
+  `blindkey add github --username u --password p`, i.e. **password on argv**. That example would
   ship the exact anti-pattern.
 - **Proposed direction (C32):** **forbid** accepting any secret (master password, entry password)
   via a CLI argument. Read only via (a) no-echo TTY prompt, (b) stdin pipe, or (c) an explicit
@@ -164,7 +164,7 @@ The crypto can be flawless while the secret leaks out the side.
 - **Attack:** C25 disables **core dumps**, but a same-uid process can still `ptrace`-attach (or
   read `/proc/<pid>/mem`) to scrape unlocked keys from the running vault.
 - **Addressed (2026-06-26):** Linux `PR_SET_DUMPABLE` + `coredump_filter=0` in
-  `vault-sys`; `harden_process()` at CLI/TUI/GUI startup; `ptrace_scope` documented in INSTALL.md.
+  `blindkey-sys`; `harden_process()` at CLI/TUI/GUI startup; `ptrace_scope` documented in INSTALL.md.
 - **Remaining:** macOS `PT_DENY_ATTACH` deferred (low value, breaks debugging); root/kernel
   attacker while unlocked is out of scope (THREAT_MODEL).
 
@@ -176,7 +176,7 @@ A single opaque blob (C17) maximizes confidentiality but concentrates **availabi
 one bad write loses *everything*.
 
 ### C1 — Atomic writes + file locking — **ADDRESSED (C32)**
-- **Attack/Failure:** a crash, full disk, or two concurrent `vault` processes writing mid-save can
+- **Attack/Failure:** a crash, full disk, or two concurrent `blindkey` processes writing mid-save can
   truncate or interleave the single blob and **destroy the entire vault**. C16's version counter
   detects rollback but not a half-written file.
 - **Proposed direction (C35):** never write in place — serialize to a temp file in the same
@@ -185,14 +185,14 @@ one bad write loses *everything*.
   one verifies. This is data-loss prevention as much as security.
 
 ### C2 — Secure deletion / crypto-shredding semantics — **ADDRESSED (2026-06-26)**
-- **Policy:** `vault rm` crypto-shreds in the new blob; no physical/sync-history erase promise.
-- **Shipped:** `vault rotate-data-key`, `Vault::rotate_data_key`, guide
+- **Policy:** `blindkey rm` crypto-shreds in the new blob; no physical/sync-history erase promise.
+- **Shipped:** `blindkey rotate-data-key`, `Blindkey::rotate_data_key`, guide
   `docs/guides/deletion-and-rotation.md`.
 - **Honest limit:** old exfiltrated blobs remain decryptable until removed from sync/backups.
 
 ### C3 — Recovery from forgotten password / all factors lost — **ADDRESSED (2026-06-26)**
-- **Shipped:** optional recovery-code stanza at `vault init` (`--with-recovery-code` / TTY confirm);
-  `Vault::add_recovery_stanza`; OR-unlock tries all password stanzas; guide
+- **Shipped:** optional recovery-code stanza at `blindkey init` (`--with-recovery-code` / TTY confirm);
+  `Blindkey::add_recovery_stanza`; OR-unlock tries all password stanzas; guide
   `docs/guides/recovery-codes.md`.
 - **Existing:** 2FA enrollment recovery (YubiKey/keyfile) unchanged.
 - **Honest limit:** no master-password reset without prior recovery enrollment; lose both = lost vault.
@@ -276,7 +276,7 @@ property — and the current intent stops at `cargo audit`/`cargo deny`.
 
 ## 8 — Prioritized Recommendation (if promoting to constraints)
 
-If/when these are approved into `vault_intent.yaml`, suggested order by **risk-reduction per unit
+If/when these are approved into `blindkey_intent.yaml`, suggested order by **risk-reduction per unit
 effort**:
 
 1. **A1 (KDF ceiling)** + **A4 (parser fuzzing)** — close the hostile-file DoS/overflow surface;
@@ -316,9 +316,9 @@ trust"** (D1–D2, F1–F3). Counts and segmentation would update accordingly �
 
 ---
 
-*Compiled June 2026 against the then-27-constraint `vault_intent.yaml`; audits uncovered attack
+*Compiled June 2026 against the then-27-constraint `blindkey_intent.yaml`; audits uncovered attack
 surface across untrusted-input handling, secret-exposure side channels, data integrity,
 supply-chain trust, crypto longevity, and project governance. CVE/standard precedents fetched and
 quoted; spec-internal analysis marked `~ inferred`. All items are findings — no constraints are
-added to `vault_intent.yaml` without explicit approval. The high-severity subset was approved and
+added to `blindkey_intent.yaml` without explicit approval. The high-severity subset was approved and
 promoted on 2026-06-10 (see the Promotion ledger above); the intent now has **60 constraints** (v1.7.0).*

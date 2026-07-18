@@ -1,8 +1,8 @@
-# Vault Threat Model
+# Blindkey Threat Model
 
 > Status: living document. Derived from [research/vault_spec.md](../research/vault_spec.md) §6 and
 > [research/llm_offensive_threats.md](../research/llm_offensive_threats.md). Cross-referenced to the
-> constraints in [vault_intent.yaml](../vault_intent.yaml).
+> constraints in [blindkey_intent.yaml](../blindkey_intent.yaml).
 
 ## Assets we protect
 
@@ -47,13 +47,13 @@ the shipped C1–C66 set (C35–C39 are omni-search; C61–C66 are sealed file s
 - **A hostile or prompt-injected agent with shell access to an unlocked session.** Model-blind
   delivery (C27) defends against *incidental* capture — a secret landing in an agent's tool-result
   stream or context window. An agent that can run shell commands can itself invoke
-  `vault get --stdout` or read the clipboard; it is same-user malware, bounded — not eliminated —
+  `blindkey get --stdout` or read the clipboard; it is same-user malware, bounded — not eliminated —
   by auto-lock (C25), clipboard concealment (C33), and the timed clear (C13). **Mitigation path:**
-  [S-13 agent broker](AGENT_BROKER.md) (`vault agent run`) — opaque handles, OS approval per use,
+  [S-13 agent broker](AGENT_BROKER.md) (`blindkey agent run`) — opaque handles, OS approval per use,
   status-only IPC; does not remove the `--stdout` path while the vault is unlocked outside the broker.
 - **Rollback against a freshly provisioned device** (C16 limitation). The first open on a machine
   with no local state anchor is trust-on-first-use: any valid older vault is accepted and becomes
-  the anchor. `vault open --expect-min-version N` can pin expectations during provisioning; a TPM
+  the anchor. `blindkey open --expect-min-version N` can pin expectations during provisioning; a TPM
   NV monotonic counter is the hardened upgrade path.
 - **Clipboard managers that ignore concealment hints** (C33 limitation) — on X11 especially, any
   client can read the clipboard during the window before the timed clear.
@@ -72,7 +72,7 @@ the shipped C1–C66 set (C35–C39 are omni-search; C61–C66 are sealed file s
 
 ## Accepted residual: sync/storage metadata (C17)
 
-Vault's default is a **single opaque blob** (C17). That closes the worst leaks — plaintext entry
+Blindkey's default is a **single opaque blob** (C17). That closes the worst leaks — plaintext entry
 names in paths, per-entry file counts, directory structure, git history of filenames — that tools
 like `pass` expose without decryption.
 
@@ -81,7 +81,7 @@ What a **passive sync backend** (Dropbox, Google Drive, Git, Syncthing, a VPS) c
 
 | Signal | What it reveals | v1 mitigation |
 |--------|-----------------|---------------|
-| **Total blob size** | Entry count, coarsely (~200–600 B per typical entry + fixed header/overhead) | Optional **Padmé padding** — [`vault pad on`](guides/size-padding-padme.md) or desktop **"Pad size"** — buckets length to
+| **Total blob size** | Entry count, coarsely (~200–600 B per typical entry + fixed header/overhead) | Optional **Padmé padding** — [`blindkey pad on`](guides/size-padding-padme.md) or desktop **"Pad size"** — buckets length to
   O(log log L) bits (UC-07 §3.2). Default v1: **unpadded** (full size visible). |
 | **Size deltas** across stored versions | Approximate magnitude of each edit | Padding reduces granularity; backends with version history retain a growth curve |
 | **mtime / timestamps** | When you save; editing schedule; correlation with external events | **None** — documented residual |
@@ -89,7 +89,7 @@ What a **passive sync backend** (Dropbox, Google Drive, Git, Syncthing, a VPS) c
 
 Backends that keep **version history** (Git, Dropbox) retain every past blob. Implications:
 
-- Old copies remain crackable at the **KDF cost of that era** after `vault upgrade-kdf`.
+- Old copies remain crackable at the **KDF cost of that era** after `blindkey upgrade-kdf`.
 - Size history is a long-term growth curve — not entry names, but activity and scale.
 
 **What does *not* leak** to the backend: entry titles, URLs, tags, usernames, passwords, notes,

@@ -1,6 +1,6 @@
 # Sync guide — `--expect-min-version` + fleet provisioning
 
-> **Task:** Document `vault open --expect-min-version N` and a fleet provisioning example in
+> **Task:** Document `blindkey open --expect-min-version N` and a fleet provisioning example in
 > `docs/guides/sync-to-untrusted-storage.md`.
 
 ## Problem
@@ -46,14 +46,14 @@ Exit code **2** when regression detected and not overridden (non-TTY or user dec
 
 1. On a **trusted** machine that already uses the vault normally, after any successful open:
    anchor file at platform path contains 8-byte little-endian `last_seen`.
-2. Publish **N** via internal runbook (wiki, MDM env var `VAULT_EXPECT_MIN_VERSION`).
-3. New machines: first headless open uses `--expect-min-version "$VAULT_EXPECT_MIN_VERSION"`.
+2. Publish **N** via internal runbook (wiki, MDM env var `BLINDKEY_EXPECT_MIN_VERSION`).
+3. New machines: first headless open uses `--expect-min-version "$BLINDKEY_EXPECT_MIN_VERSION"`.
 
 Anchor path: `~/.local/share/vault/<vault_id_hex>.state` (Linux); see UC-07 §3.4.
 
 ## References
 
-- `vault/vault_intent.yaml` C16
+- `vault/blindkey_intent.yaml` C16
 - `docs/specs/UC-07-untrusted-storage-sync.md` §3.4–3.5
 - `docs/THREAT_MODEL.md` — fresh-device rollback residual risk
-- `crates/vault-cli/tests/cli.rs` — `rollback` test
+- `crates/blindkey-cli/tests/cli.rs` — `rollback` test

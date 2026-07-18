@@ -2,7 +2,7 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-14 · **Constraints:** C11, C12, C25, C13
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
@@ -53,7 +53,7 @@ auto-lock C25) that UC-04/UC-06 own and this spec only wires in.
 
 ## 3. Proposed design
 
-### 3.1 Type layer (C11) — `crates/vault-core/src/memory/mod.rs`
+### 3.1 Type layer (C11) — `crates/blindkey-core/src/memory/mod.rs`
 
 The scaffolded aliases are the only legal carriers of secret bytes:
 
@@ -72,7 +72,7 @@ Rules (enforced by the C11 grep gate over secret-handling modules):
 - Derived keys (`wrapping_key`, `payload_key`, block-HMAC keys, inner stream key) are constructed
   inside `Zeroizing` buffers and passed by reference; intermediate KDF state (the Argon2id memory
   arena) is zeroized by the `argon2` crate's buffer-drop path — verify, don't assume (§6.2).
-- Lifetime discipline: derive on demand, drop at the end of the operation. `vault lock` and
+- Lifetime discipline: derive on demand, drop at the end of the operation. `blindkey lock` and
   auto-lock drop every live secret type explicitly (C25 "zero all mlock'd pages via zeroize
   before releasing").
 
@@ -146,7 +146,7 @@ a comment citing this section.
   the OS handoff.
 - **Auto-lock (C25)** — design in UC-06: 300 s idle default (30–3600, 0=off). Lock = drop every
   `LockedRegion`/secret type (zeroize-then-munlock order, §3.2) and invalidate the session.
-  `vault lock` is the manual trigger of the same path — one code path, not two.
+  `blindkey lock` is the manual trigger of the same path — one code path, not two.
 
 ### 3.6 Explicit non-goals (residual risk — THREAT_MODEL.md)
 
@@ -190,7 +190,7 @@ bus-level physical attacks · an attacker who already holds the unlocked master 
    in cwd / coredumpctl.
 6. **STATIC (C25):** the `==`-grep gate over tag/key modules returns empty; `subtle` and
    `verify_slice` usage asserted by grep in the same gate.
-7. **INTEGRATION (auto-lock):** mock timer → after idle, `vault get` re-prompts; heap scan test
+7. **INTEGRATION (auto-lock):** mock timer → after idle, `blindkey get` re-prompts; heap scan test
    hook finds no live key bytes post-lock.
 8. **INTEGRATION (memfd_secret, gated):** on a ≥ 6.5 kernel runner, `LockedRegion` reports
    secretmem backing; on older/disabled kernels, falls back to mlock without error.
@@ -209,5 +209,5 @@ bus-level physical attacks · an attacker who already holds the unlocked master 
    `WerAddExcludedApplication` for full crash-report suppression? Needs a Windows CI probe before M4.
 4. **Argon2 arena zeroization:** if the `argon2` crate doesn't zeroize its memory blocks on drop
    (test 6.2), upstream a fix or wrap allocation in `LockedRegion` ourselves — decide at M4.
-5. **Auto-lock vs. long operations:** does a running `vault export` of a huge vault count as
+5. **Auto-lock vs. long operations:** does a running `blindkey export` of a huge vault count as
    activity, or can the timer fire mid-operation? Proposal: timer arms only between subcommands.

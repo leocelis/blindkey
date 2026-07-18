@@ -1,0 +1,12 @@
+[package]
+name = "blindkey-sys"
+description = "Vault's isolated OS-FFI for process and memory hardening — the one place `unsafe` lives."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true

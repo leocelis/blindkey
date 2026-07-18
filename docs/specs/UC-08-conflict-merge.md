@@ -2,7 +2,7 @@
 
 > **Tech spec** · Accepted v0.2 · design only — not yet implemented · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-8 · **Constraints:** C21 (merge), C16, SC3
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
@@ -106,7 +106,7 @@ struct Entry {
 }
 ```
 
-Rules: `vault add` generates the UUID; `vault edit` never touches it; import generates fresh
+Rules: `blindkey add` generates the UUID; `blindkey edit` never touches it; import generates fresh
 UUIDs (two machines importing the same CSV produce distinct entries — documented). `modified_at`
 is set from the local clock; clock skew is therefore a tiebreak hazard (§7).
 
@@ -226,5 +226,5 @@ The merged vault is a **new** save of the active vault lineage:
    CSPRNG source / immutability rules) to a constraint or a C18 amendment before implementation.
 4. **`--prefer` naming** — `left`/`right` vs `old`/`new`: positional names invite the user to
    believe OLD/NEW ordering matters beyond labels. Does it? (This spec: labels only.)
-5. **Same-version split brain (D2)** — should `vault open` itself detect a sibling
+5. **Same-version split brain (D2)** — should `blindkey open` itself detect a sibling
    `.sync-conflict` file (Syncthing naming convention) and suggest `vault merge` proactively?

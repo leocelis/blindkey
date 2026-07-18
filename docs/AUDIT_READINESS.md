@@ -3,7 +3,7 @@
 > **Audience:** maintainers and security reviewers. End users: start at
 > [README.md](../README.md) or [docs/README.md](README.md).
 
-Vault **1.0.0** is the current release. This document describes the **local quality gate** before
+Blindkey **1.0.0** is the current release. This document describes the **local quality gate** before
 tagging (CP-7) and the public launch checklist.
 
 ## CP-7 sweep result (2026-06-25)
@@ -23,12 +23,12 @@ Full per-constraint table: [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md#cp-7-ivd-
 
 | Area | Artifacts | Constraints |
 |------|-----------|-------------|
-| File format & parsers | `docs/FILE_FORMAT.md`, `crates/vault-core/src/format/`, fuzz targets | C7–C10, C30 |
-| KDF & crypto | `docs/CRYPTO.md`, `crates/vault-core/src/crypto/` | C1–C6 |
-| Memory & runtime | `docs/specs/UC-14-runtime-hardening.md`, `vault-sys` | C11–C13, C25 |
+| File format & parsers | `docs/FILE_FORMAT.md`, `crates/blindkey-core/src/format/`, fuzz targets | C7–C10, C30 |
+| KDF & crypto | `docs/CRYPTO.md`, `crates/blindkey-core/src/crypto/` | C1–C6 |
+| Memory & runtime | `docs/specs/UC-14-runtime-hardening.md`, `blindkey-sys` | C11–C13, C25 |
 | Envelope & 2FA | `docs/specs/UC-09-hardware-factors.md` | C5, C14–C15 |
 | AI-era delivery | `docs/specs/UC-04-model-blind-retrieval.md` | C26–C27 |
-| Desktop shell boundary | `docs/specs/UC-18-native-ui.md`, `crates/vault-gui/` | C40–C54, C45 |
+| Desktop shell boundary | `docs/specs/UC-18-native-ui.md`, `crates/blindkey-gui/` | C40–C54, C45 |
 | Supply chain | `docs/VERIFYING_RELEASES.md`, `scripts/reproducible-build.sh`, `just audit`, `supply-chain/` (cargo-vet) | C3, C24, C34 |
 
 Out of scope for v1: team vaults, cloud sync service, browser extension (intent `non_goals`).
@@ -48,7 +48,7 @@ Install vet once: `cargo install cargo-vet --locked` (project toolchain via `. s
 
 ## IVD constraint index
 
-Canonical constraints: [`vault_intent.yaml`](../vault_intent.yaml) (66 constraints, v1.8.0).
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) (66 constraints, v1.8.0).
 
 Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed across crate suites.
 
@@ -66,7 +66,7 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 
 ## Terminology
 
-- **`vault audit`** — password-health report command (weak/reused passwords), not this gate
+- **`blindkey audit`** — password-health report command (weak/reused passwords), not this gate
 - **Dependency audit** — `cargo audit` / `cargo deny` / `cargo vet` via `just audit`, `just vet`, or `just audit-ready`
 
 ## Public launch checklist *(2026-06-25)*
@@ -75,7 +75,7 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 |------|--------|
 | No private paths / keywords in tracked files | ✅ |
 | No secrets in tree or history | ✅ |
-| `github.com/leocelis/vault` URLs consistent | ✅ |
+| `github.com/leocelis/blindkey` URLs consistent | ✅ |
 | SECURITY contact (GHSA + email) | ✅ |
 | CP-7 constraint sweep (60/60 PASS) | ✅ |
 | GHA CI (`.github/workflows/ci.yml`) | ✅ |
@@ -86,6 +86,6 @@ Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed acro
 
 ### Optional post-launch
 
-- Post an announcement in [Discussions](https://github.com/leocelis/vault/discussions)
+- Post an announcement in [Discussions](https://github.com/leocelis/blindkey/discussions)
 - Confirm CI badge is green after the first public-repo workflow run
 - `cargo login` + publish to crates.io when ready

@@ -2,7 +2,7 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-9 · **Constraints:** C5, C6, C14, C15
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
@@ -58,7 +58,7 @@ attestation.
 >   stanza) means the tap is required on **unlock only**, not per save.
 >
 > This supersedes the OR/graceful-staleness default (G0.7) **for the YubiKey factor**; the OR model
-> below still governs the other (additive) factor types. The `vault_intent.yaml` C5/C6 constraint
+> below still governs the other (additive) factor types. The `blindkey_intent.yaml` C5/C6 constraint
 > reconciliation is pending second-maintainer review.
 
 ### 3.1 OR-envelope recap (C5)
@@ -77,20 +77,20 @@ vault. Max 8 stanzas, `stanza_data_len ≤ 4096` (C5/C8).
 ### 3.2 CLI surface
 
 ```
-vault enroll fido2 [--rp-id vault.local]     # touch to enroll
-vault enroll yubikey [--slot 2]
-vault enroll tpm  [--pcrs 7]                 # alias: vault enroll-tpm   (C21 name preserved)
-vault enroll keychain                        # macOS Secure Enclave
-vault enroll dpapi                           # Windows, current user scope
-vault re-enroll tpm                          # alias: vault re-enroll-tpm (C21/C15)
-vault stanzas list                           # types + enrollment dates, no secrets
-vault stanzas remove <type>[#index]          # password removable: NO (hard error, C5)
+blindkey enroll fido2 [--rp-id vault.local]     # touch to enroll
+blindkey enroll yubikey [--slot 2]
+blindkey enroll tpm  [--pcrs 7]                 # alias: blindkey enroll-tpm   (C21 name preserved)
+blindkey enroll keychain                        # macOS Secure Enclave
+blindkey enroll dpapi                           # Windows, current user scope
+vault re-enroll tpm                          # alias: blindkey re-enroll-tpm (C21/C15)
+blindkey stanzas list                           # types + enrollment dates, no secrets
+blindkey stanzas remove <type>[#index]          # password removable: NO (hard error, C5)
 ```
 
 All enrollment commands require a full unlock first (the data key must be in memory to wrap).
 Enrollment is a vault **save**: stanza appended, `master_seed` rotated, header re-HMAC'd. C21
-names only `enroll-tpm`/`re-enroll-tpm`; the generalized `vault enroll <type>` / `vault stanzas`
-surface is additive and needs a C21 amendment (§7). `vault stanzas list` output (one line per
+names only `enroll-tpm`/`re-enroll-tpm`; the generalized `blindkey enroll <type>` / `blindkey stanzas`
+surface is additive and needs a C21 amendment (§7). `blindkey stanzas list` output (one line per
 stanza): type, created-at, type-specific public hint (FIDO2 rp_id, YubiKey slot, TPM PCR set) —
 never key material.
 
@@ -136,7 +136,7 @@ changes only when Secure Boot keys/policy change, not on routine kernel updates 
 spurious re-enrollments than PCR 0/2/4 (systemd-cryptenroll convention, §2.1); `--pcrs` allows
 stricter sets. `extra = { pcr_bank: u8, pcr_mask: u32, sealed_blob_len: u16, sealed_blob }`.
 On PCR-mismatch unseal failure, emit verbatim (C15): `TPM stanza failed (PCR mismatch — firmware
-or kernel may have changed). Run 'vault re-enroll-tpm' or unlock with password.`
+or kernel may have changed). Run 'blindkey re-enroll-tpm' or unlock with password.`
 `vault re-enroll tpm`: unlock via any *other* stanza → fresh `tpm_ikm`, re-seal to current PCRs,
 replace stanza, save. `--help` text must contain "PCR", "firmware", "re-enroll" (C15 test).
 
@@ -162,7 +162,7 @@ than an OR alternative. The data key is wrapped under
 keyfile bytes are needed — neither alone unlocks. `data = wrap_nonce[24] || wrapped_key[48]` (no
 `extra`; the keyfile lives off-vault, supplied at unlock via `--keyfile <PATH>`). Enrollment mirrors
 the YubiKey AND-path: it replaces the lone password stanza with `[PW_KEYFILE, recovery-PASSWORD]`,
-printing a one-time recovery code (anti-lockout, §3.5/C14–C15). `vault enroll keyfile <PATH>`
+printing a one-time recovery code (anti-lockout, §3.5/C14–C15). `blindkey enroll keyfile <PATH>`
 generates a fresh 32-byte CSPRNG keyfile at `<PATH>` (mode `0600`) when the file is absent, else
 adopts the existing file's bytes. Unlike the OR factors, no `master_seed` re-wrap is needed at save
 time (the keyfile is stable), so there is no device-absent staleness case — only password+keyfile,
@@ -193,12 +193,12 @@ data key silently. `--stanza <type>` forces a single path (CI: `--stanza passwor
 
 ### 3.5 Stanza removal and master_seed rotation
 
-`vault stanzas remove <type>` requires unlock; rewrites the header without the stanza; the save
+`blindkey stanzas remove <type>` requires unlock; rewrites the header without the stanza; the save
 rotates `master_seed` (C8). Effects worth documenting to the user:
 
 - Removal protects **future** files. Old blobs in backend history (UC-07 §3.1) still carry the
   removed stanza; a *compromised* (not merely lost) factor can unlock those copies. The honest
-  remedy is data-key rotation (`vault rotate-data-key`, coverage-gap C2 proposal) which re-seals
+  remedy is data-key rotation (`blindkey rotate-data-key`, coverage-gap C2 proposal) which re-seals
   the payload so old wraps open an obsolete key — print this hint on every removal.
 - YubiKey removal also ends challenge rotation; FIDO2/SE/TPM removal leaves device-side residue
   (a resident credential, an SE key, a TPM object) that `remove` deletes best-effort and reports.
@@ -254,11 +254,11 @@ to preserve.
    hard error; removal prints the rotate-data-key hint.
 7. **INTEGRATION (ordering):** non-TTY with FIDO2 enrolled but absent → no touch prompt appears;
    exit follows password/`--password-fd` path.
-8. **DOC test:** `vault enroll tpm --help` contains "PCR", "firmware", "re-enroll" (C15).
+8. **DOC test:** `blindkey enroll tpm --help` contains "PCR", "firmware", "re-enroll" (C15).
 
 ## 7. Open questions
 
-1. **C21 amendment** — ✅ Resolved 2026-06-10 (intent v1.4.0): C21 now specifies `vault stanzas list|add|remove` (intent previously
+1. **C21 amendment** — ✅ Resolved 2026-06-10 (intent v1.4.0): C21 now specifies `blindkey stanzas list|add|remove` (intent previously
    names only `enroll-tpm`/`re-enroll-tpm`); keep the hyphenated forms as permanent aliases.
 2. **YubiKey graceful staleness vs. strict C5 wording** — ✅ Resolved 2026-06-10 (G0.7): the stored-challenge design
    (this spec) is C5's specified behavior; strict device-at-save is the `yubikey_strict` opt-in.

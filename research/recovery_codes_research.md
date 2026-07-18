@@ -1,6 +1,6 @@
 # Recovery codes at init — Research
 
-> **Task:** Optional offline recovery-code stanza at `vault init` (gap C3).
+> **Task:** Optional offline recovery-code stanza at `blindkey init` (gap C3).
 
 ## Problem (gap C3)
 
@@ -28,4 +28,4 @@ no server reset. 2FA enrollment already prints a recovery code; password-only in
 - `research/security_coverage_gaps.md` C3
 - `docs/specs/UC-01-install-and-init.md` §7 Q4
 - `docs/specs/UC-09-hardware-factors.md` §3.5 (2FA recovery precedent)
-- `Vault::add_recovery_stanza`, `Vault::has_recovery_stanza`
+- `Blindkey::add_recovery_stanza`, `Blindkey::has_recovery_stanza`

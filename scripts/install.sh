@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build vault-cli from this repo and install the binary to ~/.local/bin (or $INSTALL_DIR).
+# Build blindkey-cli from this repo and install the binary to ~/.local/bin (or $INSTALL_DIR).
 # Usage (from repo root):  ./scripts/install.sh
 set -euo pipefail
 
@@ -14,12 +14,12 @@ fi
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 mkdir -p "$INSTALL_DIR"
 
-echo "install: building vault-cli (release)…"
-cargo build --release -p vault-cli
+echo "install: building blindkey-cli (release)…"
+cargo build --release -p blindkey-cli
 
-BIN="$ROOT/target/release/vault"
-install -m 755 "$BIN" "$INSTALL_DIR/vault"
+BIN="$ROOT/target/release/blindkey"
+install -m 755 "$BIN" "$INSTALL_DIR/blindkey"
 
-echo "install: installed to $INSTALL_DIR/vault"
+echo "install: installed to $INSTALL_DIR/blindkey"
 echo "install: ensure $INSTALL_DIR is on your PATH"
-"$INSTALL_DIR/vault" --version 2>/dev/null || true
+"$INSTALL_DIR/blindkey" --version 2>/dev/null || true

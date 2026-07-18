@@ -1,26 +1,26 @@
 # Architecture
 
-Vault is a Cargo workspace with a deliberately small, auditable security core.
+Blindkey is a Cargo workspace with a deliberately small, auditable security core.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  vault-cli  (the `vault` binary)                             │
+│  blindkey-cli  (the `blindkey` binary)                             │
 │  clap commands · stdout delivery · prompts                   │  C20–C22, C26, C27
 │  output sanitization · export escaping · no argv secrets     │  C28, C29, C31
 └───────────────┬─────────────────────────────────────────────┘
                 │ uses
 ┌───────────────▼─────────────────────────────────────────────┐
-│  vault-clip  (clipboard delivery — no vault secrets at rest) │  C13, C27, C33
+│  blindkey-clip  (clipboard delivery — no vault secrets at rest) │  C13, C27, C33
 │  arboard · concealment hints · headless session detection    │
 └───────────────┬─────────────────────────────────────────────┘
                 │ depends on
 ┌───────────────▼─────────────────────────────────────────────┐
-│  vault-tui / vault-gui  (thin UI shells — no crypto here)    │  C40–C54, C27
+│  blindkey-tui / blindkey-gui  (thin UI shells — no crypto here)    │  C40–C54, C27
 │  ratatui TUI · egui desktop window · search/deliver loop     │
 └───────────────┬─────────────────────────────────────────────┘
                 │ depends on
 ┌───────────────▼─────────────────────────────────────────────┐
-│  vault-core  (library — the security boundary)               │
+│  blindkey-core  (library — the security boundary)               │
 │                                                              │
 │  crypto/     XChaCha20-Poly1305 STREAM · Argon2id · HKDF     │  C1–C3
 │  envelope/   data key · multi-stanza OR wrapping            │  C4–C6
@@ -31,11 +31,11 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
 └───────────────┬─────────────────────────────────────────────┘
                 │ uses
 ┌───────────────▼─────────────────────────────────────────────┐
-│  vault-sys  (OS calls: mlock, setrlimit — only `unsafe`)     │
+│  blindkey-sys  (OS calls: mlock, setrlimit — only `unsafe`)     │
 └───────────────┬─────────────────────────────────────────────┘
                 │ optional
 ┌───────────────▼─────────────────────────────────────────────┐
-│  vault-hardware  (optional crate, feature-gated)             │
+│  blindkey-hardware  (optional crate, feature-gated)             │
 │  v1 shipped: YubiKey CR (`ykman`) · keyfile 2FA              │
 │  mock/stub only: FIDO2 (libfido2) · TPM · SE · DPAPI (S-8*)  │  C14, C15
 └─────────────────────────────────────────────────────────────┘
@@ -43,12 +43,12 @@ Vault is a Cargo workspace with a deliberately small, auditable security core.
 
 ## Why this shape
 
-- **Library/CLI split** (like `age`, `rustls`): the security-critical code (`vault-core`) is
+- **Library/CLI split** (like `age`, `rustls`): the security-critical code (`blindkey-core`) is
   auditable and fuzzable in isolation, with no CLI/argument-parsing concerns in the trust boundary.
 - **Hardware behind a feature gate**: a user with no FIDO2 key compiles and runs without that code
   path; hardware factors are *additive*, never required (the password stanza always unlocks — C5).
-- **One trust boundary**: secrets only ever live inside `vault-core` types (`Secret<…>`,
-  `Zeroizing<…>`). `vault-clip` handles clipboard I/O only; the CLI/GUI receive delivery
+- **One trust boundary**: secrets only ever live inside `blindkey-core` types (`Secret<…>`,
+  `Zeroizing<…>`). `blindkey-clip` handles clipboard I/O only; the CLI/GUI receive delivery
   *channels*, not long-lived key material — the same principle that protects against AI-agent
   exfiltration (C27).
 

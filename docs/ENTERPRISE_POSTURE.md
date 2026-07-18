@@ -1,10 +1,10 @@
 # Enterprise Posture
 
-Vault is a **local-first, single-user credential vault** — not a 1Password Business / Bitwarden
+Blindkey is a **local-first, single-user credential vault** — not a 1Password Business / Bitwarden
 Teams replacement. This document states what enterprise buyers can rely on today and what requires
 a future product line.
 
-## What Vault provides (v1)
+## What Blindkey provides (v1)
 
 | Property | Evidence |
 |----------|----------|
@@ -12,13 +12,13 @@ a future product line.
 | Argon2id with enforced floor | C2 |
 | Model-blind secret delivery | C27, C13 |
 | Reproducible builds + checksums | UC-13, C34, `docs/RELEASE.md` |
-| Constraint-driven development | `vault_intent.yaml`, IVD |
+| Constraint-driven development | `blindkey_intent.yaml`, IVD |
 | Desktop session hygiene | UC-21 (reveal timeout, lock-on-blur, keyfile GUI) |
 | Audit readiness package | [AUDIT_READINESS.md](AUDIT_READINESS.md) (release quality gate) |
 
 ## Explicit non-claims (v1)
 
-Vault **does not** provide:
+Blindkey **does not** provide:
 
 - SOC 2 Type II, ISO 27001, or FedRAMP certification
 - Team / organisational vaults, shared collections, or RBAC
@@ -34,9 +34,9 @@ These are **intent non-goals** unless a separate enterprise product is scoped.
 
 See [guides/enterprise-deployment.md](guides/enterprise-deployment.md):
 
-- `VAULT_VAULT_PATH` — per-user or per-machine vault file location
-- `VAULT_CONFIG_DIR` — central config directory (MDM-deployable)
-- `VAULT_LOCK_ON_BLUR=1` — force lock when window loses focus
+- `BLINDKEY_VAULT_PATH` — per-user or per-machine vault file location
+- `BLINDKEY_CONFIG_DIR` — central config directory (MDM-deployable)
+- `BLINDKEY_LOCK_ON_BLUR=1` — force lock when window loses focus
 - Pre-1.0 banner until 1.0 tag (UC-21 C50)
 
 ## Mitigations for accepted risks

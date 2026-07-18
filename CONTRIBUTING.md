@@ -1,16 +1,16 @@
-# Contributing to Vault
+# Contributing to Blindkey
 
-Thanks for your interest! Vault is a security tool, so we hold contributions to a high bar —
+Thanks for your interest! Blindkey is a security tool, so we hold contributions to a high bar —
 not to gatekeep, but because the cost of a subtle bug here is a leaked credential. This guide
 makes that bar explicit and reachable.
 
-## First: how Vault is built (read this)
+## First: how Blindkey is built (read this)
 
-Vault uses **Intent-Verified Development (IVD)**: the design lives as testable constraints in
-[`vault_intent.yaml`](vault_intent.yaml) *before* code is written. Every security property is a
+Blindkey uses **Intent-Verified Development (IVD)**: the design lives as testable constraints in
+[`blindkey_intent.yaml`](blindkey_intent.yaml) *before* code is written. Every security property is a
 numbered constraint (`C1`…`C60`) with a `test:` field. When you implement or change behavior:
 
-1. **Read the relevant constraint(s)** in `vault_intent.yaml`.
+1. **Read the relevant constraint(s)** in `blindkey_intent.yaml`.
 2. **Implement to satisfy them** — for security-critical work, in the segment order in the intent.
 3. **Add or update the test** that proves the constraint holds.
 4. In your PR, **state which constraints your change touches** (PASS / changed / new).
@@ -25,7 +25,7 @@ for post-1.0 candidate areas beyond the current 66 constraints.
 
 - **No custom cryptography.** Use the approved audited libraries (libsodium / RustCrypto). If you
   think you need a new primitive, you don't — open an issue.
-- **No `unsafe`** outside the one designated FFI crate, [`vault-sys`](crates/vault-sys/) (OS calls
+- **No `unsafe`** outside the one designated FFI crate, [`blindkey-sys`](crates/blindkey-sys/) (OS calls
   for `mlock`/`setrlimit`). Every other crate is `#![forbid(unsafe_code)]`.
 - **No secrets in `Vec<u8>`/`String`.** Use the `Secret`/`Zeroizing` wrappers (constraint C11).
 - **No `==` on secret bytes.** Use constant-time comparison (`subtle`, constraint C25).
@@ -44,7 +44,7 @@ truth). See the rustup docs for the mechanism:
 [other / `--no-modify-path`](https://rust-lang.github.io/rustup/installation/other.html).
 
 ```sh
-git clone https://github.com/leocelis/vault
+git clone https://github.com/leocelis/blindkey
 cd vault
 
 ./scripts/setup-rust.sh    # one-time: installs the pinned toolchain into ./.toolchain (git-ignored)

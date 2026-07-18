@@ -13,7 +13,7 @@ graceful opt-out only.
 
 ## Shipped model (UC-09 §2)
 
-Vault uses **PW_YUBIKEY** composite (password AND key required), not the OR-envelope YUBIKEY stanza.
+Blindkey uses **PW_YUBIKEY** composite (password AND key required), not the OR-envelope YUBIKEY stanza.
 Strict policy still applies: on save, refresh the stanza with a new challenge + YubiKey tap when
 the device is present; abort or warn when absent.
 
@@ -21,8 +21,8 @@ the device is present; abort or warn when absent.
 
 | Path | Behavior |
 |------|----------|
-| **New `vault enroll yubikey`** | `payload.yubikey_strict = true` (persisted in AEAD) |
-| **`vault enroll yubikey --graceful-yubikey`** | `yubikey_strict = false` |
+| **New `blindkey enroll yubikey`** | `payload.yubikey_strict = true` (persisted in AEAD) |
+| **`blindkey enroll yubikey --graceful-yubikey`** | `yubikey_strict = false` |
 | **Save, key present** | New challenge, re-wrap composite stanza (anti-replay) |
 | **Save, key absent, strict** | `Error::YubiKeyStrictSave` — file unchanged |
 | **Save, key absent, graceful** | Save proceeds + `YUBIKEY_STALE_WARNING` on stderr |
@@ -34,6 +34,6 @@ TLV `0x0004 YUBIKEY_STRICT` in encrypted payload (absent → false for legacy va
 
 ## References
 
-- `vault/vault_intent.yaml` C5 (G0.7)
+- `vault/blindkey_intent.yaml` C5 (G0.7)
 - `docs/specs/UC-09-hardware-factors.md` §2–§3.3
 - security-gap review gap table — YubiKey stale-challenge replay

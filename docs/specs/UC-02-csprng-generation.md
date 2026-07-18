@@ -1,19 +1,19 @@
-# UC-02 — Generate Provably Strong Credentials (`vault gen`)
+# UC-02 — Generate Provably Strong Credentials (`blindkey gen`)
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-2 · **Constraints:** C26 (primary), C3, C11, C23, C27
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-`vault gen` produces credentials whose strength is **provable by construction** — uniform CSPRNG
+`blindkey gen` produces credentials whose strength is **provable by construction** — uniform CSPRNG
 output with a documented bit count — rather than estimated after the fact. This spec covers:
 
 - the rejection-sampling algorithm (uniformity proof included),
 - exact charset definitions for `alnum` / `ascii` / `words` modes,
 - embedding the EFF Large Wordlist in the binary,
 - entropy accounting shown to the user,
-- the zxcvbn 60-bit entropy-floor warning on `vault add` / `vault edit`,
+- the zxcvbn 60-bit entropy-floor warning on `blindkey add` / `blindkey edit`,
 - secure handling of the generated secret in memory and on delivery.
 
 **Why no human- or LLM-chosen passwords.** Human and LLM-generated passwords are samples from
@@ -124,7 +124,7 @@ pattern reveals nothing about *accepted* values.
 
 ### 3.4 Entropy accounting displayed to the user
 
-Every `vault gen` prints an accounting line to **stderr** (stdout stays clean — §3.6):
+Every `blindkey gen` prints an accounting line to **stderr** (stdout stays clean — §3.6):
 
 ```
 Generated: 20 chars from 94-char printable ASCII = 131.1 bits (uniform CSPRNG).
@@ -134,7 +134,7 @@ The number is computed as `length × log2(charset_size)`, rounded to one decimal
 *exact* entropy of the sampling process, not an estimate — the line says "uniform CSPRNG" to
 distinguish it from zxcvbn *estimates* shown for user-supplied passwords (§3.5).
 
-### 3.5 zxcvbn entropy floor on `vault add` / `vault edit` (warn, never block)
+### 3.5 zxcvbn entropy floor on `blindkey add` / `blindkey edit` (warn, never block)
 
 When the user supplies their own password (interactive prompt — never argv, see UC-05 §3.5):
 
@@ -143,7 +143,7 @@ let estimate = zxcvbn::zxcvbn(&password, &[&entry_name, &username]);
 let bits = estimate.guesses_log10() * std::f64::consts::LOG2_10; // log2(10) ≈ 3.3219
 if bits < 60.0 {
     eprintln!("WARNING: estimated strength ~{bits:.0} bits (< 60). \
-               Consider `vault gen` for a provably strong password.");
+               Consider `blindkey gen` for a provably strong password.");
 }
 // Entry is stored regardless — C26: warn, don't block.
 ```
@@ -159,11 +159,11 @@ if bits < 60.0 {
 
 - The candidate password is accumulated in `Zeroizing<Vec<u8>>` / `Zeroizing<String>` (C11);
   every rejected sample buffer is `Zeroizing` too. No `Vec<u8>` for secret bytes, no `Debug`.
-- **Delivery defaults to the clipboard**, identical to `vault get` (C27/C13 machinery from
+- **Delivery defaults to the clipboard**, identical to `blindkey get` (C27/C13 machinery from
   [UC-04](UC-04-model-blind-retrieval.md)): a freshly generated password becomes a live secret
   the moment the user submits it to a signup form, so it must not land in an agent transcript.
-  `vault gen --stdout` prints it with the C27 warning on stderr (UC-05 semantics).
-- When `vault gen` is invoked *inside* `vault add` (offer: "generate instead? [Y/n]"), the
+  `blindkey gen --stdout` prints it with the C27 warning on stderr (UC-05 semantics).
+- When `blindkey gen` is invoked *inside* `blindkey add` (offer: "generate instead? [Y/n]"), the
   secret flows directly from generator to entry struct to encrypted payload — it is never
   displayed at all.
 - Accounting line (§3.4) contains length and charset only — never the secret.
@@ -204,27 +204,27 @@ if bits < 60.0 {
 
 1. **UNIT (bias, C26):** generate 100,000 `ascii` characters; chi-square goodness-of-fit over
    94 categories; assert `p > 0.01`. Repeat for `alnum` (62) and `words` (7776 over 50,000 draws).
-2. **UNIT (charset/length):** `vault gen --length 32 --charset alnum` → exactly 32 chars, all in
+2. **UNIT (charset/length):** `blindkey gen --length 32 --charset alnum` → exactly 32 chars, all in
    `[A-Za-z0-9]`. `--charset ascii` → all bytes in `0x21..=0x7E`.
 3. **UNIT (words):** `--charset words --words 6` → exactly 6 `-`-separated tokens, each present
    in the embedded list; pinned SHA-256 of the embedded list matches.
-4. **UNIT (floor warning):** `vault add` with password `password1` → stderr contains
-   `vault gen`, exit code 0, entry stored. With a 25-char generated password → no warning.
+4. **UNIT (floor warning):** `blindkey add` with password `password1` → stderr contains
+   `blindkey gen`, exit code 0, entry stored. With a 25-char generated password → no warning.
 5. **UNIT (entropy line):** `--charset ascii --length 20` accounting line contains `131.1`.
 6. **STATIC (C26):** grep generator module: `getrandom`/`OsRng` present; no `thread_rng`;
    no `% charset` outside the post-acceptance reduction inside `sample_index` (lint comment
    pins the audited line); no `reqwest`/`hyper`/LLM SDK in the dependency tree of `vault-gen`.
 7. **PROPERTY:** for every `len` in `2..=256`, `limit % len == 0` and `limit > 0`.
-8. **INTEGRATION (C27):** `vault gen` with no flags → stdout empty, clipboard holds a 20-char
-   string; `vault gen --stdout` → password on stdout, warning on stderr.
+8. **INTEGRATION (C27):** `blindkey gen` with no flags → stdout empty, clipboard holds a 20-char
+   string; `blindkey gen --stdout` → password on stdout, warning on stderr.
 
 ## 7. Open questions
 
 1. **EFF wordlist license attribution.** The EFF wordlists are published under a Creative
    Commons Attribution license (unverified exact version — confirm before publishing); embedding
    requires an attribution notice in `COPYRIGHT` and `--charset words --help`.
-2. **`vault gen` default channel** — this spec proposes clipboard-by-default for symmetry with
-   C27, but C27's text binds only `vault get`. Promote to a constraint amendment, or leave as
+2. **`blindkey gen` default channel** — this spec proposes clipboard-by-default for symmetry with
+   C27, but C27's text binds only `blindkey get`. Promote to a constraint amendment, or leave as
    implementation policy? (Recommend: fold into C27 at the next intent revision.)
 3. **Symbol-restricted charsets** (`--charset alnum --symbols '!@#'`) for sites with composition
    rules — deferred; entropy accounting must then reflect the reduced set honestly.

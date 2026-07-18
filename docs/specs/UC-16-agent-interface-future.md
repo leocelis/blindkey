@@ -1,4 +1,4 @@
-# UC-16 — An AI Agent Uses the Vault Without Ever Seeing a Secret
+# UC-16 — An AI Agent Uses the Blindkey Without Ever Seeing a Secret
 
 > **Status: DESIGN EXPLORATION — post-v1, non-binding.**
 > Nothing in this document is committed for v1. v1 ships **no** agent interface
@@ -8,7 +8,7 @@
 
 > **Tech spec** · Accepted v0.2 · post-v1 exploration · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-16 · **Constraints:** C27 (forward constraint); context: C13, C16, C23, C26
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals *(DESIGN EXPLORATION)*
 
@@ -109,7 +109,7 @@ adjustable.
 |---|---|---|
 | **Child-process env** | broker spawns the target command itself, injecting `SECRET=...` into the child's environment; agent supplies only the (pre-registered) command identity | Secret exists in broker + child memory. Never in agent context, shell history, or argv (gap B1 honored). Boundary risks: child's own logging/error output may echo env; `/proc/<pid>/environ` readable by same-uid processes — same-uid malware is already partially out of scope ([THREAT_MODEL](../THREAT_MODEL.md)), but the agent must not be able to *read* the child's stdout if the child might echo the secret — broker pipes child output through a redaction filter or returns only exit status. |
 | **HTTP header via local proxy** | broker runs a localhost proxy; agent sends requests *through* it with a placeholder header; proxy swaps in the real value and forwards over TLS to an allowlisted host | Secret exists in proxy memory and on the wire to the destination host (TLS). Boundary risks: agent controls the request *body and path* — see confused deputy (§6); host allowlist must be exact (no wildcard domains); proxy must strip the real header from any error/redirect echo back to the agent; CONNECT-style tunneling must be disabled (proxy must see and rewrite the request, and must refuse non-allowlisted hosts). |
-| **Clipboard (human handoff)** | broker copies to OS clipboard exactly as `vault get` does today (C13 auto-clear; B2 transient-clipboard flags) | Secret reaches the human's paste target. Boundary risks: same as v1 — clipboard managers, cloud clipboard sync (gap B2). The *agent* gains nothing readable; this path is the degenerate case that already exists and is the fallback when no machine destination fits. |
+| **Clipboard (human handoff)** | broker copies to OS clipboard exactly as `blindkey get` does today (C13 auto-clear; B2 transient-clipboard flags) | Secret reaches the human's paste target. Boundary risks: same as v1 — clipboard managers, cloud clipboard sync (gap B2). The *agent* gains nothing readable; this path is the degenerate case that already exists and is the fallback when no machine destination fits. |
 
 In all three paths the broker is a separate local process holding the unlocked session; the MCP
 server component never holds plaintext — it forwards requests to the broker over a local IPC
@@ -189,7 +189,7 @@ broker will refuse some legitimate workflows. That cost is acceptable; C27 is no
 1. **Approval-fatigue UX:** what request-preview granularity keeps per-use approval meaningful
    after the 50th prompt? (The known weak point of every human-in-the-loop design, including
    1Password's.)
-2. **Handle lifecycle:** who creates handles — interactive `vault agent allow <entry> --dest ...`
+2. **Handle lifecycle:** who creates handles — interactive `blindkey agent allow <entry> --dest ...`
    only? Can a handle survive a vault re-key (C4 password rotation)?
 3. **Headless/terminal-only approval surface:** what is an unspoofable prompt on a machine
    where the agent owns the only TTY? (Candidate: require a second device or hardware-key tap

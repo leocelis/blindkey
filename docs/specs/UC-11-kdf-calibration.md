@@ -2,14 +2,14 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-11 · **Constraints:** C2, C22, C8 (touches C4, C9, C16)
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
 KDF cost decays: the same Argon2id parameters get cheaper to attack every hardware generation, and
 LastPass proved that parameters which are never recalibrated rot into negligence (1-iteration
-PBKDF2, never migrated — crackable for $15). This spec covers: the `vault tune` benchmark
-algorithm targeting **300 ms ± 100 ms**, the `vault upgrade-kdf` re-wrap flow (password stanza
+PBKDF2, never migrated — crackable for $15). This spec covers: the `blindkey tune` benchmark
+algorithm targeting **300 ms ± 100 ms**, the `blindkey upgrade-kdf` re-wrap flow (password stanza
 only; payload ciphertext untouched per C4), floor enforcement on every open, the progress-indicator
 design for derivations > 300 ms, and the reference-hardware definition that makes C22 testable in
 CI. Out of scope: the floor/ceiling *parsing* mechanics (UC-10 §3.3), hardware-stanza rotation.
@@ -45,7 +45,7 @@ CI. Out of scope: the floor/ceiling *parsing* mechanics (UC-10 §3.3), hardware-
 
 ## 3. Proposed design
 
-### 3.1 `vault tune` — benchmark algorithm
+### 3.1 `blindkey tune` — benchmark algorithm
 
 Runtime of Argon2id is, to first order, linear in `m · t` for fixed `p` (memory-fill bound — RFC
 9106 / Argon2 paper), so proportional scaling converges in one or two steps; a binary search over
@@ -71,7 +71,7 @@ repeat up to 6 iterations:
 
 print:
   recommended: m=<KiB> (<MiB> MiB)  t=<t>  p=<p>     measured: <ms> ms
-  current vault: m=… t=… p=…  →  run `vault upgrade-kdf --tuned` to apply
+  current vault: m=… t=… p=…  →  run `blindkey upgrade-kdf --tuned` to apply
 ```
 
 Properties: every recommendation already satisfies the C2 floor and C2 ceiling by construction;
@@ -79,7 +79,7 @@ Properties: every recommendation already satisfies the C2 floor and C2 ceiling b
 numeric values" is the literal last line. The measured throughput (`KiB·t per ms`) is cached in the
 local state file for the §3.4 estimator.
 
-### 3.2 `vault upgrade-kdf` — re-wrap flow
+### 3.2 `blindkey upgrade-kdf` — re-wrap flow
 
 Re-derives the **password stanza only**. The data key does not change, so the payload is untouched
 (C4: O(1) password-path rotation).
@@ -121,7 +121,7 @@ Per C2 and UC-10 step 6: params below floor ⇒ stderr WARNING containing
 successful unlock. This spec adds the non-interactive rule, mirroring C16's pattern: when stdin is
 not a TTY, do not prompt — abort with exit code 2 and the warning on stderr;
 `--allow-weak-kdf` proceeds explicitly. Above floor but below the *current compiled
-recommendation*: one-line stderr notice (`tip: vault tune`), no prompt — nagging is rationed so the
+recommendation*: one-line stderr notice (`tip: blindkey tune`), no prompt — nagging is rationed so the
 warning channel keeps meaning (and C2's exact-floor test expects *no warning*).
 
 ### 3.4 Progress indicator (> 300 ms ⇒ spinner)
@@ -148,7 +148,7 @@ README):
 | RAM | ≥ 8 GiB |
 | CI runner | a pinned GitHub-hosted Linux runner class meeting the above, recorded (`nproc`, `/proc/meminfo`) in the job log of every benchmark run |
 | Benchmark statistic | median of 3 derivations, 1 warm-up discarded |
-| Gates | default-params derivation: 200 ms ≤ median < 500 ms (C2/C22) · `vault tune` on the runner recommends params whose measured time ∈ [200, 400] ms · spinner appears when a 350 ms derivation is forced |
+| Gates | default-params derivation: 200 ms ≤ median < 500 ms (C2/C22) · `blindkey tune` on the runner recommends params whose measured time ∈ [200, 400] ms · spinner appears when a 350 ms derivation is forced |
 
 Shared-runner jitter is real: the gate uses the median, retries once on a > 500 ms outlier with a
 loud annotation, and the job uploads measured numbers as an artifact so drift is visible over time

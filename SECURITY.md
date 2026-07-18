@@ -1,11 +1,11 @@
 # Security Policy
 
-Vault is a credential-protection tool. We take security reports seriously and practice
-coordinated disclosure. Thank you for helping keep Vault and its users safe.
+Blindkey is a credential-protection tool. We take security reports seriously and practice
+coordinated disclosure. Thank you for helping keep Blindkey and its users safe.
 
 ## Supported versions
 
-Vault **1.0.0** is the current stable release — the CLI and desktop app work today and have
+Blindkey **1.0.0** is the current stable release — the CLI and desktop app work today and have
 **not** had an independent third-party security audit (recommended before enterprise adoption; see
 [THIRD_PARTY_AUDIT.md](docs/THIRD_PARTY_AUDIT.md)). **On-disk format v1 is stable** (see
 [ADR-0005](docs/adr/0005-format-v1-freeze.md)). Security fixes land on `main` and are tagged from
@@ -17,7 +17,7 @@ there — see [docs/RELEASE.md](docs/RELEASE.md).
 | `0.1.0-alpha.*` | ⚠️ upgrade to 1.0.0; alpha vault files open without migration |
 | Pre-release / dev builds | report against commit hash |
 
-crates.io (`cargo install vault-cli --locked`) is optional and not published yet.
+crates.io (`cargo install blindkey-cli --locked`) is optional and not published yet.
 
 ## Reporting a vulnerability
 
@@ -25,7 +25,7 @@ crates.io (`cargo install vault-cli --locked`) is optional and not published yet
 vulnerabilities.**
 
 Report privately via **GitHub Security Advisories**:
-👉 https://github.com/leocelis/vault/security/advisories/new
+👉 https://github.com/leocelis/blindkey/security/advisories/new
 
 If you cannot use that channel, email **[leo@leocelis.com](mailto:leo@leocelis.com)** with subject
 line `VAULT-SECURITY` (see [MAINTAINERS.md](MAINTAINERS.md)). GHSA supports private threads without encryption; if you

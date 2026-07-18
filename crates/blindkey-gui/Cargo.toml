@@ -1,0 +1,25 @@
+[package]
+name = "blindkey-gui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+description = "Vault — a simple, fast, secure desktop app (egui shell over blindkey-core)."
+publish = false
+
+# A thin UC-18 shell: all secret-touching logic stays in `blindkey-core`; this binary only renders
+# metadata, orchestrates clipboard delivery (model-blind), and persists via the core's save path.
+[[bin]]
+name = "blindkey-gui"
+path = "src/main.rs"
+
+[dependencies]
+blindkey-core = { path = "../blindkey-core" }
+blindkey-hardware = { path = "../blindkey-hardware", version = "1.0.0" }
+blindkey-clip = { path = "../blindkey-clip" }
+eframe = { workspace = true }   # UC-20: glow pinned in workspace; no persistence (C41)
+rfd = { workspace = true }
+zeroize = { workspace = true }
+getrandom = { workspace = true }   # entry-id randomness (same audited OS CSPRNG blindkey-core uses)

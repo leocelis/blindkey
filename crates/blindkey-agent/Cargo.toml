@@ -1,0 +1,21 @@
+[package]
+name = "blindkey-agent"
+description = "Handle broker for model-blind agent secret injection (S-13 / UC-16 scaffold)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+publish = true
+
+[dependencies]
+blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+getrandom.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

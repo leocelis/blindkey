@@ -1,10 +1,10 @@
-# Vault documentation
+# Blindkey documentation
 
 Start here based on what you need:
 
 | I want to… | Read |
 |------------|------|
-| Seal files for untrusted cloud storage | [CLI.md](CLI.md) (`vault seal` / `open` / `peek`) · [specs/UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md) |
+| Seal files for untrusted cloud storage | [CLI.md](CLI.md) (`blindkey seal` / `open` / `peek`) · [specs/UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md) |
 | Install or build | [INSTALL.md](INSTALL.md) |
 | Use the CLI | [CLI.md](CLI.md) |
 | Try a sample import | [../samples/README.md](../samples/README.md) |
@@ -13,7 +13,7 @@ Start here based on what you need:
 | Read the crypto design | [CRYPTO.md](CRYPTO.md) |
 | Read the file format | [FILE_FORMAT.md](FILE_FORMAT.md) |
 | See system architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| See all 60 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../vault_intent.yaml](../vault_intent.yaml) |
+| See all 60 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
 | Verify a release binary | [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md) |
 | See what's shipped vs planned | [../ROADMAP.md](../ROADMAP.md) · [guides/hardware-factor-status.md](guides/hardware-factor-status.md) |
 | Enterprise / fleet deployment | [ENTERPRISE_POSTURE.md](ENTERPRISE_POSTURE.md) · [guides/enterprise-deployment.md](guides/enterprise-deployment.md) |

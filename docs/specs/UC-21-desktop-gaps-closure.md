@@ -29,13 +29,13 @@ SwiftUI shell, eframe 0.34 bump, search index at 10k+, private-title mode, elimi
 ### 2.1 Session hygiene (C46, C47)
 
 - `reveal_until: Option<Instant>` — auto `reveal = false` after 15 s; schedule `request_repaint_after(1s)` only while reveal active.
-- `lock_on_blur` in `~/.vault/config` (default `0`). When `1` and `viewport.focused == false`, call `lock()`.
+- `lock_on_blur` in `~/.blindkey/config` (default `0`). When `1` and `viewport.focused == false`, call `lock()`.
 
 ### 2.2 Keyfile GUI (C48, C49)
 
-**Unlock:** If `Vault::requires_keyfile(bytes)`:
+**Unlock:** If `Blindkey::requires_keyfile(bytes)`:
 - Show keyfile path picker (`rfd`) + optional "Use recovery code" toggle.
-- Open via `Vault::open_keyfile` or `Vault::open` with recovery code bytes.
+- Open via `Blindkey::open_keyfile` or `Blindkey::open` with recovery code bytes.
 
 **Enroll:** Top-bar "🔑 Keyfile 2FA" when unlocked and `!vault.is_2fa()`:
 - Pick/create path → `enroll_keyfile_2fa` → `save` → modal with recovery code (copy-friendly, one-time).
@@ -67,7 +67,7 @@ SwiftUI shell, eframe 0.34 bump, search index at 10k+, private-title mode, elimi
 
 ## 4. Test plan
 
-- T1–T9 in `vault-gui/tests/uc21_constraints.rs` + keyfile helper unit tests
+- T1–T9 in `blindkey-gui/tests/uc21_constraints.rs` + keyfile helper unit tests
 - Full workspace `cargo test`
 
 ## 5. Implementation segments

@@ -12,7 +12,7 @@ stream_ct → decrypt() → Zeroizing<Vec<u8>> (full outer plaintext)
 ```
 
 C19 already **seals** Protected entry fields in RAM after parse (`Entry::parse` + `SealKey`).
-The gap was the **transient** full outer plaintext during `Vault::open`.
+The gap was the **transient** full outer plaintext during `Blindkey::open`.
 
 ## Verdict (2026-06-26)
 
@@ -28,7 +28,7 @@ The gap was the **transient** full outer plaintext during `Vault::open`.
 1. `StreamDecryptor::next_plaintext_chunk()` — incremental outer decrypt (C1 tag-before-release).
 2. `IncrementalTlv` — parse TLV from chunked feeds; pending tail only (≤ max record).
 3. `Payload::parse_from_stream_ciphertext()` — wire decrypt + TLV + `Entry::parse` per entry.
-4. `Vault::open_inner` uses streaming path only; `Payload::parse(&[u8])` kept for tests/fuzz.
+4. `Blindkey::open_inner` uses streaming path only; `Payload::parse(&[u8])` kept for tests/fuzz.
 
 ## Residual exposure (accepted)
 
@@ -38,7 +38,7 @@ The gap was the **transient** full outer plaintext during `Vault::open`.
 
 ## References
 
-- `crates/vault-core/src/crypto/stream.rs` — `decrypt_streaming`
-- `crates/vault-core/src/format/tlv_incremental.rs`
-- `crates/vault-core/src/format/payload.rs` — `parse_from_stream_ciphertext`
+- `crates/blindkey-core/src/crypto/stream.rs` — `decrypt_streaming`
+- `crates/blindkey-core/src/format/tlv_incremental.rs`
+- `crates/blindkey-core/src/format/payload.rs` — `parse_from_stream_ciphertext`
 - Constraint C19 (in-memory sealing), C12 (PageLock on save-path serialize buffer)

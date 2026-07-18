@@ -2,11 +2,11 @@
 
 > **Tech spec** · Accepted v0.2 · implemented pre-1.0 · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-3 · **Constraints:** C18, C19, C17, C11 (touches C10, C16, C26)
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-`vault add NAME` end to end: the entry data model, the serialization format *inside* the encrypted
+`blindkey add NAME` end to end: the entry data model, the serialization format *inside* the encrypted
 payload, the inner-stream double encryption of Protected fields, the in-memory secret types, the
 add flow, the atomic save, and how `vault_version` increments. Out of scope: retrieval/delivery
 (UC-4/UC-5), search (UC-6), import (UC-12).
@@ -152,14 +152,14 @@ CI grep gates from the C11 `test:` block apply to the modules introduced here
 ### 3.5 The add flow
 
 ```
-vault add github-prod --username leo --url https://github.com/org
+blindkey add github-prod --username leo --url https://github.com/org
 ```
 
 1. Unlock: prompt master password (no echo, TTY) → UC-10 verification pipeline → data key from the
    password stanza → decrypt payload into mlock'd memory.
-2. Prompt entry password — `Password [Enter = generate]`; Enter invokes the `vault gen` CSPRNG path
+2. Prompt entry password — `Password [Enter = generate]`; Enter invokes the `blindkey gen` CSPRNG path
    (C26). A typed password is estimated with zxcvbn; < 60 bits ⇒ stderr WARNING suggesting
-   `vault gen`, but the add proceeds (warn-don't-block, C26).
+   `blindkey gen`, but the add proceeds (warn-don't-block, C26).
 3. Reject duplicate `NAME` (titles are unique keys for the CLI; the stable identity is `id`).
 4. Build `Entry` (`created_at = modified_at = now`), append to the in-memory entry list.
 5. `vault_version += 1` (§3.7), re-serialize (§3.2), inner-encrypt Protected fields (§3.3),
@@ -172,7 +172,7 @@ vault add github-prod --username leo --url https://github.com/org
 Same mechanism as UC-01 §3.6 with two differences for the overwrite case:
 
 1. Take an advisory `flock(LOCK_EX)` on the vault file for the whole read-modify-write (two
-   concurrent `vault add`s must serialize — coverage-gap C1).
+   concurrent `blindkey add`s must serialize — coverage-gap C1).
 2. Write `vault.vlt.tmp.*` (0600, same dir) → `fsync` file → rename **over** the target (plain
    atomic rename; replacement is intended here) → `fsync` directory. The previous generation is
    first hard-linked to `vault.vlt.bak` so a verified-good predecessor survives until the next save.

@@ -5,7 +5,7 @@
 ## Problem
 
 Default `RLIMIT_MEMLOCK` on Linux is often 64 KiB–8 MiB. Docker/Podman/Kubernetes default
-seccomp profiles block `mlock(2)` → **EPERM**. Vault must continue (C12: never abort) but users
+seccomp profiles block `mlock(2)` → **EPERM**. Blindkey must continue (C12: never abort) but users
 need honest guidance on swap risk and mitigations.
 
 ## C12 behavior (shipped)
@@ -33,4 +33,4 @@ Use containers only for CI/automation with low-value test vaults, or after expli
 
 - `mlock(2)`, `getrlimit(2)` — RLIMIT_MEMLOCK
 - UC-14 §3.2 — page layer + container EPERM
-- vault_intent.yaml C12
+- blindkey_intent.yaml C12

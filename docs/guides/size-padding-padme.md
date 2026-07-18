@@ -33,8 +33,8 @@ you do not trust and accept the overhead.
 **CLI** (requires unlock — re-saves the vault):
 
 ```sh
-vault pad on    # enable Padmé bucketing
-vault pad off   # back to exact size
+blindkey pad on    # enable Padmé bucketing
+blindkey pad off   # back to exact size
 ```
 
 **Desktop app:** check **"Pad size"** in the top bar (same policy, persisted on save).
@@ -43,14 +43,14 @@ vault pad off   # back to exact size
 
 | Situation | Recommendation |
 |-----------|----------------|
-| Vault on Google Drive / Dropbox / git remote | **Consider `pad on`** |
+| Blindkey on Google Drive / Dropbox / git remote | **Consider `pad on`** |
 | Local-only vault, no sync | Optional — little benefit |
 | Tiny vault, size already obvious | Low benefit |
 | Need minimal disk/sync bandwidth | Stay **off** |
 
 ## Technical reference
 
-- Implementation: [`crates/vault-core/src/pad.rs`](../../crates/vault-core/src/pad.rs)
+- Implementation: [`crates/blindkey-core/src/pad.rs`](../../crates/blindkey-core/src/pad.rs)
 - Research: [`research/padme_padding_research.md`](../../research/padme_padding_research.md)
 - Spec: [UC-07 §3.2](../specs/UC-07-untrusted-storage-sync.md)
 

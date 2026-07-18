@@ -1,20 +1,20 @@
-# UC-18 — Use the Vault Through a Fast, Native UI
+# UC-18 — Use the Blindkey Through a Fast, Native UI
 
-> **Tech spec** · Implemented · June 2026 · **Status:** ✅ `vault-tui` + `vault-gui` shipped (pre-1.0 beta); SwiftUI/uniffi shell post-v1 (S-18)
+> **Tech spec** · Implemented · June 2026 · **Status:** ✅ `blindkey-tui` + `blindkey-gui` shipped (pre-1.0 beta); SwiftUI/uniffi shell post-v1 (S-18)
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-18 · **Constraints:** C20, C11, C12, C25, C27, C5, C23; candidate C-presentation
 > **Research:** [research/ui_architecture.md](../../research/ui_architecture.md)
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
 A front-end that is *fast, simple, secure, and runs on this Mac as nicely as on Linux* — without
 duplicating or weakening the Rust security core. **Pure-Rust TUI and egui GUI shells are shipped**
-(`vault-tui`, `vault-gui`). The **remaining post-v1 piece** is the native **SwiftUI** shell via uniffi
-(Touch ID / Secure Enclave). The v1 prerequisite — a UI-agnostic `vault-core` API — is in place.
+(`blindkey-tui`, `blindkey-gui`). The **remaining post-v1 piece** is the native **SwiftUI** shell via uniffi
+(Touch ID / Secure Enclave). The v1 prerequisite — a UI-agnostic `blindkey-core` API — is in place.
 
 Goals:
 
-1. Every UI is a **thin client over `vault-core`** — zero crypto, zero format logic in the shell.
+1. Every UI is a **thin client over `blindkey-core`** — zero crypto, zero format logic in the shell.
 2. The presentation layer never holds long-lived plaintext; **copy-not-display** by default (C27),
    on-screen reveal is opt-in, auth-gated, and time-boxed.
 3. Preserve C20's "single binary, no Node/JVM/Python" property for the default shells.
@@ -51,28 +51,28 @@ interface (that is [UC-16](UC-16-agent-interface-future.md)).
 ### 3.1 Architecture: shared core, thin shells
 
 ```
-vault-core (Rust, #![forbid(unsafe_code)])     ← the single audited boundary (CP-1..CP-4)
+blindkey-core (Rust, #![forbid(unsafe_code)])     ← the single audited boundary (CP-1..CP-4)
    ▲ crate        ▲ crate        ▲ uniffi/C-ABI       ▲ Tauri command (opt)
 ratatui TUI    egui GUI       SwiftUI (macOS)        web-styled app
 (all OSes)     (all OSes)     Kotlin (Android, later) (broader audience)
 ```
 
-- **Rust-native shells** (`ratatui`, `egui`) depend on `vault-core` as a normal crate — **no FFI,
+- **Rust-native shells** (`ratatui`, `egui`) depend on `blindkey-core` as a normal crate — **no FFI,
   secrets never leave Rust**.
-- **Native shells** (SwiftUI/Kotlin) link `vault-core` through **uniffi**-generated bindings packaged
+- **Native shells** (SwiftUI/Kotlin) link `blindkey-core` through **uniffi**-generated bindings packaged
   as an **XCFramework** (the Signal/Firefox model). The FFI surface returns structured data and
   **secret-handles**, and performs reveal/copy *inside Rust* (§3.3).
 
 ### 3.2 The UI-agnostic, FFI-ready core API (THE v1 deliverable)
 
-The CP-4 `vault-core` public API must satisfy, from day one, all of:
+The CP-4 `blindkey-core` public API must satisfy, from day one, all of:
 
 ```rust
 // Illustrative — the contract, not the final signatures.
 pub struct EntrySummary { pub id: Uuid, pub title: String, pub kind: EntryKind, pub tags: Vec<String> }
 //                         ^ NO secret fields — safe to hand to any shell, incl. a webview.
 
-impl Vault {
+impl Blindkey {
     pub fn unlock(&mut self, factor: UnlockFactor) -> Result<Session>;     // password | biometric-wrapped stanza
     pub fn search(&self, q: &str) -> Vec<EntrySummary>;                    // metadata only (SC2, in-memory)
     pub fn deliver(&self, id: Uuid, field: Field, sink: Sink) -> Result<()>; // §3.3 — core does delivery
@@ -130,7 +130,7 @@ When a user explicitly reveals (eye icon / `r` key):
   one more OR-stanza; the password stanza is always present (lose your Mac → password still opens the
   vault on another machine). This is exactly C5's any-of-N model.
 - ~ caveat: prefer the **SwiftUI shell calling `LocalAuthentication` + `SecKey` natively** over the
-  experimental `keychain-services` Rust crate; `vault-core` holds the resulting wrap secret. Confirm
+  experimental `keychain-services` Rust crate; `blindkey-core` holds the resulting wrap secret. Confirm
   the API set in the §7 spike.
 
 ### 3.6 Phasing
@@ -159,7 +159,7 @@ When a user explicitly reveals (eye icon / `r` key):
 | Constraint | How this design satisfies it |
 |---|---|
 | **C20** | default shells (ratatui/egui) stay single-binary, no Node/JVM/Python; Tauri flagged as off-spec and optional |
-| **C11/C12/C25** | secrets stay in `vault-core`'s zeroized/mlock'd buffers; UI holds no long-lived plaintext; reveal uses a core-lent `Zeroizing` buffer reclaimed on hide; auto-lock unchanged |
+| **C11/C12/C25** | secrets stay in `blindkey-core`'s zeroized/mlock'd buffers; UI holds no long-lived plaintext; reveal uses a core-lent `Zeroizing` buffer reclaimed on hide; auto-lock unchanged |
 | **C27** | copy-not-display default via `deliver()`; the FFI surface never returns a secret string by default; **forward constraint extended to UI surfaces** (amendment, §7) |
 | **C5** | macOS Touch ID / Secure Enclave wrap is an additive keychain stanza; password stanza always present (any-of-N) |
 | **C13** | clipboard auto-clear lives in the core, shared by all shells |
@@ -168,7 +168,7 @@ When a user explicitly reveals (eye icon / `r` key):
 
 ## 6. Test plan
 
-1. **API shape (v1):** assert no `vault-core` public fn returns a secret-bearing owned value except
+1. **API shape (v1):** assert no `blindkey-core` public fn returns a secret-bearing owned value except
    the `#[must_use]`, documented `reveal()`; `EntrySummary` contains no secret field (compile-time +
    review gate). This is the gate that makes UC-18 buildable later.
 2. **Delivery, not return:** call `deliver(id, password, Clipboard)`; assert the secret is on the

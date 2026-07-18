@@ -2,11 +2,11 @@
 
 - **Status:** Accepted (scaffold)
 - **Date:** 2026-06-26
-- **Research:** [research/agent_broker_research.md](../research/agent_broker_research.md)
+- **Research:** [research/agent_broker_research.md](../../research/agent_broker_research.md)
 
 ## Context
 
-Same-user agents with shell access can invoke `vault get --stdout` while a vault session is
+Same-user agents with shell access can invoke `blindkey get --stdout` while a vault session is
 unlocked. C27's forward constraint requires any future agent interface to deliver secrets only
 via model-blind channels. UC-16 explores a handle-based MCP broker; v1 ships no agent API.
 
@@ -14,15 +14,15 @@ security-gap review asks for the **first concrete step**: handle broker + OS app
 
 ## Decision
 
-1. Add **`vault-agent`** crate — handle store, Unix-socket broker, status-only IPC, TTY approval,
+1. Add **`blindkey-agent`** crate — handle store, Unix-socket broker, status-only IPC, TTY approval,
    child-process env injection.
-2. Expose **`vault agent`** CLI: `allow`, `list`, `revoke`, `run`, `use`.
+2. Expose **`blindkey agent`** CLI: `allow`, `list`, `revoke`, `run`, `use`.
 3. **No MCP server** in this ADR — IPC protocol is the MCP integration point later.
 4. **No plaintext** in broker responses (C27); audit log is metadata-only (C23).
 
 ## Consequences
 
-- Agents must talk to a **running broker** with an unlocked vault — not raw `vault get`.
+- Agents must talk to a **running broker** with an unlocked vault — not raw `blindkey get`.
 - Approval is **TTY-owned** by the broker process (headless agents need future work — UC-16 Q3).
 - One injection path only (env spawn); HTTP proxy deferred.
 

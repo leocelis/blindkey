@@ -19,7 +19,7 @@ Cargo.lock.bak
 # Coverage
 *.profraw
 /coverage
-# Vault runtime artifacts — NEVER commit a real vault or its local state
+# Blindkey runtime artifacts — NEVER commit a real vault or its local state
 *.vlt
 *.vlt.bak
 *.vltf

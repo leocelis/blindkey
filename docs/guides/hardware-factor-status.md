@@ -7,10 +7,10 @@
 | Factor | Command / UI | Notes |
 |--------|----------------|-------|
 | **Master password** | Always | Required at init; stanza always remains (C5) |
-| **Keyfile 2FA** | `vault enroll keyfile <PATH>` · GUI **Keyfile 2FA** | Required-both AND model; recovery code at enroll |
-| **YubiKey challenge-response 2FA** | `vault enroll yubikey` | HMAC-SHA1 slot 2 via **YubiKey Manager (`ykman`)** subprocess — not browser WebAuthn |
-| **FIDO2 / CTAP2 hmac-secret** | `vault enroll fido2` | `fido2-token` (libfido2); needs hmac-secret-capable key |
-| **TPM 2.0 PCR seal** | `vault enroll-tpm` | `tpm2-tools`; Linux/Windows TPM 2.0 (PCR 7 default) |
+| **Keyfile 2FA** | `blindkey enroll keyfile <PATH>` · GUI **Keyfile 2FA** | Required-both AND model; recovery code at enroll |
+| **YubiKey challenge-response 2FA** | `blindkey enroll yubikey` | HMAC-SHA1 slot 2 via **YubiKey Manager (`ykman`)** subprocess — not browser WebAuthn |
+| **FIDO2 / CTAP2 hmac-secret** | `blindkey enroll fido2` | `fido2-token` (libfido2); needs hmac-secret-capable key |
+| **TPM 2.0 PCR seal** | `blindkey enroll-tpm` | `tpm2-tools`; Linux/Windows TPM 2.0 (PCR 7 default) |
 
 YubiKey 4/NEO use challenge-response (not FIDO2 hmac-secret). FIDO2 security keys use a separate OR stanza path.
 
@@ -29,7 +29,7 @@ Constraint tests for FIDO2/TPM crypto **math and file format** pass against mock
 - ✅ "Optional **YubiKey, keyfile, FIDO2, or TPM** factors (CLI; FIDO2/TPM need OS tools + hardware)"
 - ✅ "Multi-stanza OR envelope; password always unlocks"
 - ❌ "Touch ID / Secure Enclave unlock" as a v1 feature
-- ❌ "Independently audited" — Vault has **not** had a third-party audit ([THIRD_PARTY_AUDIT.md](../THIRD_PARTY_AUDIT.md))
+- ❌ "Independently audited" — Blindkey has **not** had a third-party audit ([THIRD_PARTY_AUDIT.md](../THIRD_PARTY_AUDIT.md))
 
 ## See also
 

@@ -12,12 +12,12 @@ Today `validate_kdf_params` returns `KdfStrength::BelowFloor` on open — CLI pr
 
 | Path | Below-floor behavior | Rationale |
 |------|----------------------|-----------|
-| **`vault init` / `Vault::create`** | **Hard reject** | Stop new weak vaults |
-| **`vault upgrade-kdf` / `change_kdf`** | **Hard reject** target params | Cannot downgrade via upgrade |
-| **`vault open` / import / ls / get** | **Warn** + suggest `upgrade-kdf` | Don't strand legacy vaults |
+| **`blindkey init` / `Blindkey::create`** | **Hard reject** | Stop new weak vaults |
+| **`blindkey upgrade-kdf` / `change_kdf`** | **Hard reject** target params | Cannot downgrade via upgrade |
+| **`blindkey open` / import / ls / get** | **Warn** + suggest `upgrade-kdf` | Don't strand legacy vaults |
 | **Tests / CI** | `--allow-weak-kdf` on init only | Fast Argon2id in integration tests |
 
-**Import (`vault import --format raw`):** opens an existing vault → inherits open policy (warn only). Raw import does not set KDF params. Future UC-12 migrators that call `Vault::create` inherit the write policy automatically.
+**Import (`blindkey import --format raw`):** opens an existing vault → inherits open policy (warn only). Raw import does not set KDF params. Future UC-12 migrators that call `Blindkey::create` inherit the write policy automatically.
 
 ## Intent amendment (C2)
 
@@ -29,10 +29,10 @@ Add to C2 description (preserve open behavior):
 
 ## Escape hatch
 
-`--allow-weak-kdf` on `vault init` only (matches UC-11 draft for scripted setup). **Not** on `upgrade-kdf`.
+`--allow-weak-kdf` on `blindkey init` only (matches UC-11 draft for scripted setup). **Not** on `upgrade-kdf`.
 
 ## References
 
-- `vault/vault_intent.yaml` C2
+- `vault/blindkey_intent.yaml` C2
 - `docs/specs/UC-11-kdf-calibration.md` §3.3
 - security-gap review gap table — KDF floor warns, doesn't reject

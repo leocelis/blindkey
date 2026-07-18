@@ -1,16 +1,16 @@
 # Code ownership — the code owner's review is required to merge.
 # Scoped by path, not by person: each line below names whoever is required
 # to review that path today.
-/crates/vault-core/     @leocelis
+/crates/blindkey-core/     @leocelis
 /docs/THREAT_MODEL.md   @leocelis
 /SECURITY.md            @leocelis
 /.github/CODEOWNERS     @leocelis
 /scripts/               @leocelis
-/vault_intent.yaml      @leocelis
+/blindkey_intent.yaml      @leocelis
 
 # Broader surface — either maintainer may review.
-/crates/vault-cli/      @leocelis @jgm972
-/crates/vault-gui/      @leocelis @jgm972
-/crates/vault-tui/      @leocelis @jgm972
+/crates/blindkey-cli/      @leocelis @jgm972
+/crates/blindkey-gui/      @leocelis @jgm972
+/crates/blindkey-tui/      @leocelis @jgm972
 /docs/                  @leocelis @jgm972
 /README.md              @leocelis @jgm972

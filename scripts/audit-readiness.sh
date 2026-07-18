@@ -12,11 +12,11 @@ if [ -f "$ROOT/scripts/dev-env.sh" ]; then
 fi
 
 echo "==> Release search benchmarks (C38, C59)"
-cargo test -p vault-core --release latency
+cargo test -p blindkey-core --release latency
 
 echo "==> Sealed throughput bench (UC-23 / A23, release only)"
-export VAULT_SEAL_BENCH_MIN_MIB_S="${VAULT_SEAL_BENCH_MIN_MIB_S:-20}"
-cargo test -p vault-core --release c63_sealed_throughput_release_bench c63_rss_ceiling_large_on_disk_seal -- --nocapture
+export BLINDKEY_SEAL_BENCH_MIN_MIB_S="${BLINDKEY_SEAL_BENCH_MIN_MIB_S:-20}"
+cargo test -p blindkey-core --release c63_sealed_throughput_release_bench c63_rss_ceiling_large_on_disk_seal -- --nocapture
 
 echo "==> Workspace tests"
 cargo test --workspace --quiet

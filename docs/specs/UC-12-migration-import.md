@@ -2,18 +2,18 @@
 
 > **Tech spec** · Accepted v0.2 · design only — not yet implemented · June 2026
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-12 · **Constraints:** C21 (import), C26; touches C16, C17, C18, C23, C24, C27
-> Where this spec and [`vault_intent.yaml`](../../vault_intent.yaml) disagree, the intent wins.
+> Where this spec and [`blindkey_intent.yaml`](../../blindkey_intent.yaml) disagree, the intent wins.
 
 ## 1. Scope & goals
 
-Get a P3 user ("Migrator from `pass`/KeePassXC") from their existing store into Vault in one
+Get a P3 user ("Migrator from `pass`/KeePassXC") from their existing store into Blindkey in one
 command, with strictly stronger post-migration security than they started with. Goals:
 
-1. One-command import: `vault import --format <fmt> <source>`.
+1. One-command import: `blindkey import --format <fmt> <source>`.
 2. Every imported field lands inside the AEAD payload (C18) — no intermediate plaintext written
-   by Vault, ever.
+   by Blindkey, ever.
 3. Every imported password is entropy-scanned (C26, zxcvbn) and weak ones reported, nudging
-   rotation via `vault gen`.
+   rotation via `blindkey gen`.
 4. One atomic save at the end (single `vault_version` increment, C16; atomic write per M5).
 5. Honest post-import guidance: the *source* files are plaintext or weakly protected and the
    user must destroy them — with platform-accurate caveats.
@@ -92,7 +92,7 @@ write decrypted output to a temp file. gpg talks only to the local agent — no 
   so a hand-decrypted store imports trivially.
 - **json**: documented array-of-objects schema:
   `[{ "name", "username", "password", "url", "notes", "tags": [], "otp": "otpauth://..." }]` —
-  also the schema `vault export --format json` emits, so export/import round-trips.
+  also the schema `blindkey export --format json` emits, so export/import round-trips.
 - **bitwarden**: map `items[].name` → title, `login.username/password`, first `login.uris[].uri`
   → url (extra URIs → notes), `login.totp` → otp_secret, folder name → tag. Non-login item
   types (card, identity, secure note) → notes-only entries, flagged in the report.
@@ -131,7 +131,7 @@ Never silently overwrite. Duplicates *within* the source (two identical titles) 
 
 Each imported password runs through zxcvbn; estimate `bits = guesses_log10 × log2(10)` (the C26
 formula). Entries below 60 bits are listed in the post-import report with the suggestion to
-rotate via `vault gen`. Warn, never block (C26: warn-don't-refuse) — a migration must not strand
+rotate via `blindkey gen`. Warn, never block (C26: warn-don't-refuse) — a migration must not strand
 the user's data because their old passwords were weak. That's *why* they're migrating.
 
 ### 3.6 Post-import guidance (printed after a successful import)
@@ -144,7 +144,7 @@ the user's data because their old passwords were weak. That's *why* they're migr
 2. **Remember sync copies.** A KeePassXC CSV or Bitwarden JSON that ever touched a synced
    folder, cloud trash, or Time Machine persists there; the export should be created in a
    non-synced location to begin with (the docs say this *before* the export step).
-3. **Rotate flagged passwords** (`vault gen`), starting with the weak list.
+3. **Rotate flagged passwords** (`blindkey gen`), starting with the weak list.
 4. For `--format pass`: the old store's *git history* still leaks entry names (the C17 problem);
    deleting the working tree is not enough — delete the repo and its remotes.
 
@@ -153,7 +153,7 @@ the user's data because their old passwords were weak. That's *why* they're migr
 | Item | Status | Reason |
 |---|---|---|
 | Attachments / file fields (KDBX, Bitwarden) | not imported, counted in report | no attachment model in v1 entry schema |
-| TOTP edge cases (Steam TOTP, non-30s period, non-SHA1, non-6-digit) | raw `otpauth://` URI preserved in `otp_secret`, flagged | Vault v1 stores the secret; it does not generate codes, so exotic params are preserved but unvalidated |
+| TOTP edge cases (Steam TOTP, non-30s period, non-SHA1, non-6-digit) | raw `otpauth://` URI preserved in `otp_secret`, flagged | Blindkey v1 stores the secret; it does not generate codes, so exotic params are preserved but unvalidated |
 | KDBX key-file / hardware-key credentials | n/a | we read the *decrypted* DB via master password only (M9) |
 | Password history (KDBX, Bitwarden) | not imported | one current value per field in v1 |
 | pass git history | not imported | history is the leak we're escaping |
@@ -173,9 +173,9 @@ the user's data because their old passwords were weak. That's *why* they're migr
 
 | Constraint | How this design satisfies it |
 |---|---|
-| C21 (import) | implements `vault import --format txt\|json` plus named-manager formats as a superset |
-| C26 | zxcvbn scan of every imported password; < 60 bits ⇒ stderr warning naming `vault gen`; warn-don't-block |
-| C18 | imported fields exist only inside the AEAD payload; Vault writes no plaintext intermediate |
+| C21 (import) | implements `blindkey import --format txt\|json` plus named-manager formats as a superset |
+| C26 | zxcvbn scan of every imported password; < 60 bits ⇒ stderr warning naming `blindkey gen`; warn-don't-block |
+| C18 | imported fields exist only inside the AEAD payload; Blindkey writes no plaintext intermediate |
 | C16 | exactly one save → one `vault_version` increment per import run |
 | C17 | report prints names to the *terminal* only; no per-entry files created |
 | C27 | no secret bytes on stdout/stderr at any point in the pipeline; report is names + bit counts |
@@ -192,7 +192,7 @@ the user's data because their old passwords were weak. That's *why* they're migr
 - **INTEGRATION (pipeline):** import a 50-entry fixture; assert 1 file write, `vault_version`
   +1, all entries retrievable, `strings vault.vlt` reveals no imported field (C18 test recipe).
 - **INTEGRATION (C26):** fixture containing "password1"; assert stderr warning containing
-  "vault gen" and successful import.
+  "blindkey gen" and successful import.
 - **INTEGRATION (dupes):** import the same fixture twice with each `--on-duplicate` mode;
   assert skip/rename/confirm behaviors.
 - **INTEGRATION (pass, M9):** fixture GPG store + ephemeral test keyring; assert decrypt via

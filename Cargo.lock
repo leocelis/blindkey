@@ -435,6 +435,109 @@ dependencies = [
 ]
 
 [[package]]
+name = "blindkey-agent"
+version = "1.0.0"
+dependencies = [
+ "blindkey-core",
+ "getrandom 0.2.17",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "zeroize",
+]
+
+[[package]]
+name = "blindkey-cli"
+version = "1.0.0"
+dependencies = [
+ "blindkey-agent",
+ "blindkey-clip",
+ "blindkey-core",
+ "blindkey-hardware",
+ "blindkey-sys",
+ "clap",
+ "getrandom 0.2.17",
+ "rpassword",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "zeroize",
+]
+
+[[package]]
+name = "blindkey-clip"
+version = "1.0.0"
+dependencies = [
+ "arboard",
+]
+
+[[package]]
+name = "blindkey-core"
+version = "1.0.0"
+dependencies = [
+ "argon2",
+ "blindkey-sys",
+ "chacha20",
+ "chacha20poly1305",
+ "getrandom 0.2.17",
+ "hkdf",
+ "hmac",
+ "nucleo-matcher",
+ "proptest",
+ "secrecy",
+ "sha1",
+ "sha2",
+ "subtle",
+ "thiserror 2.0.18",
+ "unicode-normalization",
+ "zeroize",
+]
+
+[[package]]
+name = "blindkey-gui"
+version = "1.0.0"
+dependencies = [
+ "blindkey-clip",
+ "blindkey-core",
+ "blindkey-hardware",
+ "eframe",
+ "getrandom 0.2.17",
+ "rfd",
+ "zeroize",
+]
+
+[[package]]
+name = "blindkey-hardware"
+version = "1.0.0"
+dependencies = [
+ "blindkey-core",
+ "getrandom 0.2.17",
+ "hmac",
+ "sha2",
+ "zeroize",
+]
+
+[[package]]
+name = "blindkey-sys"
+version = "1.0.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "blindkey-tui"
+version = "1.0.0"
+dependencies = [
+ "blindkey-core",
+ "clap",
+ "crossterm",
+ "ratatui",
+ "rpassword",
+ "zeroize",
+]
+
+[[package]]
 name = "block"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3666,109 +3769,6 @@ dependencies = [
  "js-sys",
  "serde_core",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "vault-agent"
-version = "1.0.0"
-dependencies = [
- "getrandom 0.2.17",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "vault-core",
- "zeroize",
-]
-
-[[package]]
-name = "vault-cli"
-version = "1.0.0"
-dependencies = [
- "clap",
- "getrandom 0.2.17",
- "rpassword",
- "secrecy",
- "serde",
- "serde_json",
- "vault-agent",
- "vault-clip",
- "vault-core",
- "vault-hardware",
- "vault-sys",
- "zeroize",
-]
-
-[[package]]
-name = "vault-clip"
-version = "1.0.0"
-dependencies = [
- "arboard",
-]
-
-[[package]]
-name = "vault-core"
-version = "1.0.0"
-dependencies = [
- "argon2",
- "chacha20",
- "chacha20poly1305",
- "getrandom 0.2.17",
- "hkdf",
- "hmac",
- "nucleo-matcher",
- "proptest",
- "secrecy",
- "sha1",
- "sha2",
- "subtle",
- "thiserror 2.0.18",
- "unicode-normalization",
- "vault-sys",
- "zeroize",
-]
-
-[[package]]
-name = "vault-gui"
-version = "1.0.0"
-dependencies = [
- "eframe",
- "getrandom 0.2.17",
- "rfd",
- "vault-clip",
- "vault-core",
- "vault-hardware",
- "zeroize",
-]
-
-[[package]]
-name = "vault-hardware"
-version = "1.0.0"
-dependencies = [
- "getrandom 0.2.17",
- "hmac",
- "sha2",
- "vault-core",
- "zeroize",
-]
-
-[[package]]
-name = "vault-sys"
-version = "1.0.0"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "vault-tui"
-version = "1.0.0"
-dependencies = [
- "clap",
- "crossterm",
- "ratatui",
- "rpassword",
- "vault-core",
- "zeroize",
 ]
 
 [[package]]

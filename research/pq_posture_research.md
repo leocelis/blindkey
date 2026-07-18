@@ -4,13 +4,13 @@
 
 ## Problem (gap E1)
 
-Users and auditors ask whether Vault is "quantum-safe." The symmetric core is Grover-resilient;
+Users and auditors ask whether Blindkey is "quantum-safe." The symmetric core is Grover-resilient;
 optional asymmetric hardware stanzas have theoretical store-now-decrypt-later (SNDL) exposure.
 No single doc stated policy, agility path, or v2 reservation.
 
 ## Policy (shipped as docs)
 
-| Layer | PQ impact | Vault v1 posture |
+| Layer | PQ impact | Blindkey v1 posture |
 |-------|-----------|------------------|
 | Payload AEAD (XChaCha20-Poly1305) | Grover → ~128-bit from 256-bit keys | **Adequate** for password-vault lifetime |
 | KDF (Argon2id) + HMAC/HKDF-SHA-256 | Same | **Adequate** |

@@ -1,6 +1,6 @@
-# Vault File Format (`.vlt`) — v1
+# Blindkey File Format (`.vlt`) — v1
 
-> Authoritative spec: constraints **C1, C7–C10, C18, C19, C30, C32** in [vault_intent.yaml](../vault_intent.yaml).
+> Authoritative spec: constraints **C1, C7–C10, C18, C19, C30, C32** in [blindkey_intent.yaml](../blindkey_intent.yaml).
 > This document is the human-readable rendering. All multi-byte integers are **little-endian**.
 
 ## Top-level layout
@@ -78,12 +78,12 @@ created next to the vault, and both are equally opaque encrypted blobs (C17).
 - Bound every length field against the remaining buffer **before** allocating.
 - Reject `stanza_count > 8`, `stanza_data_len > 4096`, and any integer overflow in size math.
 - The parser is **fuzzed** (`fuzz/`, run in CI) and must never panic, hang, or over-allocate on
-  hostile input; `vault-core` is `#![forbid(unsafe_code)]` outside the vetted syscall wrappers.
+  hostile input; `blindkey-core` is `#![forbid(unsafe_code)]` outside the vetted syscall wrappers.
 
 ## Versioning
 
 > **Status (2026-06-26):** `format_version = 1` is **frozen** — see
-> [ADR-0005](adr/0005-format-v1-freeze.md). Vault files created on `0.1.0-alpha.*` at v1 remain
+> [ADR-0005](adr/0005-format-v1-freeze.md). Blindkey files created on `0.1.0-alpha.*` at v1 remain
 > readable on future 1.x releases without migration.
 
 `format_version` is bumped on any breaking layout change; readers reject versions newer than they

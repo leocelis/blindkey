@@ -2,7 +2,7 @@
 
 One spec per major use case in the [PRD](../PRD.md). Each spec proposes a concrete design
 grounded in prior art (open-source projects and academic/standards sources), maps it to the
-binding constraints in [`vault_intent.yaml`](../../vault_intent.yaml), and ends with a test
+binding constraints in [`blindkey_intent.yaml`](../../blindkey_intent.yaml), and ends with a test
 plan and open questions.
 
 **Precedence:** where a spec and the intent artifact disagree, the intent wins. Specs are
@@ -29,7 +29,7 @@ plan and open questions.
 | [UC-17](UC-17-quick-capture-raw-import.md) | Quick-capture from a messy `keys.txt` (lenient import + review) | C21, C26, C18, C19, C27 |
 | [UC-18](UC-18-native-ui.md) | Native UI shells (TUI + egui GUI shipped; SwiftUI post-v1) | C20, C11, C12, C25, C27, C40–C54 |
 | [UC-19](UC-19-omni-search.md) | Fuzzy keyboard-first omni-search (CLI + GUI) | C35–C39 |
-| [UC-20](UC-20-desktop-gui-hardening.md) | Desktop GUI performance & security hardening (`vault-gui`) | C40–C45; C20, C27, C30, C35, C38 |
+| [UC-20](UC-20-desktop-gui-hardening.md) | Desktop GUI performance & security hardening (`blindkey-gui`) | C40–C45; C20, C27, C30, C35, C38 |
 | [UC-21](UC-21-desktop-gaps-closure.md) | Desktop gaps closure — session hygiene, keyfile GUI, trust UX | C46–C54; C27, C35, C44, UC-09 |
 | [UC-22](UC-22-enterprise-readiness.md) | Fleet deploy & release quality gate | C55–C60; C38, C39 |
 | [UC-23](UC-23-sealed-file-storage.md) | Seal any file/folder for storage you don't trust *(Accepted v1.0 · shipped July 2026)* | C61–C66; C1, C2, C7, C11, C27, C30–C32 |

@@ -10,13 +10,13 @@ Use this when an **AI agent needs a credential applied** without reading it. The
 
 ```sh
 # 1. Register a handle (entry + env var + command the broker will spawn)
-vault agent allow github --dest-env GITHUB_TOKEN --for-cmd ./scripts/deploy.sh
+blindkey agent allow github --dest-env GITHUB_TOKEN --for-cmd ./scripts/deploy.sh
 
 # 2. Start the broker (unlocks vault, listens on Unix socket)
-vault agent run
+blindkey agent run
 
 # 3. From another terminal / future MCP adapter — request use
-vault agent use <handle-id> --dest 'env:GITHUB_TOKEN:./scripts/deploy.sh'
+blindkey agent use <handle-id> --dest 'env:GITHUB_TOKEN:./scripts/deploy.sh'
 ```
 
 Each `use` prompts on the **broker's TTY**: entry name, destination id, uses remaining.
@@ -24,7 +24,7 @@ Each `use` prompts on the **broker's TTY**: entry name, destination id, uses rem
 ## Ops during agent sessions
 
 - Prefer **short auto-lock** and **lock-on-blur** (GUI) — see [enterprise-deployment.md](guides/enterprise-deployment.md).
-- Do **not** leave `vault agent run` active unattended.
+- Do **not** leave `blindkey agent run` active unattended.
 - Handles expire (1 h default) and have a use budget (10 default).
 
 ## Files (local only — C23)
@@ -33,12 +33,12 @@ Each `use` prompts on the **broker's TTY**: entry name, destination id, uses rem
 |------|---------|
 | `$XDG_DATA_HOME/vault/agent-handles.json` | Registered handles |
 | `$XDG_DATA_HOME/vault/agent-audit.jsonl` | Use audit (no secrets) |
-| `$XDG_RUNTIME_DIR/vault-agent.sock` | Broker socket |
+| `$XDG_RUNTIME_DIR/blindkey-agent.sock` | Broker socket |
 
-Override data dir: `VAULT_AGENT_DATA_DIR` (tests).
+Override data dir: `BLINDKEY_AGENT_DATA_DIR` (tests).
 
 ## What this is not
 
-- Not a replacement for `vault get` (human clipboard workflow).
-- Not defense against a hostile agent that can already run `vault get --stdout`.
-- Not MCP — wire your adapter to the same NDJSON protocol as `vault agent use`.
+- Not a replacement for `blindkey get` (human clipboard workflow).
+- Not defense against a hostile agent that can already run `blindkey get --stdout`.
+- Not MCP — wire your adapter to the same NDJSON protocol as `blindkey agent use`.

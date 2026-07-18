@@ -4,7 +4,7 @@
 
 ## Question
 
-What does “format freeze” mean for Vault when CP-1 code is already shipped?
+What does “format freeze” mean for Blindkey when CP-1 code is already shipped?
 
 ## Findings
 
@@ -12,7 +12,7 @@ What does “format freeze” mean for Vault when CP-1 code is already shipped?
 
 | Artifact | State |
 |----------|-------|
-| `FORMAT_VERSION` | `1` in `crates/vault-core/src/lib.rs` |
+| `FORMAT_VERSION` | `1` in `crates/blindkey-core/src/lib.rs` |
 | Header write path | Always emits `format_version = 1` (`vault.rs`, `header.rs`) |
 | Reader policy | Rejects `format_version > 1` with `Error::NewerVersion` (C7 unit test) |
 | Human spec | `docs/FILE_FORMAT.md` documents v1 layout |
@@ -53,7 +53,7 @@ Phrases to **keep** (audit / backup posture):
 
 ### Precedent (KeePass / KDBX)
 
-KeePass uses an explicit **file format version** in the header; breaking changes increment version and ship migration tooling. Vault mirrors this via C7 + ADR process — simpler surface (single `.vlt` blob, one `format_version` u16).
+KeePass uses an explicit **file format version** in the header; breaking changes increment version and ship migration tooling. Blindkey mirrors this via C7 + ADR process — simpler surface (single `.vlt` blob, one `format_version` u16).
 
 ### Migration policy (forward)
 
@@ -71,5 +71,5 @@ Declare **format v1 frozen** via ADR-0005; update README/SECURITY/PRD/CHANGELOG;
 | `vault/GOVERNANCE.md` | Breaking format process |
 | `vault/docs/FILE_FORMAT.md` | v1 layout authority |
 | `vault/ROADMAP.md` | “code done; declaration at 1.0” |
-| `vault/vault_intent.yaml` C7 | Constraint + tests |
+| `vault/blindkey_intent.yaml` C7 | Constraint + tests |
 | KeePass KDBX format docs | Industry precedent for versioned headers |

@@ -31,5 +31,5 @@ core-dump-off + mlock + auto-lock; live attach by same-user malware remains resi
 
 - `docs/specs/UC-14-runtime-hardening.md` §3.3
 - `research/security_coverage_gaps.md` B3
-- `vault_intent.yaml` C25 (coredump_filter)
+- `blindkey_intent.yaml` C25 (coredump_filter)
 - Linux `man 2 prctl`, `man 7 yama`

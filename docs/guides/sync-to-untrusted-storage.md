@@ -2,18 +2,18 @@
 
 > Audience: someone who has a messy `keys.txt` and wants **one encrypted file** they can drop on
 > storage they don't fully trust (Google Drive, Dropbox, a VPS/droplet, a git repo) — readable only
-> with Vault, and tamper-evident.
+> with Blindkey, and tamper-evident.
 >
 > This is a user-facing walkthrough. The authority is the tech spec
 > [UC-07](../specs/UC-07-untrusted-storage-sync.md) (untrusted storage) + [UC-17](../specs/UC-17-quick-capture-raw-import.md)
-> (import) and the testable constraints in [`vault_intent.yaml`](../../vault_intent.yaml).
+> (import) and the testable constraints in [`blindkey_intent.yaml`](../../blindkey_intent.yaml).
 
 ## The 60-second version
 
 ```sh
-vault init                              # pick a master password (do NOT lose it)
-vault import --format raw keys.txt      # review the masked list → confirm
-cp ~/.vault/vault.vlt  ~/Drive/vault.vlt   # the .vlt is the only thing you upload
+blindkey init                              # pick a master password (do NOT lose it)
+blindkey import --format raw keys.txt      # review the masked list → confirm
+cp ~/.blindkey/vault.vlt  ~/Drive/vault.vlt   # the .vlt is the only thing you upload
 ```
 
 That `vault.vlt` is a single opaque blob. Upload it anywhere. To use it elsewhere:
@@ -34,13 +34,13 @@ The desktop app does the same: open it, drag `keys.txt` onto the window, then se
 
 | You're **not** protected from… | What to do |
 |---|---|
-| The backend **deleting / corrupting-to-garbage** the file (availability) | Keep your own copy. Vault guarantees confidentiality + tamper-*evidence*, not that a vandal can't destroy the file. |
-| The backend learning **metadata**: file size (≈ how many entries), how often you save, timestamps | Turn on **size-padding** — [`vault pad on`](../../docs/guides/size-padding-padme.md) (or the desktop app's **"Pad size"** toggle) — Padmé buckets file size (`≤ ~12 %` overhead). Save frequency / timestamps still leak. |
+| The backend **deleting / corrupting-to-garbage** the file (availability) | Keep your own copy. Blindkey guarantees confidentiality + tamper-*evidence*, not that a vandal can't destroy the file. |
+| The backend learning **metadata**: file size (≈ how many entries), how often you save, timestamps | Turn on **size-padding** — [`blindkey pad on`](../../docs/guides/size-padding-padme.md) (or the desktop app's **"Pad size"** toggle) — Padmé buckets file size (`≤ ~12 %` overhead). Save frequency / timestamps still leak. |
 | **Forgetting your master password** | There is no recovery. The whole design assumes the blob will be stolen, so there is no backdoor. |
 
 ## Rollback detection in practice (C16)
 
-Vault keeps an 8-byte "last version I saw" file **outside** the synced folder:
+Blindkey keeps an 8-byte "last version I saw" file **outside** the synced folder:
 
 - Linux `~/.local/share/vault/<id>.state` · macOS `~/Library/Application Support/vault/<id>.state` · Windows `%LOCALAPPDATA%\vault\<id>.state`
 
@@ -61,7 +61,7 @@ Proceed anyway? [y/N]
 
 ## Provisioning a new machine (fleet / TOFU)
 
-When you drop a synced `vault.vlt` onto a **brand-new laptop**, Vault has no local anchor yet.
+When you drop a synced `vault.vlt` onto a **brand-new laptop**, Blindkey has no local anchor yet.
 Any **valid** copy of the file opens — including an **old** copy an attacker might have kept on
 the sync backend. That is the documented TOFU gap (constraint C16).
 
@@ -71,7 +71,7 @@ the sync backend. That is the documented TOFU gap (constraint C16).
 vault --vault /path/to/vault.vlt --expect-min-version 42 ls
 ```
 
-`--expect-min-version N` is a **global** flag (works with `ls`, `get`, `import`, etc.). Vault
+`--expect-min-version N` is a **global** flag (works with `ls`, `get`, `import`, etc.). Blindkey
 compares the decrypted `vault_version` against `max(N, local_anchor)`. If the file is older than
 that floor:
 
@@ -110,13 +110,13 @@ set -euo pipefail
 
 VAULT_FILE="${VAULT_FILE:-$HOME/Drive/vault.vlt}"
 # Set by IT from a trusted admin workstation (see "Where does N come from?" above)
-VAULT_EXPECT_MIN_VERSION="${VAULT_EXPECT_MIN_VERSION:?set VAULT_EXPECT_MIN_VERSION}"
+BLINDKEY_EXPECT_MIN_VERSION="${BLINDKEY_EXPECT_MIN_VERSION:?set BLINDKEY_EXPECT_MIN_VERSION}"
 
-# Unlock via VAULT_PASSWORD_FILE (mode 0600) — see UC-05; never put secrets on argv
-export VAULT_PASSWORD_FILE="${VAULT_PASSWORD_FILE:-/etc/vault/unlock.password}"
+# Unlock via BLINDKEY_PASSWORD_FILE (mode 0600) — see UC-05; never put secrets on argv
+export BLINDKEY_PASSWORD_FILE="${BLINDKEY_PASSWORD_FILE:-/etc/vault/unlock.password}"
 
 if vault --vault "$VAULT_FILE" \
-         --expect-min-version "$VAULT_EXPECT_MIN_VERSION" \
+         --expect-min-version "$BLINDKEY_EXPECT_MIN_VERSION" \
          ls; then
   echo "vault: anchor established; future opens use local rollback detection"
 else
