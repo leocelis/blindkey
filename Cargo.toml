@@ -41,7 +41,7 @@ hmac             = "0.12"       # C9/C10 header + block HMAC
 sha2             = "0.10"       # C9  SHA-256 header hash
 sha1             = "0.10"       # TOTP (RFC 6238 HMAC-SHA1) — used only for 2FA codes, not at rest
 subtle           = "2"          # C25 constant-time comparison
-getrandom        = "0.2"        # C4/C26 OS CSPRNG
+getrandom        = "0.3"        # C4/C26 OS CSPRNG
 unicode-normalization = "0.1"   # C2  NFC password normalization (cross-platform key stability)
 # --- Search (UC-19) ---
 nucleo-matcher   = "0.3"        # C35-C38 fuzzy omni-search: offline, Unicode-correct, match indices
