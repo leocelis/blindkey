@@ -33,7 +33,7 @@ categories = ["command-line-utilities", "cryptography", "authentication"]
 # Centralized, pinned dependency versions. Only audited crypto libraries (constraint C3).
 [workspace.dependencies]
 # --- Cryptography (audited libraries only — no custom primitives) ---
-chacha20poly1305 = "0.10"       # C1  XChaCha20-Poly1305 / STREAM
+chacha20poly1305 = "0.11"       # C1  XChaCha20-Poly1305 / STREAM
 chacha20         = "0.9"        # C19 inner-stream ChaCha20 over Protected fields
 argon2           = "0.5"        # C2  Argon2id KDF
 hkdf             = "0.12"       # C5  HKDF-SHA-256 key wrapping
