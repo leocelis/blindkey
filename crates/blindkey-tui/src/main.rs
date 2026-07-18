@@ -27,7 +27,7 @@ use zeroize::Zeroizing;
 const CLIPBOARD_TIMEOUT_SECS: u64 = 30;
 
 #[derive(Parser)]
-#[command(name = "blindkey-tui", version, about = "Vault — terminal UI")]
+#[command(name = "blindkey-tui", version, about = "Blindkey — terminal UI")]
 struct Cli {
     /// Vault file for browse mode (default: `$HOME/.vault/vault.vlt`).
     #[arg(long, global = true)]

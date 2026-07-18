@@ -756,7 +756,7 @@ impl SealedGui {
                     if ui.button("Save as…").clicked() {
                         if let Some(p) = rfd::FileDialog::new()
                             .set_title("Save sealed container")
-                            .add_filter("Vault sealed file", &["vltf"])
+                            .add_filter("Blindkey sealed file", &["vltf"])
                             .set_file_name("sealed.vltf")
                             .save_file()
                         {

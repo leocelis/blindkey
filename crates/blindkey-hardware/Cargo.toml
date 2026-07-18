@@ -1,6 +1,6 @@
 [package]
 name = "blindkey-hardware"
-description = "Optional hardware-backed unlock stanzas for Vault: FIDO2, TPM 2.0, macOS Secure Enclave, Windows DPAPI."
+description = "Optional hardware-backed unlock stanzas for Blindkey: FIDO2, TPM 2.0, macOS Secure Enclave, Windows DPAPI."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

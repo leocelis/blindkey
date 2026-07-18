@@ -60,7 +60,7 @@ fn copy_secret_to_clipboard(secret: &[u8], timeout: u64, label: &str) -> CmdResu
 /// Shown on init/import/open paths — honest unaudited posture (third-party audit optional per).
 /// On-disk format v1 is stable (ADR-0005); this notice covers audit/backup only.
 pub const PRE_RELEASE_NOTICE: &str =
-    "note: Vault has not had an independent third-party security audit — \
+    "note: Blindkey has not had an independent third-party security audit — \
 keep a separate backup; do not make this your only copy of irreplaceable secrets.";
 
 fn pre_release_notice() {

@@ -1,6 +1,6 @@
 [package]
 name = "blindkey-tui"
-description = "Vault — a fast terminal UI over the blindkey-core security boundary (UC-18 shell)."
+description = "Blindkey — a fast terminal UI over the blindkey-core security boundary (UC-18 shell)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

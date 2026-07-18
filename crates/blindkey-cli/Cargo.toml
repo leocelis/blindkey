@@ -1,6 +1,6 @@
 [package]
 name = "blindkey-cli"
-description = "Vault — a zero-plaintext, local-first credential vault for the AI era. The `vault` binary."
+description = "Blindkey — the local-first credential vault your AI agents can use but never see. The `blindkey` binary."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

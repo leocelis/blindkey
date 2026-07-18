@@ -9,6 +9,8 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 coding agents touch every day.
 
 [![CI](https://github.com/leocelis/blindkey/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/blindkey/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/leocelis/blindkey/badge)](https://securityscorecards.dev/viewer/?uri=github.com/leocelis/blindkey)
+[![MSRV](https://img.shields.io/badge/MSRV-1.96-blue.svg)](rust-toolchain.toml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: v1.0.0 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.0.0%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
 
@@ -61,6 +63,63 @@ Blindkey is that something else, built local-first:
 | In-memory secrets | **`zeroize` + `mlock`** | N/A | Often left in plaintext |
 | How you verify the claims | **66 constraints** with distributed tests ([index](docs/CONSTRAINT_INDEX.md)) | Trust us | Trust us |
 
+## How an agent uses a secret without seeing it
+
+The whole point in one picture: the agent asks for a *handle*, a human approves at the terminal,
+and Blindkey injects the secret into the destination — the agent process never receives the bytes.
+
+```mermaid
+sequenceDiagram
+    participant Agent as AI agent
+    participant Broker as blindkey agent (local broker)
+    participant Human
+    participant Vault as Encrypted vault (.vlt)
+    participant Dest as Destination (env / subprocess / HTTP)
+
+    Agent->>Broker: request handle "github" (never the secret)
+    Broker->>Human: approve use of "github" for <cmd>? (TTY prompt)
+    Human-->>Broker: approve (one use)
+    Broker->>Vault: unlock + read secret (in-process, zeroized after)
+    Broker->>Dest: inject secret at the edge
+    Broker-->>Agent: status only (approved / denied) — no secret
+    Note over Agent,Dest: The agent orchestrates the task; the plaintext never crosses into it.
+```
+
+No proxy sits in your network path, no plaintext is intercepted in transit, and nothing is
+stored on a server — the secret lives in one local file and is delivered model-blind (C13, C27).
+
+## Architecture
+
+Small, auditable crates with a hard security boundary: all secret-touching code lives in
+`blindkey-core`, and the only `unsafe` in the tree is the OS-hardening FFI in `blindkey-sys`.
+
+```mermaid
+flowchart TD
+    subgraph Frontends
+        CLI[blindkey-cli<br/>the `blindkey` binary]
+        TUI[blindkey-tui<br/>terminal UI]
+        GUI[blindkey-gui<br/>desktop app]
+        AGENT[blindkey-agent<br/>handle broker + MCP]
+    end
+    CORE[blindkey-core<br/>crypto · format · envelope · memory · rollback · sealed]
+    SYS[blindkey-sys<br/>mlock · setrlimit — the only `unsafe`]
+    HW[blindkey-hardware<br/>YubiKey · FIDO2 · TPM]
+    CLIP[blindkey-clip<br/>clipboard concealment]
+
+    CLI --> CORE
+    TUI --> CORE
+    GUI --> CORE
+    AGENT --> CORE
+    CORE --> SYS
+    CLI --> HW
+    GUI --> HW
+    CLI --> CLIP
+    GUI --> CLIP
+
+    style CORE fill:#1f6feb,color:#fff
+    style SYS fill:#8957e5,color:#fff
+```
+
 ## Install
 
 **Fastest path** — download from [GitHub Releases](https://github.com/leocelis/blindkey/releases), verify SHA256SUMS, `chmod +x`, move to PATH.
@@ -105,6 +164,32 @@ blindkey ls
 blindkey get github                           # copies to clipboard (model-blind)
 blindkey gen --length 24
 blindkey add myservice                        # interactive — no secrets on argv
+```
+
+Real output from the flow above (secrets shown only because `--stdout` was passed explicitly;
+the default is a model-blind clipboard copy):
+
+```console
+$ blindkey init
+  Created vault at ~/.blindkey/vault.vlt
+
+$ blindkey import --format raw --yes keys.txt
+  Parsed 2 entries (0 blocks skipped):
+    github                       ghp_…real (30)
+    openai                       sk-p…real (26)
+  Imported 2 entries into ~/.blindkey/vault.vlt
+
+$ blindkey ls
+  github
+  openai
+
+$ blindkey gen --length 24
+  %L1H*$b)!*:m#[D4ErQ&yqk6
+  (157 bits of entropy)
+
+$ blindkey get github --stdout    # default is clipboard; --stdout shown here for illustration
+  WARNING: plaintext written to stdout; ensure no AI agent or untrusted process captures this stream.
+  ghp_synthetic_example_not_real
 ```
 
 Desktop app (build from source — no prebuilt GUI binary yet, see [#status](#project-status)):
