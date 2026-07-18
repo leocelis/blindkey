@@ -49,13 +49,45 @@ trigger. Blanket ignores are never used.
   IDs from [`.cargo/audit.toml`](../.cargo/audit.toml) and [`deny.toml`](../deny.toml)
   and let the upgrade flow through.
 
+### RUSTSEC-2024-0436 (`paste`) / RUSTSEC-2026-0192 (`ttf-parser`) — unmaintained
+
+- **Advisory:** "no longer maintained" notices — not vulnerabilities, no known exploit.
+- **Why exempted:** both are desktop-GUI-only transitive crates (`ttf-parser` = egui text
+  rendering; `paste` = a compile-time token-pasting helper), reached only through
+  `blindkey-gui`. The CLI and security core never pull them. `cargo deny` treats
+  unmaintained advisories as errors by default; these are `ignore`d in `deny.toml` with
+  this rationale.
+- **Removal trigger:** the GUI stack (`egui`/`eframe`) drops them or they gain a
+  maintained successor.
+
+## License allow-list — GUI-only additions
+
+The desktop GUI's windowing/clipboard/text stack pulls a few permissive and
+weak-copyleft licenses beyond MIT/Apache-2.0. They are allowed in `deny.toml`, apply
+only to `blindkey-gui`'s transitive tree, and impose no obligation on Blindkey's own
+MIT-or-Apache-2.0 source:
+
+| License | Crates | Nature |
+|---|---|---|
+| `BSL-1.0` (Boost) | `clipboard-win`, `error-code` | Permissive, OSI-approved |
+| `Zlib` | `foldhash`, `slotmap` | Permissive, OSI-approved |
+| `MPL-2.0` (Mozilla) | `nucleo-matcher` | File-scoped copyleft; obligation is limited to modifications of the MPL files themselves, which Blindkey does not make (dependency-only) |
+
 ## Non-blocking advisories
 
-`cargo audit` also reports informational **warnings** (unmaintained / unsound) for
-GUI-only transitive crates such as `paste`, `ttf-parser`, `lru`, and `memmap2`. These
-are warnings, not build failures, and — like the exemptions above — sit in the desktop
-GUI dependency tree, outside the security boundary. They are tracked here for
-transparency and revisited whenever the GUI stack is upgraded.
+`cargo audit` also reports informational **warnings** (unsound) for the GUI-only
+transitive crates `lru` and `memmap2`. These are warnings, not build failures, sit in
+the desktop GUI dependency tree outside the security boundary, and are revisited
+whenever the GUI stack is upgraded.
+
+## Windows
+
+Blindkey is Unix-first. The agent broker (`blindkey-agent`) is Unix-socket only (guarded
+by a `compile_error!` off Unix) and the CLI depends on it, so the full workspace does not
+yet build on Windows. CI runs a dedicated Windows job over the **portable security core**
+(`blindkey-core`, `blindkey-sys`, `blindkey-clip`, `blindkey-hardware`) so the crypto,
+format, memory-hardening, and hardware layers are verified on Windows every push;
+`mlock`/`RLIMIT_CORE` degrade to documented `cfg(not(unix))` no-ops.
 
 ## Review cadence
 

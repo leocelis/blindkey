@@ -29,12 +29,14 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-features
 
-  # Windows support in blindkey-sys is cfg(not(unix)) no-op fallbacks (mlock/RLIMIT_CORE are
-  # unix-only); this job tracks real Windows build/test signal without gating merges until
-  # platform parity is deliberately scoped and verified.
-  check-windows-experimental:
+  # Windows: Blindkey is Unix-first. The agent broker (blindkey-agent) is Unix-socket
+  # only (a compile_error! guards non-Unix), and the CLI depends on it, so the full
+  # workspace does not build on Windows yet. This job gives real Windows signal for the
+  # PORTABLE security core (crypto, format, memory-hardening stubs, hardware, clipboard),
+  # which must be correct on every platform. mlock/RLIMIT_CORE degrade to documented
+  # cfg(not(unix)) no-ops in blindkey-sys.
+  check-windows-core:
     runs-on: windows-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -42,7 +44,7 @@ jobs:
           toolchain: 1.96.0
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --all-features
+      - run: cargo test -p blindkey-core -p blindkey-sys -p blindkey-clip -p blindkey-hardware --all-features
 
   audit:
     runs-on: ubuntu-latest

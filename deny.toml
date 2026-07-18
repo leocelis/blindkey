@@ -19,11 +19,22 @@ ignore = [
     # Wayland crates bump quick-xml to >=0.41, then drop these two lines.
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+    # RUSTSEC-2024-0436 (paste) / RUSTSEC-2026-0192 (ttf-parser): "no longer
+    # maintained" notices (not vulnerabilities). Both are desktop-GUI-only
+    # transitive crates (egui text rendering / proc-macro helper), outside the
+    # security boundary — the CLI and security core do not pull them. Tracked in
+    # docs/SUPPLY_CHAIN.md; revisit whenever the GUI stack is upgraded.
+    "RUSTSEC-2024-0436",
+    "RUSTSEC-2026-0192",
 ]
 
 [licenses]
 version = 2
-# Only permissive, audit-friendly licenses (constraint C24).
+# Permissive / weak-copyleft, OSI-approved licenses only (constraint C24). The
+# BSL-1.0, Zlib, and MPL-2.0 entries cover desktop-GUI transitive deps only
+# (clipboard-win, error-code, foldhash, slotmap, nucleo-matcher); all are
+# permissive or file-scoped-copyleft and impose no obligation on Blindkey's own
+# MIT/Apache-2.0 source. See docs/SUPPLY_CHAIN.md.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -33,6 +44,9 @@ allow = [
     "BSD-3-Clause",
     "Unicode-DFS-2016",
     "Unicode-3.0",
+    "BSL-1.0",   # Boost Software License — permissive (clipboard-win, error-code)
+    "Zlib",      # zlib License — permissive (foldhash, slotmap)
+    "MPL-2.0",   # Mozilla Public License — file-scoped copyleft, dep-only (nucleo-matcher)
 ]
 confidence-threshold = 0.93
 
