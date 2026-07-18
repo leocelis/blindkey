@@ -1,45 +1,42 @@
-# crates.io publishing (CP-6)
+# crates.io publishing
 
-> **BLOCKED — name collision (found in OSS-readiness audit, 2026-07-17):** `blindkey`, `blindkey-cli`,
-> and `blindkey-core` are already published on crates.io by unrelated projects (`blindkey` is a
-> HashiCorp Blindkey client at v11+; `blindkey-cli`/`blindkey-core` are a separate 2023 project). None of
-> the publish commands below will succeed under the current crate names. This blocks `cargo
-> install blindkey-cli` everywhere it's promised (SECURITY.md, README, this doc) until the project
-> is renamed. Do not attempt to publish until a new name is chosen — see the audit findings for
-> the full rationale (SEO collision, and `blindkey-agent` collides with HashiCorp's `blindkey agent`
-> subcommand).
+The workspace publishes to crates.io on a **published GitHub Release**, via
+[`.github/workflows/publish-crates.yml`](../.github/workflows/publish-crates.yml), using
+**crates.io Trusted Publishing** (OIDC) — no long-lived API token is stored in the repo.
 
-Blindkey publishes **`blindkey-cli`** (and its path dependencies) **manually** from a maintainer machine
-after the local quality gate passes. There is no **crates.io Trusted Publishing** workflow yet —
-manual `cargo login` + `cargo publish` only (see below). A minimal CI workflow runs `just check`
-on push; it does not publish crates.
+> The old `vault` / `vault-cli` / `vault-core` names were taken on crates.io by unrelated
+> projects, which is what drove the rename to Blindkey. The `blindkey-*` names are free.
 
-## One-time setup (maintainer)
+## One-time maintainer setup
 
-1. Reserve crate names on [crates.io](https://crates.io): `blindkey-sys`, `blindkey-core`, `blindkey-hardware`, `blindkey-clip`, `blindkey-cli`.
-2. Log in locally: `cargo login` (one-time API token from crates.io account settings).
-3. Ensure `[workspace.package] version` in root `Cargo.toml` matches the git tag you are shipping.
+1. **Claim the names.** The first publish of a brand-new crate name may need a one-time
+   `cargo login` + `cargo publish` (or `cargo publish --dry-run` then publish) to register
+   the name to your account. Do this in dependency order (leaf crates first):
+   `blindkey-sys` → `blindkey-core` → `blindkey-hardware` → `blindkey-clip` →
+   `blindkey-agent` → `blindkey-cli`.
+2. **Add a Trusted Publisher** for each crate on crates.io (crate settings → *Trusted
+   Publishing*): repository `leocelis/blindkey`, workflow `publish-crates.yml`, environment
+   `crates-io`. After this, CI publishes with no stored token.
+3. **Create the `crates-io` environment** in the repo settings (optionally require reviewers)
+   so the publish job is gated.
 
-## Publish order
+## How a release publishes
 
-Dependency order matters — publish leaf crates first:
+1. Push a `v*` tag → [`release.yml`](../.github/workflows/release.yml) builds the
+   cross-platform binaries and opens a **draft** GitHub Release.
+2. The maintainer reviews (and signs/notarizes the macOS binary), then **publishes** the
+   release.
+3. `publish-crates.yml` fires on `release: published`, mints a short-lived token via OIDC,
+   and runs `cargo publish` for each crate in dependency order.
 
-```sh
-./scripts/publish-crates.sh
-# equivalent:
-cargo publish --locked -p blindkey-sys
-cargo publish --locked -p blindkey-core
-cargo publish --locked -p blindkey-hardware
-cargo publish --locked -p blindkey-clip
-cargo publish --locked -p blindkey-cli
-```
-
-Dry-run first if unsure: `cargo publish --dry-run -p blindkey-cli`.
+`scripts/publish-crates.sh` remains available for a fully manual publish from a maintainer
+machine if ever needed.
 
 ## User install path
 
 ```sh
-cargo install blindkey-cli --locked
+cargo install blindkey-cli --locked   # installs the `blindkey` binary
 ```
 
-Or build from source / download a GitHub Release binary — see [INSTALL.md](INSTALL.md).
+Or download a signed GitHub Release binary, or `brew install leocelis/tap/blindkey` — see
+[INSTALL.md](INSTALL.md).

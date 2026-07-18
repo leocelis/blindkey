@@ -9,7 +9,7 @@ Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The cred
 coding agents touch every day.
 
 [![CI](https://github.com/leocelis/blindkey/actions/workflows/ci.yml/badge.svg)](https://github.com/leocelis/blindkey/actions/workflows/ci.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/leocelis/blindkey/badge)](https://securityscorecards.dev/viewer/?uri=github.com/leocelis/blindkey)
+[![Scorecard](https://github.com/leocelis/blindkey/actions/workflows/scorecard.yml/badge.svg)](https://github.com/leocelis/blindkey/actions/workflows/scorecard.yml)
 [![MSRV](https://img.shields.io/badge/MSRV-1.96-blue.svg)](rust-toolchain.toml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Status: v1.0.0 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.0.0%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
