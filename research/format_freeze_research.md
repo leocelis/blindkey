@@ -58,7 +58,7 @@ KeePass uses an explicit **file format version** in the header; breaking changes
 ### Migration policy (forward)
 
 - **Today → 1.0.0:** `format_version = 1` vaults created on `0.1.0-alpha.*` remain readable; no migration required.
-- **Hypothetical v2:** New ADR, bumped `FORMAT_VERSION`, shipped `vault migrate` (or documented export/re-import path) before default writers emit v2.
+- **Hypothetical v2:** New ADR, bumped `FORMAT_VERSION`, shipped `blindkey migrate` (or documented export/re-import path) before default writers emit v2.
 
 ## Recommendation
 

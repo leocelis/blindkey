@@ -19,7 +19,7 @@ cp ~/.blindkey/vault.vlt  ~/Drive/vault.vlt   # the .vlt is the only thing you u
 That `vault.vlt` is a single opaque blob. Upload it anywhere. To use it elsewhere:
 
 ```sh
-vault --vault ~/Drive/vault.vlt get github   # prompts for your master password, copies the secret
+blindkey --vault ~/Drive/vault.vlt get github   # prompts for your master password, copies the secret
 ```
 
 The desktop app does the same: open it, drag `keys.txt` onto the window, then search and copy.
@@ -53,7 +53,7 @@ Proceed anyway? [y/N]
 
 - On a terminal: default is **No** (abort).
 - Non-interactively (scripts/CI): **no prompt**, exit code **2** (reserved for rollback). Use
-  `vault --allow-rollback …` to proceed anyway (the anchor is not lowered).
+  `blindkey --allow-rollback …` to proceed anyway (the anchor is not lowered).
 - **Fresh machine, first open:** there's no anchor yet, so any valid version is trusted
   (trust-on-first-use). See [Provisioning a new machine](#provisioning-a-new-machine-fleet--tofu)
   below for `--expect-min-version`. Residual risk is also in
@@ -68,7 +68,7 @@ the sync backend. That is the documented TOFU gap (constraint C16).
 **Mitigation:** pass a version floor on the first (and every) open until the anchor exists:
 
 ```sh
-vault --vault /path/to/vault.vlt --expect-min-version 42 ls
+blindkey --vault /path/to/vault.vlt --expect-min-version 42 ls
 ```
 
 `--expect-min-version N` is a **global** flag (works with `ls`, `get`, `import`, etc.). Blindkey
@@ -105,17 +105,17 @@ Headless first open on a new host — fails closed if the cloud served a stale c
 
 ```sh
 #!/usr/bin/env bash
-# /etc/vault/provision-first-open.sh — run once per new machine (MDM / onboarding)
+# /etc/blindkey/provision-first-open.sh — run once per new machine (MDM / onboarding)
 set -euo pipefail
 
-VAULT_FILE="${VAULT_FILE:-$HOME/Drive/vault.vlt}"
+BLINDKEY_FILE="${BLINDKEY_FILE:-$HOME/Drive/vault.vlt}"
 # Set by IT from a trusted admin workstation (see "Where does N come from?" above)
 BLINDKEY_EXPECT_MIN_VERSION="${BLINDKEY_EXPECT_MIN_VERSION:?set BLINDKEY_EXPECT_MIN_VERSION}"
 
 # Unlock via BLINDKEY_PASSWORD_FILE (mode 0600) — see UC-05; never put secrets on argv
-export BLINDKEY_PASSWORD_FILE="${BLINDKEY_PASSWORD_FILE:-/etc/vault/unlock.password}"
+export BLINDKEY_PASSWORD_FILE="${BLINDKEY_PASSWORD_FILE:-/etc/blindkey/unlock.password}"
 
-if vault --vault "$VAULT_FILE" \
+if blindkey --vault "$BLINDKEY_FILE" \
          --expect-min-version "$BLINDKEY_EXPECT_MIN_VERSION" \
          ls; then
   echo "vault: anchor established; future opens use local rollback detection"

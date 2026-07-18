@@ -22,7 +22,7 @@ When the vault file lives on shared storage (Drive, Syncthing, git), provision w
 floor so a stale backend copy cannot pass silently:
 
 ```sh
-vault --vault "$BLINDKEY_VAULT_PATH" --expect-min-version "$BLINDKEY_EXPECT_MIN_VERSION" ls
+blindkey --vault "$BLINDKEY_VAULT_PATH" --expect-min-version "$BLINDKEY_EXPECT_MIN_VERSION" ls
 ```
 
 Obtain `BLINDKEY_EXPECT_MIN_VERSION` from a trusted admin machine's local `.state` file; full walkthrough

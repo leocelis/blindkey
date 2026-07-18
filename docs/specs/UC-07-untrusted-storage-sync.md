@@ -223,8 +223,8 @@ Beyond the C16/C17 tests already in the intent (which remain authoritative):
    stale — and old credentials can decrypt the old blob offline regardless, which rollback
    detection cannot change.*
 3. Anchor garbage collection: vaults deleted or re-created leave stale `.state` files; ship
-   `vault doctor` cleanup or ignore (8 bytes each)?
+   `blindkey doctor` cleanup or ignore (8 bytes each)?
    *Disposition 2026-06-10: ignore for v1 (8 bytes each; a re-created vault gets a fresh
-   UUIDv4 vault_id, so stale anchors can never collide). `vault doctor` stays a Part-2 idea.*
+   UUIDv4 vault_id, so stale anchors can never collide). `blindkey doctor` stays a Part-2 idea.*
 4. Padmé adoption criteria for v2: what adversary model justifies the 12 % ceiling — and should
    padding also quantize *save times* (batching) to blunt the mtime channel?

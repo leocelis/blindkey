@@ -107,8 +107,8 @@ convenience; threshold calibrated during implementation, IVD Rule 5).
 blindkey seal <path>... [-o out.vltf] [--no-pad] [--append]
 blindkey open <file>.vltf [-C dir] [--stdout]        # --stdout: single-file, size-capped
 blindkey peek <file>.vltf                            # inner tree (names/sizes), post-unlock
-vault --vault <file>.vltf upgrade-kdf …           # header-only KDF re-wrap
-vault --vault <file>.vltf rotate-data-key         # full inner re-encrypt
+blindkey --vault <file>.vltf upgrade-kdf …           # header-only KDF re-wrap
+blindkey --vault <file>.vltf rotate-data-key         # full inner re-encrypt
 blindkey stanzas … <file>.vltf                       # same stanza management as the vault
 ```
 
@@ -118,7 +118,7 @@ blindkey stanzas … <file>.vltf                       # same stanza management 
   (unlike credential vault G0.3 full save).
 - **`rotate-data-key` on `.vltf`:** new data key + re-wrap stanzas + full inner re-encrypt;
   FIDO2/TPM OR stanzas must be removed first (v1 limitation).
-- FIDO2/TPM enroll on `.vltf` via `vault --vault FILE.vltf enroll fido2` / `enroll-tpm`.
+- FIDO2/TPM enroll on `.vltf` via `blindkey --vault FILE.vltf enroll fido2` / `enroll-tpm`.
 
 - Zero flags on the happy path; passphrase prompted + confirmed, never argv (C31).
 - `open`/`peek` never print file **contents** to stdout by default (C27 extended to files);

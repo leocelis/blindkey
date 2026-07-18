@@ -329,7 +329,7 @@ fn cmd_init(
             "\n   RECOVERY CODE — write it down OFFLINE. Shown once; not stored in plaintext:"
         );
         eprintln!("       {recovery}\n");
-        eprintln!("   Unlock with:  vault --recovery <command>");
+        eprintln!("   Unlock with:  blindkey --recovery <command>");
         eprintln!(
             "   (Master password still works. No server reset — lose both secrets = vault lost.)"
         );
@@ -1332,12 +1332,12 @@ fn cmd_enroll_keyfile(path: &Path, keyfile_path: Option<&Path>, opts: &OpenOpts)
         );
         eprintln!("       {recovery}\n");
         eprintln!(
-            "   Unlock with:  vault --vault {} --keyfile {} open …",
+            "   Unlock with:  blindkey --vault {} --keyfile {} open …",
             path.display(),
             kf_path.display()
         );
         eprintln!(
-            "   Or recovery:  vault --vault {} --recovery open …",
+            "   Or recovery:  blindkey --vault {} --recovery open …",
             path.display()
         );
         return Ok(());
@@ -1365,14 +1365,14 @@ fn cmd_enroll_keyfile(path: &Path, keyfile_path: Option<&Path>, opts: &OpenOpts)
         "   Keep that keyfile on a SEPARATE device (e.g. a USB stick), not next to the vault."
     );
     eprintln!(
-        "   Unlock with:  vault --keyfile {} <command>\n",
+        "   Unlock with:  blindkey --keyfile {} <command>\n",
         kf_path.display()
     );
     eprintln!(
         "   RECOVERY CODE — store it OFFLINE; it unlocks WITHOUT the keyfile if it's lost:\n"
     );
     eprintln!("       {recovery}\n");
-    eprintln!("   Unlock with it using:  vault --recovery <command>");
+    eprintln!("   Unlock with it using:  blindkey --recovery <command>");
     Ok(())
 }
 
@@ -1442,7 +1442,7 @@ fn cmd_enroll_yubikey(path: &Path, graceful_yubikey: bool, opts: &OpenOpts) -> C
         eprintln!("   RECOVERY CODE — store it OFFLINE:\n");
         eprintln!("       {recovery}\n");
         eprintln!(
-            "   Unlock with:  vault --vault {} --recovery open …",
+            "   Unlock with:  blindkey --vault {} --recovery open …",
             path.display()
         );
         return Ok(());
@@ -1494,7 +1494,7 @@ fn cmd_enroll_yubikey(path: &Path, graceful_yubikey: bool, opts: &OpenOpts) -> C
     eprintln!("   RECOVERY CODE — write it down and store it OFFLINE. It unlocks WITHOUT the key,");
     eprintln!("   so it is the only way back in if the key is lost:\n");
     eprintln!("       {recovery}\n");
-    eprintln!("   Unlock with it using:  vault --recovery <command>");
+    eprintln!("   Unlock with it using:  blindkey --recovery <command>");
     Ok(())
 }
 

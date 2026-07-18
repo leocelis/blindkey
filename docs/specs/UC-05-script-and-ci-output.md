@@ -13,7 +13,7 @@ default — `C27_default > C21_convenience`. This spec defines:
 - `--stdout` flag semantics (exact warning text, exit codes),
 - the non-TTY behavior matrix (deterministic, no prompts when piped),
 - `blindkey export --format json` (schema, warning, confirmation),
-- recommended CI secret-injection patterns and a possible future `vault exec`,
+- recommended CI secret-injection patterns and a possible future `blindkey exec`,
 - C31 (was gap B1): **no secrets on argv, ever** — promoted 2026-06-10,
 - audit-trail position (there is none, by design — C23).
 
@@ -28,7 +28,7 @@ not offered in v1), a daemon (UC-06 §3.4).
 |---|---|
 | `pass` ([passwordstore.org](https://www.passwordstore.org/)) | `pass show NAME` prints to stdout *by default* — the ergonomics scripts love and the exact default C27 prohibits. We keep the pipe pattern but flip it to opt-in. |
 | [gopass](https://github.com/gopasspw/gopass) | pass-compatible CLI; reads secrets via prompts/stdin rather than argv flags — the B1 discipline we adopt. Its "safecontent" mode (hide password unless asked) prefigures our default-deny. |
-| [sops](https://github.com/getsops/sops) | `sops exec-env FILE 'cmd'` — decrypts into the **environment of a subprocess**, never to disk; `exec-file` uses a tempfile/FIFO. Template for a future `vault exec`. |
+| [sops](https://github.com/getsops/sops) | `sops exec-env FILE 'cmd'` — decrypts into the **environment of a subprocess**, never to disk; `exec-file` uses a tempfile/FIFO. Template for a future `blindkey exec`. |
 | 1Password CLI [`op run`](https://developer.1password.com/docs/cli/secret-references/) (verified June 2026) | Scans env for `op://` secret references, injects resolved values into the subprocess env, and **masks secrets that appear on stdout via a PTY** (disable with `--no-masking`). The most complete prior art for warned, scoped plaintext. |
 | KeePassXC CLI (`keepassxc-cli show -s`) | Requires an explicit flag to reveal protected fields — reveal-is-opt-in precedent. |
 
@@ -90,7 +90,7 @@ Non-interactive unlock never takes the master password from argv (§3.5). Accept
 - stdin pipe **only when** `--password-stdin` is passed explicitly (avoids ambiguity with
   future commands that consume stdin data).
 - `BLINDKEY_PASSWORD_FILE=/path` env var pointing at a 0600 file — the *path* is in the
-  environment, never the secret itself. A `VAULT_PASSWORD` env var is **not** offered:
+  environment, never the secret itself. A `BLINDKEY_PASSWORD` env var is **not** offered:
   environments leak into child processes, crash dumps, and CI debug logs.
 
 ### 3.3 Non-TTY detection behavior matrix
@@ -176,8 +176,8 @@ Recommended, in order:
 3. **Anti-pattern (documented, warned):** `some-tool --password "$(blindkey get db --stdout …)"`
    — lands on argv; B1 explains why. Our docs show the fixed form.
 
-**Future `vault exec` (M9+ candidate, not v1):**
-`vault exec --entry db --as DB_PASS -- cmd args…` — decrypt, inject as env var(s) into the
+**Future `blindkey exec` (M9+ candidate, not v1):**
+`blindkey exec --entry db --as DB_PASS -- cmd args…` — decrypt, inject as env var(s) into the
 child, optionally PTY-mask child stdout like `op run`. Prior art: sops `exec-env` (env scoping),
 `op run` (reference resolution + masking, verified), gopass. Deferred because v1's surface is
 minimal (C21 lists no `exec`) and masking-via-PTY is a substantial subsystem; the pipe patterns
@@ -196,10 +196,10 @@ in-payload access log is the only shape compatible with the intent — out of sc
 | Option | Pros | Cons | Verdict |
 |---|---|---|---|
 | stdout-by-default with warning | pass-compatible muscle memory | Violates C27/SC5 outright | **Rejected** |
-| `VAULT_PASSWORD` env var for unlock | Easy CI ergonomics | Env leaks to children/crash dumps/CI debug logs; weaker than fd/file | **Rejected** (offer `BLINDKEY_PASSWORD_FILE`) |
+| `BLINDKEY_PASSWORD` env var for unlock | Easy CI ergonomics | Env leaks to children/crash dumps/CI debug logs; weaker than fd/file | **Rejected** (offer `BLINDKEY_PASSWORD_FILE`) |
 | `--quiet` to suppress the `--stdout` warning | Cleaner CI logs | Makes the opt-out silent — exactly what SC5 forbids; `2>/dev/null` exists | **Rejected** |
 | CSV export | Spreadsheet interop | Formula-injection CVE class (gap A3, CVE-2019-20184 in KeePass) | **Rejected v1** |
-| `vault exec` in v1 | Best-practice injection now | Not in C21's surface; PTY masking is big; pipes suffice | **Deferred** (design sketched §3.6) |
+| `blindkey exec` in v1 | Best-practice injection now | Not in C21's surface; PTY masking is big; pipes suffice | **Deferred** (design sketched §3.6) |
 | Auto-detect CI (`CI=true`) and relax warnings | Less noise | Heuristic, spoofable, makes behavior environment-dependent — anti-P4 | **Rejected** |
 | `--output FILE` on export with 0600 | Convenience | We become responsible for plaintext-at-rest lifecycle; redirect keeps user ownership | **Rejected v1** |
 

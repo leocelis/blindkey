@@ -20,7 +20,7 @@ printed **once**. Store it offline (paper/safe) — it is not saved in plaintext
 ## Unlock with recovery
 
 ```sh
-vault --recovery ls
+blindkey --recovery ls
 # prompt: enter recovery code (not master password)
 ```
 
