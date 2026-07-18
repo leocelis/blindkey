@@ -13,13 +13,14 @@ Start here based on what you need:
 | Read the crypto design | [CRYPTO.md](CRYPTO.md) |
 | Read the file format | [FILE_FORMAT.md](FILE_FORMAT.md) |
 | See system architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| See all 60 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
+| See all 66 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
 | Verify a release binary | [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md) |
 | See what's shipped vs planned | [../ROADMAP.md](../ROADMAP.md) · [guides/hardware-factor-status.md](guides/hardware-factor-status.md) |
 | Enterprise / fleet deployment | [ENTERPRISE_POSTURE.md](ENTERPRISE_POSTURE.md) · [guides/enterprise-deployment.md](guides/enterprise-deployment.md) |
 | Agent / AI workflow (scaffold) | [AGENT_BROKER.md](AGENT_BROKER.md) · [specs/UC-16-agent-interface-future.md](specs/UC-16-agent-interface-future.md) |
 | Contribute | [../CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Report a security issue | [../SECURITY.md](../SECURITY.md) |
+| Supply-chain policy & advisory exemptions | [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md) |
 | Maintainer release gate | [AUDIT_READINESS.md](AUDIT_READINESS.md) · [RELEASE.md](RELEASE.md) |
 | Commission third-party audit | [AUDIT_COMMISSION.md](AUDIT_COMMISSION.md) · [THIRD_PARTY_AUDIT.md](THIRD_PARTY_AUDIT.md) |
 

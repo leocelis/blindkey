@@ -50,6 +50,6 @@ See [guides/enterprise-deployment.md](guides/enterprise-deployment.md):
 
 ## Path to 1.0
 
-1. **CP-7** — `just audit-ready` green + IVD Rule 2 sweep (60 constraints)
+1. **CP-7** — `just audit-ready` green + IVD Rule 2 sweep (66 constraints)
 2. **v1.0.0** — format v1 frozen ([ADR-0005](adr/0005-format-v1-freeze.md)); tag after quality gate + ceremony
 3. **v2+** — evaluate org vaults / SSO only if product strategy changes (new intent artifact)

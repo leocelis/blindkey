@@ -53,7 +53,7 @@ All checks must pass on the **exact git commit** you give the auditor (tag `v1.0
 
 Provide read access to the tagged repo plus this reading order:
 
-1. [`blindkey_intent.yaml`](../blindkey_intent.yaml) — 60 falsifiable constraints
+1. [`blindkey_intent.yaml`](../blindkey_intent.yaml) — 66 falsifiable constraints
 2. [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — test map
 3. [`THREAT_MODEL.md`](THREAT_MODEL.md) — in/out of scope adversaries
 4. [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md) — Part 2 backlog (known partials)
