@@ -1,4 +1,4 @@
-# Export compliance notice
+# Export & sanctions compliance notice
 
 This distribution includes cryptographic software. The country in which you currently reside
 may have restrictions on the import, possession, use, and/or re-export to another country, of
@@ -55,6 +55,34 @@ This is **not a substitute for legal advice.** If export compliance materially m
 use of Blindkey (for example, redistributing a modified or bundled commercial product), consult
 counsel — this document is an engineering-level summary of publicly available guidance, not a
 legal opinion.
+
+## US sanctions (OFAC) — a separate regime from export control
+
+Export control (above) and sanctions are administered by different US agencies and are easy to
+conflate: EAR/BIS (Commerce) governs *what* may cross borders; OFAC (Treasury) governs *who* you
+may transact with, regardless of what's being transferred. Both are relevant to a public
+repository.
+
+Published, publicly available source code is generally treated by OFAC as exempt
+"informational materials" — see [OFAC's own FAQ on sanctions exceptions](https://ofac.treasury.gov/faqs/4)
+and the [Linux Foundation's guidance on OFAC sanctions and open source](https://www.linuxfoundation.org/blog/navigating-global-regulations-and-open-source-us-ofac-sanctions).
+**This exemption is narrower than it sounds and the guidance is not fully settled** — it
+generally covers *one-way receipt* of existing published code. It does **not** clearly cover
+*commissioning* new code or modifications from a Specially Designated National (SDN) or a
+comprehensively sanctioned jurisdiction, and it does not clearly cover **two-way technical
+back-and-forth** — the ordinary code-review conversation that happens on every pull request. This
+is not a hypothetical: in October 2024 the Linux kernel project removed several Russia-affiliated
+maintainers after sanctions concerns, and the Linux Foundation published its OFAC guidance
+partly in response.
+
+**What this means in practice for Blindkey:** the project accepts external contributions (see
+[CONTRIBUTING.md](../CONTRIBUTING.md) and the [DCO](../DCO)). If a pull request is submitted by
+an account that is, or that a maintainer has reason to believe is, on the
+[OFAC SDN list](https://sanctionssearch.ofac.treas.gov/) or operating from a comprehensively
+sanctioned jurisdiction, the maintainers will not engage in two-way technical review of that
+contribution (discussing, requesting changes to, or merging it) until it's confirmed the
+transaction is exempt or licensed. This is the same posture the Linux Foundation now recommends
+project-wide; it is not a statement about any contributor to date — none has raised this concern.
 
 ## This is not "acceptable use" language
 

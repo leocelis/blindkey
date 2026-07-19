@@ -22,6 +22,7 @@ Start here based on what you need:
 | Report a security issue | [../SECURITY.md](../SECURITY.md) |
 | Supply-chain policy & advisory exemptions | [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md) |
 | Export compliance (contains cryptography) | [EXPORT_COMPLIANCE.md](EXPORT_COMPLIANCE.md) |
+| EU Cyber Resilience Act status | [EU_CRA_STATUS.md](EU_CRA_STATUS.md) |
 | Contribute (sign-off / DCO) | [../CONTRIBUTING.md](../CONTRIBUTING.md) · [../DCO](../DCO) |
 | Maintainer release gate | [AUDIT_READINESS.md](AUDIT_READINESS.md) · [RELEASE.md](RELEASE.md) |
 | Commission third-party audit | [AUDIT_COMMISSION.md](AUDIT_COMMISSION.md) · [THIRD_PARTY_AUDIT.md](THIRD_PARTY_AUDIT.md) |

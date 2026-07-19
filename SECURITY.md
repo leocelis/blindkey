@@ -80,6 +80,7 @@ residual, not entry-level plaintext).
 - **Reproducible builds + checksums** — see [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
 - **Release quality gate** before `1.0.0` — see [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md)
   (`just audit-ready`).
-- **Export compliance** — this distribution contains cryptographic software; see
+- **Export & sanctions compliance** — this distribution contains cryptographic software; see
   [docs/EXPORT_COMPLIANCE.md](docs/EXPORT_COMPLIANCE.md) before importing, possessing, or using it
   if your jurisdiction regulates encryption software.
+- **EU Cyber Resilience Act status** — see [docs/EU_CRA_STATUS.md](docs/EU_CRA_STATUS.md).

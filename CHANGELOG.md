@@ -7,6 +7,23 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Extended legal/compliance research** — a follow-up pass specifically looking for regimes not
+  covered the first time, again against primary sources:
+  - **OFAC sanctions** (`docs/EXPORT_COMPLIANCE.md`) — a distinct regime from EAR export control
+    (Treasury, not Commerce): documents the "informational materials" exemption published source
+    code generally qualifies for ([OFAC FAQ #4](https://ofac.treasury.gov/faqs/4)), why that
+    exemption is narrower than it sounds for a project accepting external contributions (it covers
+    one-way receipt of existing code, not clearly two-way PR review), and the resulting contributor
+    policy — modeled on the [Linux Foundation's OFAC guidance](https://www.linuxfoundation.org/blog/navigating-global-regulations-and-open-source-us-ofac-sanctions),
+    written after the Linux kernel's October 2024 removal of sanctioned maintainers.
+  - **EU Cyber Resilience Act status** (new: `docs/EU_CRA_STATUS.md`) — documents that Blindkey is
+    currently out of CRA scope (individual, non-monetized OSS; individuals cannot hold the Act's
+    "steward" status, which requires a legal person) per the
+    [European Commission's own CRA open-source guidance](https://digital-strategy.ec.europa.eu/en/policies/cra-open-source),
+    and names the exact trigger (monetization, a paid tier, or a commercial entity forming around
+    the project) that would require re-running this analysis *before* acting, not after — relevant
+    given the project's enterprise-adoption positioning.
+
 - **Legal/compliance documentation**, researched against primary sources rather than boilerplate:
   - **DCO** (Developer Certificate of Origin) — `DCO` file (canonical v1.1 text), a CI check
     (`.github/workflows/dco.yml`, [KineticCafe/actions-dco](https://github.com/KineticCafe/actions-dco))
