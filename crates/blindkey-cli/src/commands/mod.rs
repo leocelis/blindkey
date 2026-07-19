@@ -230,6 +230,7 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
         Command::EnrollTpm => cmd_enroll_tpm(&vault_path(vault_opt)?, opts),
         Command::ReEnrollTpm => cmd_re_enroll_tpm(&vault_path(vault_opt)?, opts),
         Command::Agent { action } => crate::agent::dispatch(&vault_path(vault_opt)?, opts, action),
+        Command::Mcp => cmd_mcp(),
         Command::Lock => cmd_lock(),
         Command::Stanzas { action } => cmd_stanzas(&vault_path(vault_opt)?, action, opts),
         Command::Seal {
@@ -891,6 +892,17 @@ fn cmd_stanzas(path: &Path, action: crate::StanzasAction, opts: &OpenOpts) -> Cm
 
 /// Clear local session hygiene (UC-06 §3.4). v1 CLI is per-process — no cached unlock between
 /// commands; this clears the clipboard and documents forward-compat for a future agent session.
+#[cfg(unix)]
+fn cmd_mcp() -> CmdResult {
+    // Status-only MCP stdio server (constraint C27). The secret type never enters the MCP layer.
+    blindkey_agent::serve_mcp_stdio().map_err(|e| format!("mcp server: {e}"))
+}
+
+#[cfg(not(unix))]
+fn cmd_mcp() -> CmdResult {
+    Err("the MCP broker requires Unix (Unix-socket broker; Windows named-pipe transport is tracked upstream)".into())
+}
+
 fn cmd_lock() -> CmdResult {
     match copy_to_clipboard(b"") {
         Ok(()) => eprintln!("Locked: clipboard cleared."),

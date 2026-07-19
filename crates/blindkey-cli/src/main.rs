@@ -212,6 +212,11 @@ enum Command {
         #[command(subcommand)]
         action: crate::agent::AgentAction,
     },
+    /// Serve the handle broker to MCP clients (Claude Code, Cursor, …) over stdio.
+    ///
+    /// JSON-RPC 2.0 on stdin/stdout. Tools return status/metadata only — credentials are
+    /// injected at the destination and never returned in a tool result (constraint C27).
+    Mcp,
     /// Seal files or folders into one `.vltf` container (UC-23).
     Seal {
         /// File or directory paths to seal (sorted deterministically).

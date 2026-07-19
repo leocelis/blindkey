@@ -11,6 +11,7 @@ mod audit;
 mod broker;
 mod handle;
 mod inject;
+mod mcp;
 mod protocol;
 mod store;
 
@@ -19,11 +20,15 @@ pub use audit::AuditEntry;
 pub use broker::{run_broker, BrokerConfig, BrokerSession};
 pub use handle::{AgentHandle, Destination, HandleStore};
 pub use inject::spawn_with_env;
+pub use mcp::{McpServer, NoApprovalExecutor, UseExecutor, PROTOCOL_VERSION};
 pub use protocol::{UseRequest, UseResponse, UseStatus};
 pub use store::paths;
 
 #[cfg(unix)]
 pub use broker::client_use;
+
+#[cfg(unix)]
+pub use mcp::serve_stdio as serve_mcp_stdio;
 
 /// Test-only: skip the human approval prompt when `BLINDKEY_AGENT_AUTO_APPROVE=1`.
 pub fn auto_approve_enabled() -> bool {

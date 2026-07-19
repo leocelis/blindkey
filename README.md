@@ -221,7 +221,8 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 - ✅ CLI, TUI, desktop GUI on shared `blindkey-core`
 - ✅ Quality gate: local `just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml) on push
 - ✅ **v1.0.0** — first stable release; format v1 frozen ([ADR-0005](docs/adr/0005-format-v1-freeze.md))
-- ⏳ Production agent broker (handle-based, `blindkey mcp` server), hardware FFI polish, sync/merge, optional third-party audit — [ROADMAP.md](ROADMAP.md)
+- 🟡 `blindkey mcp` — initial MCP server (status-only `list_handles` + `use_handle`); headless-approval delivery is the tracked next step ([UC-24](docs/specs/UC-24-mcp-broker.md))
+- ⏳ Hardware FFI polish, sync/merge, optional third-party audit — [ROADMAP.md](ROADMAP.md)
 
 ## Repository layout
 

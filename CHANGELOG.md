@@ -7,6 +7,14 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **MCP server (UC-24 / S-24):** `blindkey mcp` speaks JSON-RPC 2.0 over stdio so MCP clients
+  (Claude Code, Cursor) can reach the handle broker as two **status-only** tools — `list_handles`
+  (metadata only) and `use_handle` (status only; the credential is injected at the destination and
+  never returned in a tool result, C27). The MCP layer never holds a secret type, so that is a
+  structural guarantee. Hand-rolled over `serde_json` (no MCP SDK — a smaller trusted surface).
+  Because an MCP server runs headless, `use_handle` returns `locked` rather than bypass human
+  approval; the headless-approval channel is the tracked next step. Spec:
+  [docs/specs/UC-24-mcp-broker.md](docs/specs/UC-24-mcp-broker.md).
 - **Sealed file storage (UC-23 / S-22, C61–C66):** `.vltf` containers — `blindkey seal` / `open` /
   `peek` (incl. `seal -` pipe mode, `--append` merge), `--vault FILE.vltf` stanza
   enroll/remove/upgrade-kdf/rotate-data-key + keyfile/YubiKey/FIDO2/TPM unlock; GUI drag-and-drop

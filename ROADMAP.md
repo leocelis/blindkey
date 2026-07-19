@@ -135,6 +135,7 @@ lane can build against from that point on.
 | S-11 | **Fuzz corpus & CI fuzz budget** — seed corpora from real vault files, OSS-Fuzz application | [UC-10](docs/specs/UC-10-hostile-file-parsing.md) | CP-1 | Grows with every parser |
 | S-12 | ✅ **Padmé padding** (PURBs) — optional size-leak reduction, **default off** | [UC-07 §3.2](docs/specs/UC-07-untrusted-storage-sync.md) · [guide](docs/guides/size-padding-padme.md) | CP-4 | **DONE**; v2 default-on deferred |
 | S-13 | 🟡 **Agent interface** — handle broker, `blindkey agent`, OS approval gate | [UC-16](docs/specs/UC-16-agent-interface-future.md) | post-v1 MCP | **SCAFFOLD** (`blindkey-agent` + `blindkey agent`); status-only IPC (C27) |
+| S-24 | 🟡 **MCP server** — `blindkey mcp` (JSON-RPC/stdio) exposes the broker to Claude Code/Cursor as status-only tools | [UC-24](docs/specs/UC-24-mcp-broker.md) | S-13 | **INITIAL** — protocol + `list_handles` (metadata) + `use_handle` (status-only, no headless-approval bypass) shipped & tested; headless-approval channel is the tracked next step |
 | S-14 | **User guide & website docs** | all specs | CP-5 | Quickstart, sync guide, threat-model-for-humans |
 | S-15 | ✅ **Quick-capture `import --format raw`** — lenient parser, entropy/prefix classifier, masked interactive review | [UC-17](docs/specs/UC-17-quick-capture-raw-import.md) | CP-1 (Entry model) | Shipped |
 | S-16 | ✅ **`ratatui` TUI** — search → deliver loop, alt-screen reveal hygiene | [UC-18](docs/specs/UC-18-native-ui.md) | CP-4 API | **DONE** (`blindkey-tui`); first UI, pure Rust, C20-exact |
