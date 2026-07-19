@@ -6,4 +6,17 @@ at your option (SPDX: "MIT OR Apache-2.0").
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-dual-licensed as above, without any additional terms or conditions.
+dual-licensed as above, without any additional terms or conditions. Contributions
+must also carry a Developer Certificate of Origin sign-off — see ../DCO and
+CONTRIBUTING.md.
+
+Trademarks
+----------
+
+"Blindkey" and the Blindkey logo are trademarks of the Blindkey maintainers. The
+code license above grants no trademark rights (see LICENSE-APACHE §6, which is
+also the operative term for MIT-licensed use). You're welcome to reference the
+project by name (e.g. "built on Blindkey," "a fork of Blindkey") in ordinary,
+accurate description of origin, but please don't use the name or logo in a way
+that implies official status, endorsement, or affiliation for a modified or
+unrelated distribution without asking first.

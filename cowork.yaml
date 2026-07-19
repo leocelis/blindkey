@@ -145,6 +145,7 @@ pr_checklist:
   - "Tests added; docs/CONSTRAINT_INDEX.md updated where applicable"
   - "`just ci` green; no new clippy allows without justification"
   - "CHANGELOG.md line added"
+  - "Commits signed off (DCO — `git commit -s`); CI's DCO check is green"
   - "Review tier respected: lazy consensus (docs/tests) · code-owner (blindkey-core,
      workflows) · code-owner sign-off + ADR (crypto, format, intent, SECURITY.md)"
 

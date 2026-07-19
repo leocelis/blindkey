@@ -211,6 +211,7 @@ Desktop app (build from source — no prebuilt GUI binary yet, see [#status](#pr
 | Use-case specs (22) | [docs/specs/](docs/specs/README.md) |
 | Roadmap | [ROADMAP.md](ROADMAP.md) |
 | Release verification | [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md) |
+| Export compliance (contains cryptography) | [docs/EXPORT_COMPLIANCE.md](docs/EXPORT_COMPLIANCE.md) |
 
 Design at a glance: XChaCha20-Poly1305 STREAM · Argon2id · age-style multi-stanza envelope ·
 encrypt-then-MAC · **zero network, zero telemetry**.

@@ -7,6 +7,26 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Legal/compliance documentation**, researched against primary sources rather than boilerplate:
+  - **DCO** (Developer Certificate of Origin) — `DCO` file (canonical v1.1 text), a CI check
+    (`.github/workflows/dco.yml`, [KineticCafe/actions-dco](https://github.com/KineticCafe/actions-dco))
+    enforcing a `Signed-off-by:` trailer on every PR commit, and a CONTRIBUTING.md section
+    explaining `git commit -s`. Strengthens contribution provenance beyond GitHub's implicit
+    inbound=outbound ToS terms — matters more here than in most repos given the security-critical
+    surface and the possibility of this becoming a transferable asset later.
+  - **Export compliance notice** (`docs/EXPORT_COMPLIANCE.md`) — Blindkey ships cryptographic
+    software; documents the applicable US EAR publicly-available-source-code exemption
+    ([15 CFR 740.13(e)](https://www.law.cornell.edu/cfr/text/15/740.13),
+    [15 CFR 742.15(b)](https://www.law.cornell.edu/cfr/text/15/742.15)), the standard
+    country-restriction notice, and the optional (not yet sent) BIS/NSA courtesy notification —
+    explicit that none of this restricts *who* may use Blindkey or *why* (that's the unrestricted
+    MIT/Apache-2.0 grant; export regulation of the cryptography is a separate legal question).
+  - **Trademark note** appended to `COPYRIGHT` — plain-language pointer to LICENSE-APACHE §6 (no
+    trademark rights granted by the code license), naming "Blindkey" as the maintainers' mark.
+  - Found and fixed while in CONTRIBUTING.md: a stale `C1…C60` constraint-count reference (now
+    `C66`) and a broken clone instruction (`cd vault` after cloning into a directory named
+    `blindkey`).
+
 - **Headless MCP delivery (UC-24 §4):** `use_handle` now actually delivers a secret when a
   companion `blindkey agent run` broker is listening — delegated via `BrokerProxyExecutor` to the
   exact same socket protocol `blindkey agent use` already speaks, so the human approves each use

@@ -1,0 +1,18 @@
+# DCO — every commit in a PR must carry a `Signed-off-by:` trailer certifying the contributor
+# has the right to submit it under the project's license (see ../../DCO, CONTRIBUTING.md).
+# This is a provenance safeguard, not a copyright transfer: it makes contribution provenance
+# explicit and checkable instead of resting only on GitHub's implicit inbound=outbound ToS terms.
+name: DCO
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: KineticCafe/actions-dco@1da04282bbf757dab7d92a5c8535dbfb8113da5c # v3.1.0

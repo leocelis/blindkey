@@ -8,7 +8,7 @@ makes that bar explicit and reachable.
 
 Blindkey uses **Intent-Verified Development (IVD)**: the design lives as testable constraints in
 [`blindkey_intent.yaml`](blindkey_intent.yaml) *before* code is written. Every security property is a
-numbered constraint (`C1`…`C60`) with a `test:` field. When you implement or change behavior:
+numbered constraint (`C1`…`C66`) with a `test:` field. When you implement or change behavior:
 
 1. **Read the relevant constraint(s)** in `blindkey_intent.yaml`.
 2. **Implement to satisfy them** — for security-critical work, in the segment order in the intent.
@@ -45,7 +45,7 @@ truth). See the rustup docs for the mechanism:
 
 ```sh
 git clone https://github.com/leocelis/blindkey
-cd vault
+cd blindkey
 
 ./scripts/setup-rust.sh    # one-time: installs the pinned toolchain into ./.toolchain (git-ignored)
 . scripts/dev-env.sh       # activate it for this shell  (or use direnv: `direnv allow`)
@@ -64,6 +64,22 @@ the equivalent cargo commands are in the [`justfile`](justfile). Do **not** `cur
 default rustup installer for this repo — that writes to your home directory and edits your shell
 profiles; `scripts/setup-rust.sh` is the supported path.
 
+## Sign off your commits (DCO)
+
+Every commit in a PR must carry a `Signed-off-by:` trailer, certifying you wrote it (or have the
+right to submit it) under the project's [MIT OR Apache-2.0](COPYRIGHT) license — the
+[Developer Certificate of Origin](DCO), same text and mechanism the Linux kernel and most CNCF
+projects use. It's a one-line addition, not a CLA and not a copyright transfer: you keep your
+copyright, you're certifying provenance.
+
+```sh
+git commit -s -m "fix: ..."          # -s appends the trailer automatically
+```
+
+This adds `Signed-off-by: Your Name <you@example.com>` (from your git config) to the commit
+message. A PR bot checks every commit; if one's missing, amend it (`git commit --amend -s`) or
+add a follow-up signed-off commit — no need to open a new PR.
+
 ## Pull request checklist
 
 - [ ] `just check` passes (fmt, clippy with `-D warnings`, tests).
@@ -72,7 +88,8 @@ profiles; `scripts/setup-rust.sh` is the supported path.
 - [ ] The PR description lists affected constraints.
 - [ ] No secret material can reach a log, `Debug`, stdout-by-default, or an argv.
 - [ ] Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
-      (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `security:`).
+      (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `security:`) and are signed off
+      (`git commit -s`, see [DCO](#sign-off-your-commits-dco) above).
 - [ ] You agree to the dual MIT/Apache-2.0 license (see [COPYRIGHT](COPYRIGHT)).
 
 ## Reporting vulnerabilities
