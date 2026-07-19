@@ -18,6 +18,16 @@ All notable changes to this project are documented here. The format is based on
   response carried no secret material at any point. Closes the headless-approval design item
   tracked in UC-24 / issue #37.
 
+### Fixed
+- **`BLINDKEY_AGENT_AUTO_APPROVE` was undocumented.** The flag that skips the broker's `[y/N]`
+  human-approval prompt existed only as a source comment ("test-only") — a reader had no way to
+  know it existed, that it's not a supported deployment mode, or what it does and doesn't weaken.
+  Added an explicit, warning-flagged section to [docs/AGENT_BROKER.md](docs/AGENT_BROKER.md) and
+  an entry in the [enterprise env-var table](docs/guides/enterprise-deployment.md), plus a
+  clear statement of what the "agent never sees the secret" claim does and does not cover (the
+  registered destination process still receives the plaintext by design; that's separate from
+  whether a human approved this particular use).
+
 ## [1.0.0] - 2026-07-19
 
 First tagged release under the **Blindkey** name: local-first credential broker for AI agents,

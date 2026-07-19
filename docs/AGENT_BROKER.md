@@ -29,6 +29,31 @@ Each `use` prompts on the **broker's TTY**: entry name, destination id, uses rem
 - Do **not** leave `blindkey agent run` active unattended.
 - Handles expire (1 h default) and have a use budget (10 default).
 
+## ⚠️ `BLINDKEY_AGENT_AUTO_APPROVE` — test-only, never set this in real use
+
+Setting `BLINDKEY_AGENT_AUTO_APPROVE=1` makes the broker approve every `use` **without** the
+`[y/N]` terminal prompt. It exists only so the test suite and CI can drive the broker
+non-interactively — it is **not** a supported deployment mode. Setting it in a real environment
+removes the human-in-the-loop check this whole broker is built around: any handle a process (an
+agent, a script, anything with your session) can reach becomes usable with zero confirmation. It
+does not weaken §"What's structurally guaranteed" below — the secret still never returns through
+the MCP/CLI response — but it does mean nobody is deciding whether *this particular use* should
+happen. If you find yourself wanting to set it outside a test harness, what you actually want is
+narrower, shorter-lived handles (`agent allow`'s TTL/use-count), not a way to stop being asked.
+
+## What's structurally guaranteed vs. what's operational
+
+- **Structural (true regardless of configuration):** the MCP/CLI response to a `use` request is
+  always status-only (`ok`/`denied`/`locked`/…) — the secret type never enters that code path, so
+  no misconfiguration can leak it *through the broker's response*. Verified in
+  [docs/specs/UC-24](specs/UC-24-mcp-broker.md).
+- **Not covered by that guarantee:** the **destination process itself** (the `--for-cmd` you
+  registered) receives the real secret in its environment — that's the point, it needs it. "The
+  agent never sees the secret" describes the AI agent driving the request, not every process
+  downstream of your own configuration.
+- **Operational, not structural:** whether a human actually reviews each use depends on running
+  `blindkey agent run` interactively and not setting the flag above.
+
 ## Files (local only — C23)
 
 | Path | Purpose |

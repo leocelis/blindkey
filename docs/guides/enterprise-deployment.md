@@ -10,6 +10,7 @@ utility** — not a cloud password manager.
 | `BLINDKEY_VAULT_PATH` | `blindkey-gui`, `blindkey-cli` | Absolute path to `vault.vlt` (overrides `~/.blindkey/vault.vlt`) |
 | `BLINDKEY_CONFIG_DIR` | `blindkey-gui` | Directory for GUI config (`config` file inside) |
 | `BLINDKEY_LOCK_ON_BLUR` | `blindkey-gui` | Set to `1` to force lock when the window loses focus |
+| `BLINDKEY_AGENT_AUTO_APPROVE` | `blindkey-agent` | **Test-only — do not set in real deployments.** Skips the broker's `[y/N]` approval prompt on every `use`. See [AGENT_BROKER.md](../AGENT_BROKER.md). |
 
 Secrets **must not** be passed via environment variables. For headless CLI unlock, use
 `--password-fd` / `--password-stdin` / `BLINDKEY_PASSWORD_FILE` per
