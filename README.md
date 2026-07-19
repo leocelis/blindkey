@@ -82,7 +82,7 @@ sequenceDiagram
     Broker->>Vault: unlock + read secret (in-process, zeroized after)
     Broker->>Dest: inject secret at the edge
     Broker-->>Agent: status only (approved / denied) — no secret
-    Note over Agent,Dest: The agent orchestrates the task; the plaintext never crosses into it.
+    Note over Agent,Dest: The agent orchestrates the task — the plaintext never crosses into it.
 ```
 
 No proxy sits in your network path, no plaintext is intercepted in transit, and nothing is
