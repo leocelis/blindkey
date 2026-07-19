@@ -4,7 +4,10 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to adhere to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-07-19
+
+First tagged release under the **Blindkey** name: local-first credential broker for AI agents,
+format v1 frozen, cross-platform CI green (macOS · Linux · Windows-core · audit · reproducible).
 
 ### Added
 - **MCP server (UC-24 / S-24):** `blindkey mcp` speaks JSON-RPC 2.0 over stdio so MCP clients
@@ -83,31 +86,16 @@ All notable changes to this project are documented here. The format is based on
   `vault-cli`, and `vault-core` crate names were already taken on crates.io by unrelated
   projects, which is what prompted the rename.
 
-### Known limitations (surfaced by audit, unresolved — need a maintainer decision)
-- **crates.io publish still pending.** Names are now free under `blindkey-*`, but nothing has
-  been published yet — needs a maintainer's `cargo login` token.
-- **No signed/notarized release artifacts.** The `v0.1.0-alpha.3` macOS binary is unsigned and
-  un-notarized (`scripts/bundle-macos.sh` says so explicitly) — Gatekeeper will quarantine it on
-  first run. No `v1.0.0` git tag or GitHub Release exists yet despite `Cargo.toml`/this
-  CHANGELOG saying 1.0.0 shipped 2026-06-26.
-- **No branch protection on `main`** and no OpenSSF Scorecard/Best-Practices badge — both are
-  free, low-effort trust signals evaluators of security tools commonly check for.
+- **Format v1 freeze** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)): `format_version = 1`
+  declared stable — alpha vault files open on 1.x without migration.
 
-## [1.0.0] - 2026-06-26
-
-First **stable** release — format v1 frozen, CP-7 quality gate, post-1.0 user copy.
-
-### Added
-- **Format v1 freeze** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)): `format_version = 1` declared
-  stable; research in [research/format_freeze_research.md](research/format_freeze_research.md).
-- **v1.0.0** workspace version bump; release prep per [docs/RELEASE.md](docs/RELEASE.md).
-
-### Changed
-- README, SECURITY, PRD, FILE_FORMAT: **stable format v1** + **v1.0.0** (drop pre-1.0 / pre-alpha banner language).
-- CLI `PRE_RELEASE_NOTICE` and GUI audit banner: third-party audit honesty without pre-1.0 label.
-- Public OSS launch (2026-06-25): repository visibility public, CI badge restored, GHA cache.
-- Documentation sweep: drift fixes, spec status headers, expanded `docs/README.md` hub,
-  `ARCHITECTURE.md` adds `blindkey-clip`, `AUDIT_READINESS.md` post-launch checklist.
+### Release notes
+- **Not yet independently third-party audited.** Keep a backup of anything you store; see
+  [SECURITY.md](SECURITY.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+- **macOS binary is not notarized** in this release — Gatekeeper may quarantine it on first run
+  (`xattr -d com.apple.quarantine ./blindkey` to clear, or build from source). Signing/notarization
+  is tracked for a follow-up.
+- Supersedes the never-tagged 1.0.0 prep (2026-06-26) and all `0.1.0-alpha.*` pre-releases.
 
 ## [0.1.0-alpha.3] - 2026-06-25
 
