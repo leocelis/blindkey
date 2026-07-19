@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to adhere to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Headless MCP delivery (UC-24 §4):** `use_handle` now actually delivers a secret when a
+  companion `blindkey agent run` broker is listening — delegated via `BrokerProxyExecutor` to the
+  exact same socket protocol `blindkey agent use` already speaks, so the human approves each use
+  on *that* broker's terminal (reusing the existing, already-tested TTY-approval flow; no new
+  approval logic). Fails closed to `locked` when no broker is running — `blindkey mcp` itself
+  never gains access to a secret or an approval decision. Verified end-to-end with a real vault,
+  a real running broker, and a real `blindkey mcp` process driven over actual stdio JSON-RPC: the
+  registered secret reached the spawned destination process's environment, while the MCP tool
+  response carried no secret material at any point. Closes the headless-approval design item
+  tracked in UC-24 / issue #37.
+
 ## [1.0.0] - 2026-07-19
 
 First tagged release under the **Blindkey** name: local-first credential broker for AI agents,

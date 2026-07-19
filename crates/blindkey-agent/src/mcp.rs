@@ -11,10 +11,13 @@
 //! - `list_handles` returns handle **metadata only** (title, field, destination ids, limits) —
 //!   never the credential.
 //! - `use_handle` returns **status only**. Because an MCP server is spawned headless by its
-//!   client (no TTY for a human approval prompt), the default executor refuses to deliver a
-//!   secret without an approval channel and returns `Locked` — it never silently bypasses the
-//!   human-in-the-loop. The headless-approval channel is a separate design item (see
-//!   docs/specs/UC-24) and is intentionally not a bypass here.
+//!   client (no TTY for a human approval prompt), delivery is delegated to the already-running
+//!   Unix-socket broker (`blindkey agent run`) via [`BrokerProxyExecutor`] — reusing that
+//!   broker's existing, already-tested TTY-approval flow ([`crate::approval::prompt_use`]) rather
+//!   than inventing a new one. The approval prompt fires on *the broker's* terminal (a real TTY),
+//!   never inside this headless process. If no broker is running, delivery gracefully falls back
+//!   to `Locked` — this module never silently bypasses the human-in-the-loop. See
+//!   docs/specs/UC-24 for the design and the options considered.
 //!
 //! The JSON-RPC handling is hand-rolled over `serde_json` (already a dependency) rather than
 //! pulling an MCP SDK and its transitive tree — a smaller trusted surface for a security tool.
@@ -47,6 +50,39 @@ impl UseExecutor for NoApprovalExecutor {
             "headless approval channel not configured; pre-authorize narrow handles with \
              `blindkey agent allow` and run the broker on a TTY (see docs/specs/UC-24)",
         )
+    }
+}
+
+/// Delegates each `use_handle` request to the already-running Unix-socket broker
+/// (`blindkey agent run`) over the same socket and protocol the CLI's `blindkey agent use`
+/// already speaks ([`crate::broker::client_use`]). This is the "companion TTY process" design
+/// from docs/specs/UC-24 §4: the human runs `blindkey agent run` interactively once (a real
+/// terminal), and every use — whether from `blindkey agent use` or from an MCP client through
+/// this executor — is approved on *that* terminal via the broker's existing
+/// [`crate::approval::prompt_use`]. No new approval logic is introduced here; this module only
+/// wires two already-tested pieces together and never touches the secret itself.
+///
+/// If no broker is listening (the common case — nothing pre-configured), this fails closed:
+/// `Locked` with guidance, identical in spirit to [`NoApprovalExecutor`].
+#[cfg(unix)]
+#[derive(Debug, Default)]
+pub struct BrokerProxyExecutor;
+
+#[cfg(unix)]
+impl UseExecutor for BrokerProxyExecutor {
+    fn use_handle(&mut self, handle_id: &str, destination_id: &str) -> UseResponse {
+        let socket_path = match crate::store::paths() {
+            Ok((_, _, socket)) => socket,
+            Err(e) => return UseResponse::with_status(UseStatus::Error, e),
+        };
+        match crate::broker::client_use(&socket_path, handle_id, destination_id) {
+            Ok(resp) => resp,
+            Err(_) => UseResponse::with_status(
+                UseStatus::Locked,
+                "no running broker to approve this use; start one on a terminal with \
+                 `blindkey agent run`, then retry (see docs/specs/UC-24)",
+            ),
+        }
     }
 }
 
@@ -196,7 +232,7 @@ fn tool_err(id: Value, message: impl Into<String>) -> Value {
 pub fn serve_stdio() -> std::io::Result<()> {
     use std::io::{BufRead, Write};
     let store = HandleStore::load().unwrap_or_default();
-    let mut server = McpServer::new(store, NoApprovalExecutor);
+    let mut server = McpServer::new(store, BrokerProxyExecutor);
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
     for line in stdin.lock().lines() {
@@ -328,5 +364,51 @@ mod tests {
             }))
             .unwrap();
         assert_eq!(r["result"]["isError"], true);
+    }
+
+    /// Proves `BrokerProxyExecutor` (a) fails closed with `Locked` when no broker is listening,
+    /// and (b) genuinely relays whatever status a real running broker returns — it does not
+    /// invent success itself. Both cases in one test to avoid racing `XDG_RUNTIME_DIR` (a
+    /// process-global env var) against other tests running in parallel.
+    #[cfg(unix)]
+    #[test]
+    fn broker_proxy_relays_running_broker_and_fails_closed_without_one() {
+        use std::io::{BufRead, BufReader, Write};
+        use std::os::unix::net::UnixListener;
+
+        let dir = tempfile::tempdir().unwrap();
+        let prev = std::env::var_os("XDG_RUNTIME_DIR");
+        std::env::set_var("XDG_RUNTIME_DIR", dir.path());
+
+        let mut proxy = BrokerProxyExecutor;
+
+        // (a) Nothing listening on the socket path yet.
+        let resp = proxy.use_handle("h1", "d1");
+        assert_eq!(resp.status, UseStatus::Locked);
+        assert!(resp.detail.unwrap().contains("blindkey agent run"));
+
+        // (b) A fake broker answers on the exact socket path the executor resolves — proves the
+        // proxy relays a real peer's response rather than fabricating one.
+        let socket_path = dir.path().join("blindkey-agent.sock");
+        let listener = UnixListener::bind(&socket_path).unwrap();
+        let server = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            let mut stream = stream;
+            stream
+                .write_all(b"{\"status\":\"denied\",\"detail\":\"fake broker said no\"}\n")
+                .unwrap();
+        });
+        let resp = proxy.use_handle("h1", "d1");
+        server.join().unwrap();
+        assert_eq!(resp.status, UseStatus::Denied);
+        assert_eq!(resp.detail.as_deref(), Some("fake broker said no"));
+
+        match prev {
+            Some(v) => std::env::set_var("XDG_RUNTIME_DIR", v),
+            None => std::env::remove_var("XDG_RUNTIME_DIR"),
+        }
     }
 }

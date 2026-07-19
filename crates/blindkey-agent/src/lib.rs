@@ -21,6 +21,9 @@ pub use broker::{run_broker, BrokerConfig, BrokerSession};
 pub use handle::{AgentHandle, Destination, HandleStore};
 pub use inject::spawn_with_env;
 pub use mcp::{McpServer, NoApprovalExecutor, UseExecutor, PROTOCOL_VERSION};
+
+#[cfg(unix)]
+pub use mcp::BrokerProxyExecutor;
 pub use protocol::{UseRequest, UseResponse, UseStatus};
 pub use store::paths;
 

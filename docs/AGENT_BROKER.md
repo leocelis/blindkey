@@ -1,7 +1,9 @@
 # Agent broker (S-13 scaffold)
 
-> **Status:** scaffold — not a full MCP integration. See [UC-16](specs/UC-16-agent-interface-future.md)
-> and [ADR-0006](adr/0006-agent-broker-scaffold.md).
+> **Status:** handle broker + MCP server both functional; live verification against a specific
+> MCP client (Claude Code / Cursor) is still a tracked HITL step. See
+> [UC-16](specs/UC-16-agent-interface-future.md), [UC-24](specs/UC-24-mcp-broker.md), and
+> [ADR-0006](adr/0006-agent-broker-scaffold.md).
 
 Use this when an **AI agent needs a credential applied** without reading it. The agent receives
 **status only** (`ok`, `denied`, …) — never the secret (C27).
@@ -42,16 +44,20 @@ Override data dir: `BLINDKEY_AGENT_DATA_DIR` (tests).
 For MCP clients (Claude Code, Cursor, …), `blindkey mcp` speaks JSON-RPC 2.0 over stdio and
 exposes the broker as two tools — `list_handles` (metadata only) and `use_handle` (status only).
 Credentials are injected at the destination and are never returned in a tool result (C27); the
-secret type never enters the MCP layer, so that is a structural guarantee. Full design and the
-headless-approval design decision: [docs/specs/UC-24](specs/UC-24-mcp-broker.md).
+secret type never enters the MCP layer, so that is a structural guarantee. Full design:
+[docs/specs/UC-24](specs/UC-24-mcp-broker.md).
 
 ```jsonc
 // Claude Code / Cursor MCP config
 { "mcpServers": { "blindkey": { "command": "blindkey", "args": ["mcp"] } } }
 ```
 
-Because an MCP server runs headless (no TTY), `use_handle` returns `locked` until an approval
-channel is chosen (UC-24 §4) — it never delivers a secret without a human in the loop.
+Because an MCP server runs headless (no TTY), a *fresh* approval prompt can't fire inside it. So
+`use_handle` delegates each request to an already-running `blindkey agent run` broker over the
+same socket `blindkey agent use` speaks — the human approves on **that** broker's terminal, same
+as any other use. Run `blindkey agent run` on a terminal before your MCP client needs to use a
+handle. If no broker is listening, `use_handle` fails closed with `locked` — it never delivers a
+secret without a human in the loop.
 
 ## What this is not
 
