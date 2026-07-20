@@ -10,7 +10,7 @@ Same-user agents with shell access can invoke `blindkey get --stdout` while a va
 unlocked. C27's forward constraint requires any future agent interface to deliver secrets only
 via model-blind channels. UC-16 explores a handle-based MCP broker; v1 ships no agent API.
 
-security-gap review asks for the **first concrete step**: handle broker + OS approval gate.
+The pre-1.0 security-gap review asks for the **first concrete step**: handle broker + OS approval gate.
 
 ## Decision
 

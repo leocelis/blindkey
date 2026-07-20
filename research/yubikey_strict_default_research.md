@@ -36,4 +36,4 @@ TLV `0x0004 YUBIKEY_STRICT` in encrypted payload (absent → false for legacy va
 
 - `vault/blindkey_intent.yaml` C5 (G0.7)
 - `docs/specs/UC-09-hardware-factors.md` §2–§3.3
-- security-gap review gap table — YubiKey stale-challenge replay
+- Security-gap review — YubiKey stale-challenge replay

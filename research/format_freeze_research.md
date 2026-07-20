@@ -1,4 +1,4 @@
-# Format Freeze Research — security-gap review P0 (June 2026)
+# Format Freeze Research — pre-1.0 security-gap review, P0 (June 2026)
 
 > **Purpose:** Research backing ADR-0005 and the format-v1 freeze declaration.
 

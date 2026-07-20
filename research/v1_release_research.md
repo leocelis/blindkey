@@ -1,4 +1,4 @@
-# v1.0.0 Release Research — security-gap review P0 item 2 (June 2026)
+# v1.0.0 Release Research — pre-1.0 security-gap review, P0 item 2 (June 2026)
 
 > **Prerequisite:** Format v1 frozen (ADR-0005) ✅
 

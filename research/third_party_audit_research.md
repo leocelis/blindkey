@@ -13,7 +13,7 @@
 | Threat model + residual risks | ✅ THREAT_MODEL.md |
 | v1.0.0 repo prep | ✅ (tag/push deferred until card cleared) |
 
-security-gap review recommends audit **after format freeze, before enterprise marketing** — not a v1.0 code gate.
+The security-gap review recommends audit **after format freeze, before enterprise marketing** — not a v1.0 code gate.
 
 ## Scope (from card + THIRD_PARTY_AUDIT.md)
 
@@ -66,4 +66,4 @@ Selection criteria: prior password-manager or KDF audit, Rust memory-safety revi
 - [THIRD_PARTY_AUDIT.md](../docs/THIRD_PARTY_AUDIT.md)
 - [AUDIT_READINESS.md](../docs/AUDIT_READINESS.md)
 - KeePassXC audit report (2023) — Molotnikov / Argon2id precedent cited in C2
-- security-gap review gap table — “No third-party audit”
+- Security-gap review — “No third-party audit”

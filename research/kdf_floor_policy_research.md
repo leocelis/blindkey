@@ -35,4 +35,4 @@ Add to C2 description (preserve open behavior):
 
 - `vault/blindkey_intent.yaml` C2
 - `docs/specs/UC-11-kdf-calibration.md` §3.3
-- security-gap review gap table — KDF floor warns, doesn't reject
+- Security-gap review — KDF floor warns, doesn't reject

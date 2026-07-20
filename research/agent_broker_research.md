@@ -11,7 +11,7 @@ broker with OS approval gate** as the product path.
 ## v1 posture
 
 - v1 ships **no MCP server** — UC-16 remains design exploration for full surface.
-- security-gap review P1 delivers a **scaffold**: opaque handles, local broker, status-only IPC, TTY approval,
+- The P1 scope delivers a **scaffold**: opaque handles, local broker, status-only IPC, TTY approval,
   one injection path (child env).
 
 ## Architecture (option a subset)
@@ -38,4 +38,4 @@ broker with OS approval gate** as the product path.
 - `docs/specs/UC-16-agent-interface-future.md`
 - `docs/adr/0006-agent-broker-scaffold.md`
 - `vault/blindkey_intent.yaml` C27 forward constraint
-- security-gap review — Runtime / Same-User Attacker
+- Runtime / Same-User Attacker

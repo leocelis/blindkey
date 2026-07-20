@@ -1,6 +1,6 @@
 # Hardware factor status (v1.0.0)
 
-> **security-gap review** — hardware paths on real devices (S-8a/S-8c shipped via OS tool subprocesses).
+> **Pre-1.0 security-gap review** — hardware paths on real devices (S-8a/S-8c shipped via OS tool subprocesses).
 
 ## Shipped in v1 (use these)
 
