@@ -25,6 +25,7 @@ type SaveResult = Result<Vec<u8>, String>;
 
 pub const USAGE_ERROR_PREFIX: &str = "usage:";
 pub const CLIPBOARD_UNAVAILABLE_PREFIX: &str = "clipboard-unavailable:";
+const MAX_IMPORT_BYTES: u64 = 64 * 1024 * 1024;
 
 fn usage_err(msg: impl Into<String>) -> String {
     format!("{USAGE_ERROR_PREFIX} {}", msg.into())
@@ -340,34 +341,48 @@ fn cmd_init(
 }
 
 fn cmd_import(path: &Path, format: &str, source: &Path, yes: bool, opts: &OpenOpts) -> CmdResult {
-    if format != "raw" {
-        return Err(format!(
-            "unknown import format {format:?} (only `raw` is supported)"
-        ));
-    }
     pre_release_notice();
-    let text = Zeroizing::new(
-        std::fs::read_to_string(source)
-            .map_err(|e| format!("cannot read {}: {e}", source.display()))?,
-    );
-    let result = blindkey_core::import::parse_raw(&text);
-    if result.entries.is_empty() {
+    let text = read_import_text(source)?;
+    let (entries, detail) = match format {
+        "raw" => {
+            let result = blindkey_core::import::parse_raw(&text);
+            (
+                result.entries,
+                format!(
+                    "{} block{} skipped",
+                    result.blocks_skipped,
+                    if result.blocks_skipped == 1 { "" } else { "s" }
+                ),
+            )
+        }
+        "keepass-csv" | "keepassxc-csv" => {
+            let result = blindkey_core::import::parse_keepassxc_csv(&text)?;
+            (
+                result.entries,
+                format!(
+                    "{} unknown column{} ignored",
+                    result.unknown_columns,
+                    if result.unknown_columns == 1 { "" } else { "s" }
+                ),
+            )
+        }
+        _ => {
+            return Err(format!(
+                "unknown import format {format:?} (supported: `raw`, `keepass-csv`, `keepassxc-csv`)"
+            ));
+        }
+    };
+    if entries.is_empty() {
         return Err("no secrets found in that file".to_string());
     }
 
     // Masked review (never print the secret — C27).
     eprintln!(
-        "Parsed {} entr{} ({} block{} skipped):",
-        result.entries.len(),
-        if result.entries.len() == 1 {
-            "y"
-        } else {
-            "ies"
-        },
-        result.blocks_skipped,
-        if result.blocks_skipped == 1 { "" } else { "s" },
+        "Parsed {} entr{} ({detail}):",
+        entries.len(),
+        if entries.len() == 1 { "y" } else { "ies" },
     );
-    for e in &result.entries {
+    for e in &entries {
         eprintln!(
             "  {:<28} {}",
             sanitize(&e.title),
@@ -390,8 +405,8 @@ fn cmd_import(path: &Path, format: &str, source: &Path, yes: bool, opts: &OpenOp
 
     let password = unlock_secret::read_master_password(false, &opts.unlock)?;
     let mut vault = open_vault(path, password.as_bytes(), opts)?;
-    let n = result.entries.len();
-    for entry in result.entries {
+    let n = entries.len();
+    for entry in entries {
         vault.add_entry(entry);
     }
     backup_vault_if_exists(path)?;
@@ -400,6 +415,33 @@ fn cmd_import(path: &Path, format: &str, source: &Path, yes: bool, opts: &OpenOp
     note_saved(&vault);
     eprintln!("Imported {n} entries into {}.", path.display());
     Ok(())
+}
+
+fn read_import_text(source: &Path) -> Result<Zeroizing<String>, String> {
+    let file = std::fs::File::open(source)
+        .map_err(|e| format!("cannot read {}: {e}", source.display()))?;
+    let size = file
+        .metadata()
+        .map_err(|e| format!("cannot inspect {}: {e}", source.display()))?
+        .len();
+    if size > MAX_IMPORT_BYTES {
+        return Err(format!(
+            "import source exceeds the {} MiB limit",
+            MAX_IMPORT_BYTES / (1024 * 1024)
+        ));
+    }
+
+    let mut text = Zeroizing::new(String::new());
+    file.take(MAX_IMPORT_BYTES + 1)
+        .read_to_string(&mut text)
+        .map_err(|e| format!("cannot read {} as UTF-8: {e}", source.display()))?;
+    if text.len() as u64 > MAX_IMPORT_BYTES {
+        return Err(format!(
+            "import source exceeds the {} MiB limit",
+            MAX_IMPORT_BYTES / (1024 * 1024)
+        ));
+    }
+    Ok(text)
 }
 
 fn cmd_ls(path: &Path, search: Option<&str>, opts: &OpenOpts) -> CmdResult {

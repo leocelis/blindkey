@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- KeePassXC CSV import via `blindkey import --format keepass-csv` (with
+  `keepassxc-csv` alias), including masked review, RFC 4180 quoting, BOM/CRLF handling, bounded
+  hostile-input parsing, synthetic round-trip coverage, and a dedicated fuzz target (UC-12,
+  C21/C27/C30/C31).
+
 - **Extended legal/compliance research** — a follow-up pass specifically looking for regimes not
   covered the first time, again against primary sources:
   - **OFAC sanctions** (`docs/EXPORT_COMPLIANCE.md`) — a distinct regime from EAR export control
@@ -64,7 +69,6 @@ All notable changes to this project are documented here. The format is based on
   clear statement of what the "agent never sees the secret" claim does and does not cover (the
   registered destination process still receives the plaintext by design; that's separate from
   whether a human approved this particular use).
-
 ## [1.0.0] - 2026-07-19
 
 First tagged release under the **Blindkey** name: local-first credential broker for AI agents,

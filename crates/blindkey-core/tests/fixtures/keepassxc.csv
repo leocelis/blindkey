@@ -1,0 +1,4 @@
+Group,Title,Username,Password,URL,Notes,TOTP,Icon
+Work,"GitHub, Inc.",=opaque-user,+opaque-password,https://github.com,"first line
+second line",otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP,1
+Personal,Example,@opaque-user,-opaque-password,https://example.com,plain note,,2

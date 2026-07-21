@@ -47,3 +47,9 @@ name = "vault_open"
 path = "fuzz_targets/vault_open.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "keepassxc_csv"
+path = "fuzz_targets/keepassxc_csv.rs"
+test = false
+doc = false

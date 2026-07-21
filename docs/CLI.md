@@ -31,6 +31,7 @@ YubiKey 2FA vaults default to **strict** at enrollment (`blindkey enroll yubikey
 |---------|-------------|
 | `blindkey init` | Create a vault (master password prompt; seeds `vault.vlt.bak`). Optional offline recovery code: `--with-recovery-code` or TTY confirm — see [recovery guide](guides/recovery-codes.md). |
 | `blindkey import --format raw <file> [--yes]` | Import a messy `keys.txt` (masked review; `--yes` for scripts). |
+| `blindkey import --format keepass-csv <file> [--yes]` | Import a KeePassXC CSV export (`keepassxc-csv` is an alias). |
 | `blindkey ls [--search QUERY]` | List entry titles; substring search on title/tags. |
 | `blindkey find [QUERY] [--stdout]` | Fuzzy omni-search (UC-19); copies top match to clipboard. |
 | `blindkey get NAME [--field FIELD] [--stdout]` | Get a field — clipboard by default. |
@@ -92,7 +93,7 @@ Spec: [UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md).
 
 | Command | Notes |
 |---------|-------|
-| `blindkey import --format txt\|json` | Structured importers (UC-12). |
+| `blindkey import --format txt\|json` | Remaining structured importers (UC-12). |
 | `blindkey merge OLD NEW` | Conflict merge (UC-08). |
 
 ## `blindkey find` — searchable fields (constraint C35)
@@ -114,6 +115,16 @@ Parses unstructured secrets files (`key=value`, bare secret lines, `---` block r
 - **Interactive (TTY):** shows masked previews, prompts `Import these into the vault? [y/N]`
 - **Scripted (piped stdin):** requires `--yes` (exit **8** without it)
 - **`--yes` on TTY:** skips the confirmation prompt
+
+## `blindkey import --format keepass-csv`
+
+Parses a KeePassXC RFC 4180 CSV export. `keepassxc-csv` is accepted as an alias.
+
+- Maps `Group`, `Title`, `Username`, `Password`, `URL`, `Notes`, and `TOTP` by header name.
+- Accepts reordered columns, quoted commas/newlines, UTF-8 BOM, and CRLF files.
+- Treats formula-like cells as opaque data; no cell is evaluated or placed on argv.
+- Rejects source files over 64 MiB, fields over 64 KiB, and exports over 10,000 rows.
+- Shows the same masked review as raw import, then writes the vault once after confirmation.
 
 ## Second factors — true 2FA (UC-09)
 

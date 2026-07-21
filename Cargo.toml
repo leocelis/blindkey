@@ -54,6 +54,7 @@ libc             = "0.2"        # C12/C25 mlock + setrlimit (unix)
 clap             = { version = "4", features = ["derive"] }   # C21 CLI
 serde            = { version = "1", features = ["derive"] }   # C29 JSON export
 serde_json       = "1"                                        # C29 strict JSON serializer
+csv-core         = "0.1"                                      # UC-12 allocation-free RFC 4180 parser
 rpassword        = "7"          # C29 no-echo password prompt (no secrets on argv)
 ratatui          = "0.29"       # UC-18 TUI shell (pure-Rust, alt-screen secret hygiene)
 crossterm        = "0.28"       # TUI backend
