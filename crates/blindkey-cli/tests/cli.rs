@@ -64,12 +64,83 @@ fn sample_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../samples/keys.txt")
 }
 
+fn keepassxc_fixture_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../blindkey-core/tests/fixtures/keepassxc.csv")
+}
+
 fn unique_vault() -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
     std::env::temp_dir().join(format!("vault-it-{}-{}.vlt", std::process::id(), nanos))
+}
+
+#[test]
+fn keepassxc_csv_round_trips_into_vault_after_masked_review() {
+    let home = shared_home();
+    let vault = unique_vault();
+    let vs = vault.to_str().unwrap();
+    let fixture = keepassxc_fixture_path();
+    let fixture_path = fixture.to_str().unwrap();
+    let pw = "keepass-import-pass\n";
+
+    let (code, _, err) = run_env(
+        &home,
+        &[
+            "--vault",
+            vs,
+            "init",
+            "--allow-weak-password",
+            "--kdf-m-cost",
+            "8192",
+            "--kdf-t-cost",
+            "1",
+            "--kdf-p-cost",
+            "1",
+            "--allow-weak-kdf",
+        ],
+        pw,
+    );
+    assert_eq!(code, Some(0), "init: {err}");
+
+    let (code, _, err) = run_env(
+        &home,
+        &[
+            "--vault",
+            vs,
+            "import",
+            "--format",
+            "keepass-csv",
+            fixture_path,
+            "--yes",
+        ],
+        pw,
+    );
+    assert_eq!(code, Some(0), "import: {err}");
+    assert!(err.contains("Parsed 2 entries"), "stderr: {err}");
+    assert!(err.contains("+opa"), "masked preview missing: {err}");
+    assert!(
+        !err.contains("+opaque-password"),
+        "review leaked a password: {err}"
+    );
+
+    let bytes = std::fs::read(&vault).unwrap();
+    let reopened = blindkey_core::Vault::open(&bytes, b"keepass-import-pass").unwrap();
+    assert_eq!(reopened.version(), 2, "import must perform one save");
+    let github = reopened.get("GitHub, Inc.").expect("imported entry");
+    assert_eq!(github.username, "=opaque-user");
+    assert_eq!(github.password.expose().as_slice(), b"+opaque-password");
+    assert_eq!(github.url, "https://github.com");
+    assert_eq!(github.notes, "first line\nsecond line");
+    assert!(github.tags.iter().any(|tag| tag == "Work"));
+    assert_eq!(
+        github.otp_secret.as_ref().unwrap().expose().as_slice(),
+        b"otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP"
+    );
+
+    let _ = std::fs::remove_file(vault.with_extension("vlt.bak"));
+    let _ = std::fs::remove_file(&vault);
 }
 
 #[test]

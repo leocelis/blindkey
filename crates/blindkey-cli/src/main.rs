@@ -79,7 +79,7 @@ enum Command {
     },
     /// Import secrets from a file (e.g. a messy `keys.txt`) into the vault.
     Import {
-        /// Import format. Currently: `raw` (lenient `keys.txt` parser).
+        /// Import format: `raw`, `keepass-csv`, or `keepassxc-csv`.
         #[arg(long, default_value = "raw")]
         format: String,
         /// Source file to import.

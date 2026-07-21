@@ -26,6 +26,7 @@ blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
 zeroize.workspace = true
 secrecy.workspace = true
 thiserror.workspace = true
+csv-core.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

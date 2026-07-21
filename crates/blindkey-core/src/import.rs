@@ -9,14 +9,17 @@
 //! It is intentionally best-effort: the caller is expected to show the result for confirmation
 //! before saving (the parse is cheap to redo and the secrets are masked in review).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::format::entry::{CustomField, CustomValue, Entry, Protected};
+use zeroize::{Zeroize, Zeroizing};
 
 /// Hard caps so a pathological file can't blow up memory (UC-17 hostile-input posture).
 const MAX_BLOCKS: usize = 10_000;
 const MAX_LINE_LEN: usize = 64 * 1024;
+const MAX_CSV_ROWS: usize = 10_000;
+const MAX_CSV_FIELD_LEN: usize = 64 * 1024;
 
 /// Known secret prefixes used by the classifier (illustrative; tune against a real ruleset).
 const KNOWN_PREFIXES: &[&str] = &[
@@ -46,6 +49,203 @@ pub struct RawImport {
     pub blocks_skipped: usize,
 }
 
+/// Result of parsing a KeePassXC CSV export.
+#[derive(Debug)]
+pub struct KeepassCsvImport {
+    /// Parsed entries, ready for masked review and a single vault save.
+    pub entries: Vec<Entry>,
+    /// Header columns not used by Blindkey, reported as a count without exposing cell data.
+    pub unknown_columns: usize,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum KeepassColumn {
+    Group,
+    Title,
+    Username,
+    Password,
+    Url,
+    Notes,
+    Totp,
+    Ignore,
+}
+
+impl KeepassColumn {
+    fn from_header(header: &str) -> Self {
+        match header {
+            "group" => Self::Group,
+            "title" => Self::Title,
+            "username" | "user" => Self::Username,
+            "password" => Self::Password,
+            "url" | "uri" => Self::Url,
+            "notes" | "note" => Self::Notes,
+            "totp" | "otp" | "otpsecret" => Self::Totp,
+            _ => Self::Ignore,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Group => "Group",
+            Self::Title => "Title",
+            Self::Username => "Username",
+            Self::Password => "Password",
+            Self::Url => "URL",
+            Self::Notes => "Notes",
+            Self::Totp => "TOTP",
+            Self::Ignore => "unknown",
+        }
+    }
+}
+
+#[derive(Default)]
+struct KeepassRow {
+    group: String,
+    title: Option<String>,
+    username: String,
+    password: Option<Protected>,
+    url: String,
+    notes: String,
+    totp: Option<Protected>,
+}
+
+impl KeepassRow {
+    fn set(&mut self, column: KeepassColumn, field: &[u8], row: usize) -> Result<(), String> {
+        let value = std::str::from_utf8(field)
+            .map_err(|_| format!("KeePassXC CSV row {row} contains invalid UTF-8"))?;
+        match column {
+            KeepassColumn::Group => self.group = value.to_owned(),
+            KeepassColumn::Title => self.title = Some(value.to_owned()),
+            KeepassColumn::Username => self.username = value.to_owned(),
+            KeepassColumn::Password => self.password = Some(Protected::new(field.to_vec())),
+            KeepassColumn::Url => self.url = value.to_owned(),
+            KeepassColumn::Notes => self.notes = value.to_owned(),
+            KeepassColumn::Totp if !field.is_empty() => {
+                self.totp = Some(Protected::new(field.to_vec()));
+            }
+            KeepassColumn::Totp | KeepassColumn::Ignore => {}
+        }
+        Ok(())
+    }
+
+    fn finish(self, row: usize, now: i64) -> Result<Entry, String> {
+        let title = self
+            .title
+            .ok_or_else(|| format!("KeePassXC CSV row {row} is missing Title"))?;
+        if title.is_empty() {
+            return Err(format!("KeePassXC CSV row {row} has an empty Title"));
+        }
+        let password = self
+            .password
+            .ok_or_else(|| format!("KeePassXC CSV row {row} is missing Password"))?;
+        let mut tags = vec!["imported".to_string(), "keepassxc".to_string()];
+        if !self.group.is_empty() {
+            tags.push(self.group);
+        }
+        Ok(Entry {
+            id: random_id(),
+            title,
+            username: self.username,
+            password,
+            url: self.url,
+            notes: self.notes,
+            tags,
+            otp_secret: self.totp,
+            created_at: now,
+            modified_at: now,
+            expires_at: None,
+            custom_fields: Vec::new(),
+        })
+    }
+}
+
+/// Parse a KeePassXC CSV export as opaque RFC 4180 data.
+///
+/// Header names are matched case-insensitively and independently of column order. Both a UTF-8
+/// BOM and CRLF input are accepted. Cells are never evaluated or interpolated into commands.
+pub fn parse_keepassxc_csv(text: &str) -> Result<KeepassCsvImport, String> {
+    use csv_core::ReadFieldResult;
+
+    let mut reader = csv_core::Reader::new();
+    let mut input = text.as_bytes();
+    let mut field = Zeroizing::new(vec![0u8; MAX_CSV_FIELD_LEN + 1]);
+    let mut headers = Vec::new();
+    let mut columns: Option<Vec<KeepassColumn>> = None;
+    let mut column_index = 0usize;
+    let mut row = KeepassRow::default();
+    let now = now_unix();
+    let mut entries = Vec::new();
+    let mut unknown_columns = 0usize;
+
+    loop {
+        let (result, consumed, written) = reader.read_field(input, &mut field);
+        input = &input[consumed..];
+        match result {
+            ReadFieldResult::InputEmpty => continue,
+            ReadFieldResult::OutputFull => {
+                return Err(format!(
+                    "KeePassXC CSV field exceeds the {MAX_CSV_FIELD_LEN}-byte limit"
+                ));
+            }
+            ReadFieldResult::Field { record_end } => {
+                let value = &field[..written];
+                if let Some(columns) = columns.as_ref() {
+                    let csv_row = entries.len() + 2;
+                    let column = columns.get(column_index).copied().ok_or_else(|| {
+                        format!(
+                            "KeePassXC CSV row {csv_row} has more than {} columns",
+                            columns.len()
+                        )
+                    })?;
+                    row.set(column, value, csv_row)?;
+                } else {
+                    let header = std::str::from_utf8(value)
+                        .map_err(|_| "KeePassXC CSV header contains invalid UTF-8".to_string())?;
+                    headers.push(normalize_csv_header(header));
+                }
+                field[..written].zeroize();
+                column_index += 1;
+
+                if record_end {
+                    if let Some(columns) = columns.as_ref() {
+                        let csv_row = entries.len() + 2;
+                        if column_index != columns.len() {
+                            return Err(format!(
+                                "KeePassXC CSV row {csv_row} has {column_index} columns; expected {}",
+                                columns.len()
+                            ));
+                        }
+                        if entries.len() >= MAX_CSV_ROWS {
+                            return Err(format!(
+                                "KeePassXC CSV exceeds the {MAX_CSV_ROWS}-entry import limit"
+                            ));
+                        }
+                        entries.push(row.finish(csv_row, now)?);
+                        row = KeepassRow::default();
+                    } else {
+                        let parsed = parse_keepass_headers(&headers)?;
+                        unknown_columns = parsed
+                            .iter()
+                            .filter(|c| **c == KeepassColumn::Ignore)
+                            .count();
+                        columns = Some(parsed);
+                    }
+                    column_index = 0;
+                }
+            }
+            ReadFieldResult::End => break,
+        }
+    }
+
+    if columns.is_none() {
+        return Err("KeePassXC CSV has no header row".to_string());
+    }
+    Ok(KeepassCsvImport {
+        entries,
+        unknown_columns,
+    })
+}
+
 /// Parse a messy `keys.txt` into entries (use case UC-17).
 pub fn parse_raw(text: &str) -> RawImport {
     let mut entries = Vec::new();
@@ -62,6 +262,44 @@ pub fn parse_raw(text: &str) -> RawImport {
         entries,
         blocks_skipped: skipped,
     }
+}
+
+fn normalize_csv_header(header: &str) -> String {
+    header
+        .trim_start_matches('\u{feff}')
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
+}
+
+fn parse_keepass_headers(headers: &[String]) -> Result<Vec<KeepassColumn>, String> {
+    let columns: Vec<KeepassColumn> = headers
+        .iter()
+        .map(|header| KeepassColumn::from_header(header))
+        .collect();
+    let mut seen = HashSet::new();
+    for column in columns
+        .iter()
+        .copied()
+        .filter(|column| *column != KeepassColumn::Ignore)
+    {
+        if !seen.insert(column.name()) {
+            return Err(format!(
+                "KeePassXC CSV contains duplicate {} columns",
+                column.name()
+            ));
+        }
+    }
+    for required in [KeepassColumn::Title, KeepassColumn::Password] {
+        if !columns.contains(&required) {
+            return Err(format!(
+                "KeePassXC CSV is missing required {:?} column",
+                required.name().to_ascii_lowercase()
+            ));
+        }
+    }
+    Ok(columns)
 }
 
 /// Split into blocks on blank lines and `---` rulers; drop `#` comments and over-long lines.
@@ -344,5 +582,47 @@ mod tests {
         assert_eq!(r.entries.len(), 1);
         assert_eq!(r.entries[0].title, "db");
         assert!(pw(&r.entries[0]).starts_with(b"postgres://"));
+    }
+
+    #[test]
+    fn keepassxc_fixture_preserves_fields_and_opaque_cells() {
+        let csv = include_str!("../tests/fixtures/keepassxc.csv");
+        let r = parse_keepassxc_csv(csv).unwrap();
+        assert_eq!(r.entries.len(), 2);
+        assert_eq!(r.unknown_columns, 1);
+
+        let e = &r.entries[0];
+        assert_eq!(e.title, "GitHub, Inc.");
+        assert_eq!(e.username, "=opaque-user");
+        assert_eq!(pw(e), b"+opaque-password".to_vec());
+        assert_eq!(e.url, "https://github.com");
+        assert_eq!(e.notes, "first line\nsecond line");
+        assert!(e.tags.iter().any(|tag| tag == "Work"));
+        assert_eq!(
+            e.otp_secret.as_ref().unwrap().expose().as_slice(),
+            b"otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP"
+        );
+    }
+
+    #[test]
+    fn keepassxc_accepts_bom_crlf_and_reordered_headers() {
+        let csv = "\u{feff}Password,Notes,Title,URL,Username\r\nsecret,note,Example,https://e.test,user\r\n";
+        let r = parse_keepassxc_csv(csv).unwrap();
+        let e = &r.entries[0];
+        assert_eq!(e.title, "Example");
+        assert_eq!(e.username, "user");
+        assert_eq!(pw(e), b"secret".to_vec());
+    }
+
+    #[test]
+    fn keepassxc_rejects_missing_headers_and_malformed_rows() {
+        assert!(parse_keepassxc_csv("Title,Username\nExample,user\n")
+            .unwrap_err()
+            .contains("password"));
+        assert!(
+            parse_keepassxc_csv("Title,Password\nExample,secret,extra\n")
+                .unwrap_err()
+                .contains("row 2")
+        );
     }
 }
