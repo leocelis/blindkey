@@ -11,3 +11,7 @@ Each ADR is immutable once accepted; supersede rather than edit.
 | [0004](0004-data-key-keyed-hmacs.md) | Data-key-keyed HMACs; master_seed bound to body writes | Accepted (2026-06-26) |
 | [0005](0005-format-v1-freeze.md) | Freeze on-disk format at version 1 | Accepted (2026-06-26) |
 | [0006](0006-agent-broker-scaffold.md) | Agent broker scaffold (S-13) | Accepted (scaffold, 2026-06-26) |
+| [0007](0007-volume-magic-vltd.md) | Freeze UC-25 volume magic `VLTD` + extension `.vltd` | Accepted (2026-07-21) |
+| [0008](0008-volume-merkle-hmac-sha256.md) | UC-25 Merkle tree = HMAC-SHA-256 (v1) | Accepted (2026-07-21) |
+| [0009](0009-volume-mount-blindkey-fuse.md) | Mount adapter in `blindkey-fuse` crate | Accepted (2026-07-21) |
+| [0010](0010-volume-macos-mount-matrix.md) | macOS mount provider matrix | Accepted (2026-07-21) |

@@ -145,6 +145,55 @@ lane can build against from that point on.
 | S-21 | ✅ **Fleet deploy & quality gate** — env paths, release benches, C55–C60 | [UC-22](docs/specs/UC-22-enterprise-readiness.md) | S-20 | CP-7 automated gate |
 | S-18 | **SwiftUI macOS shell via `uniffi`** — Touch ID + Secure Enclave (C5), native menus | [UC-18](docs/specs/UC-18-native-ui.md) | CP-4 API + S-8d (keychain stanza) | **post-v1**; needs the SEP-API spike + ADR |
 | S-22 | ✅ **Sealed file storage** — `blindkey seal/open/peek`: any file/folder → one `.vltf` blob for untrusted clouds; zero plaintext metadata, Padmé default-on, streaming bounded-memory, fail-closed extraction | [UC-23](docs/specs/UC-23-sealed-file-storage.md) | v1.0 core + C61–C66 | **Shipped** (July 2026). CLI + GUI/TUI + stanza parity on `.vltf`. |
+| S-23 | ✅ **Local encrypted volume (live mount)** — PGP Disk / VeraCrypt-class `.vltd` workspace; MSV AEAD blocks + FUSE; CLI + macOS GUI; **not** cloud live-sync | [UC-25](docs/specs/UC-25-local-encrypted-volume.md) | C67–C74 | **Shipped** (July 2026): `blindkey-core::volume` (AEAD blocks, Kcom, HMAC-SHA-256 Merkle, local anchor, Padmé) + `blindkey volume` CLI verbs + Linux `blindkey-fuse` + GUI Create/Mount/Eject + fuzz + joint-satisfaction; C67–C74 PASS. **Remaining:** macOS FUSE provider (macFUSE/Fuse-T packaging; stub today) + harnessed 4K/sequential benches (honest: userspace FUSE loses to dm-crypt). |
+| S-25 | ✅ **Desktop UI IA & usability** — fonts/legibility gate, Credentials \| Workspace modes, mount honesty, WCAG AA chrome | [UC-26](docs/specs/UC-26-desktop-ui-information-architecture.md) | S-17 + S-20 + S-23 | **Shipped** (2026-07-29): `default_fonts` + AA theme; `GuiMode` Credentials\|Workspace; Seal secondary; mount honesty (C79); Advanced progressive disclosure; first-run/next-beat; C75–C81 PASS via `uc26_constraints.rs`. *(Note: S-24 remains MCP broker — do not renumber.)* |
+| S-26 | ✅ **Desktop UI visual craft** — form card, Spacing tokens, accent primary, trust-copy hygiene, Settings overflow | [UC-27](docs/specs/UC-27-desktop-ui-visual-craft.md) | S-25 | **Shipped** (2026-07-29): `apply_craft_style` + `FORM_WIDTH` card; accent Create/Unlock/Add; Settings window; Workspace/Seal accents; C82–C87 PASS via `uc27_constraints.rs`. *(Note: S-24 = MCP; S-25 = UC-26.)* |
+
+### S-25 delivery checklist (UC-26)
+
+| Seg | Work | Status |
+|-----|------|--------|
+| A0 | `default_fonts` + AA `theme.rs` | ✅ |
+| A1 | `GuiMode` + status chrome; Volume out of Credentials toolbar | ✅ |
+| A2 | First-run / next-beat / About trust / show-hide / microcopy | ✅ |
+| A3 | Workspace home + unlock honesty | ✅ |
+| A4 | Advanced disclosure + confirm-match / cancel / closure | ✅ |
+| A5 | `uc26_constraints.rs` T1–T12 | ✅ |
+| A6 | Intent G18 C75–C81 + CONSTRAINT_INDEX | ✅ |
+
+### S-26 delivery checklist (UC-27)
+
+| Seg | Work | Status |
+|-----|------|--------|
+| B0 | Tokens + Spacing + field fill/stroke in `theme.rs` | ✅ |
+| B1 | Locked unlock/create rewrite (CRAFT-01…06, 10, 13, 15) | ✅ |
+| B2 | Unlocked Settings overflow + Add accent (CRAFT-07, 11, 14) | ✅ |
+| B3 | Volume + Seal + Workspace home accent/width (CRAFT-08, 09, 12) | ✅ |
+| B4 | `uc27_constraints.rs` + GUI suites + clippy | ✅ |
+| B5 | Intent G19 C82–C87 + CONSTRAINT_INDEX + Implemented | ✅ |
+
+---
+
+### S-23 delivery plan (UC-25)
+
+Local encrypted workspace volume: create → mount → edit → umount. Sibling to shipped
+[UC-23](docs/specs/UC-23-sealed-file-storage.md) sealed archives (cloud); this track is
+**local-only** (no live RW + cloud sync). Spec: [UC-25 Accepted v0.5](docs/specs/UC-25-local-encrypted-volume.md).
+Constraints: **C67–C74** (G17) in [`blindkey_intent.yaml`](blindkey_intent.yaml) **v1.9.1**
+(FORWARD until ship). Research:
+[encrypted_volume_mount_research.md](research/encrypted_volume_mount_research.md),
+[encrypted_volume_maximum_security_research.md](research/encrypted_volume_maximum_security_research.md).
+
+| Phase | Work | Done when |
+|-------|------|-----------|
+| **Gate-0** | Accept UC-25; ADR freeze magic `VLTD` / `.vltd`; confirm merkle (HMAC-SHA-256 rec) + mount crate vs feature | Spec **Accepted 2026-07-21**; magic **[ADR-0007](docs/adr/0007-volume-magic-vltd.md)**; remaining ADRs before A2+ |
+| **A1–A4** | ✅ `blindkey-core::volume`: magic/kind → create/open/Kcom/dual header/Padmé → block store + virtual FS + Merkle + local anchor → fuzz + `uc25_joint_satisfaction` | **Done** — C67–C71, C74 core green; sealed `.vltf` regression (C61) still PASS |
+| **B1–B2** | ✅ CLI `volume create\|mount\|umount\|resize\|status\|trust-anchor` + `peek` magic dispatch on `.vltd`; Linux FUSE via `blindkey-fuse` ([ADR-0009](docs/adr/0009-volume-mount-blindkey-fuse.md)) | **Done (Linux)** — verbs + adapter build-green; no network on mount path (C23/C72); mount smoke on Linux CI |
+| **C1–C2** | macOS userspace provider (macFUSE FSKit / Fuse-T — [ADR-0010](docs/adr/0010-volume-macos-mount-matrix.md)); ✅ GUI Create/Mount/Eject + residual-risk banner + Seal CTA (thin shell over core) | GUI shell **done** (C72/C73 UX); macOS FUSE provider (non-stub) = remaining packaging lane |
+| **D** | ✅ Docs (`FILE_FORMAT`, `CRYPTO`, `CLI`, `THREAT_MODEL`, `ARCHITECTURE`, `CONSTRAINT_INDEX`); benches note (honest FUSE vs dm-crypt, [UC-25 §12.1](docs/specs/UC-25-local-encrypted-volume.md)); C67–C74 → PASS | **Done** — spec → Implemented; harnessed 4K/sequential benches follow with the FUSE lane |
+
+**Non-goals (v1):** VeraCrypt format compat; naked AES-XTS/XCB; cipher cascades; PD/ORAM;
+GPL cryptsetup in core; `hdiutil` as crypto core; Windows mount (WinFsp later).
 
 ---
 
@@ -185,5 +234,9 @@ secrets their AI tools touch. Expanding from "credential vault" to "developer se
 (file/blob encryption, secret injection into running apps without exposing plaintext to an agent)
 is the north star, scoped deliberately *after* the credential core is solid at 1.0.
 S-13 (agent interface) and **S-22 (sealed file storage, [UC-23](docs/specs/UC-23-sealed-file-storage.md)
-— now specced: research → patterns → PRD → forward constraints C61–C66 in intent v1.8.0 draft)**
-are the first concrete steps in that direction.
+— shipped: research → PRD → forward constraints C61–C66)** are the first concrete steps in that
+direction. **S-23 (local encrypted volume / live mount, [UC-25](docs/specs/UC-25-local-encrypted-volume.md)
+— Implemented v1.0: C67–C74 in intent **v1.9.1** now active; `blindkey-core::volume` + GUI
+Create/Mount/Eject shipped, fuzz + joint-satisfaction green)** is the PGP Disk / VeraCrypt-class
+workstation complement; the `blindkey volume` CLI verbs + userspace FUSE live-folder mount are the
+remaining Phase-B/C lane (see S-23 delivery plan above).

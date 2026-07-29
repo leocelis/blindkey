@@ -47,3 +47,9 @@ name = "vault_open"
 path = "fuzz_targets/vault_open.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "volume_block_parse"
+path = "fuzz_targets/volume_block_parse.rs"
+test = false
+doc = false

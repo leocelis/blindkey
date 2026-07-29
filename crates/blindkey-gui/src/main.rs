@@ -15,12 +15,16 @@
 
 mod clip;
 mod gui_config;
+mod gui_mode;
 mod keyfile_gui;
 mod list_virtualize;
 mod sealed_gui;
 mod search_cache;
+mod theme;
+mod volume_gui;
 
 use gui_config::{GuiConfig, REVEAL_TIMEOUT_SECS};
+use gui_mode::{GuiMode, SessionStatus};
 use keyfile_gui::{load_or_create_keyfile, recovery_code};
 
 use list_virtualize::{visible_slice_range, ENTRY_ROW_HEIGHT};
@@ -62,7 +66,10 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Blindkey",
         options,
-        Box::new(move |_cc| Ok(Box::new(VaultApp::new(path)))),
+        Box::new(move |cc| {
+            theme::apply_craft_style(&cc.egui_ctx);
+            Ok(Box::new(VaultApp::new(path)))
+        }),
     )
 }
 
@@ -118,6 +125,7 @@ struct ImportReview {
 struct KeyfileEnrollState {
     path: String,
     enroll_pw: String,
+    show_password: bool,
 }
 
 impl Drop for KeyfileEnrollState {
@@ -142,6 +150,9 @@ enum Action {
     DismissPre10,
     EnrollKeyfile,
     Audit,
+    SealFiles,
+    SwitchMode(GuiMode),
+    OpenSettings,
 }
 
 struct VaultApp {
@@ -192,8 +203,20 @@ struct VaultApp {
     display_items: Vec<(usize, String, Vec<u32>)>,
     display_total: usize,
 
+    /// UC-26 Credentials | Workspace mode (Seal is not a mode).
+    mode: GuiMode,
+    /// Show master passphrase while typing (NIST / IA-09).
+    show_master_pw: bool,
+    /// Credentials Settings window (UC-27 CRAFT-07).
+    settings_open: bool,
+    /// Offer the post-unlock “next beat” once after first unlock this install.
+    offer_next_beat: bool,
+
     /// UC-23 sealed file seal/open/peek (Phase C).
     sealed: sealed_gui::SealedGui,
+
+    /// UC-25 local encrypted volume create/mount/eject (Phase C).
+    volume: volume_gui::VolumeGui,
 }
 
 impl VaultApp {
@@ -231,7 +254,12 @@ impl VaultApp {
             entries_generation: 0,
             display_items: Vec::new(),
             display_total: 0,
+            mode: GuiMode::Credentials,
+            show_master_pw: false,
+            settings_open: false,
+            offer_next_beat: false,
             sealed: sealed_gui::SealedGui::new(),
+            volume: volume_gui::VolumeGui::new(),
         }
     }
 
@@ -244,7 +272,7 @@ impl VaultApp {
     /// Lock the vault when the idle timeout elapses or the window is minimized (UC-06). Returns
     /// `true` if it locked. Also schedules the next idle check so the timer fires while idle.
     fn enforce_auto_lock(&mut self, ctx: &egui::Context) {
-        if self.sealed.job_running() {
+        if self.sealed.job_running() || self.volume.job_running() {
             return;
         }
         // Any input this frame counts as activity.
@@ -304,7 +332,7 @@ impl VaultApp {
 
     /// Lock when the main window loses focus if the user enabled it (C47).
     fn enforce_focus_lock(&mut self, ctx: &egui::Context) -> bool {
-        if self.sealed.job_running() {
+        if self.sealed.job_running() || self.volume.job_running() {
             return false;
         }
         if !self.gui_config.lock_on_blur {
@@ -349,6 +377,7 @@ impl VaultApp {
         self.keyfile_enroll = Some(KeyfileEnrollState {
             path,
             enroll_pw: String::new(),
+            show_password: false,
         });
     }
 
@@ -455,6 +484,9 @@ impl VaultApp {
                 self.focus_search = true;
                 self.last_activity = Instant::now();
                 self.bump_entries_generation();
+                if !self.gui_config.dismissed_next_beat {
+                    self.offer_next_beat = true;
+                }
                 self.status = if self.rollback_warning.is_some() {
                     "Unlocked — review the rollback warning.".into()
                 } else if weak {
@@ -467,7 +499,9 @@ impl VaultApp {
                 self.pw_input.zeroize();
                 self.recovery_input.zeroize();
                 self.error = Some(match e {
-                    blindkey_core::Error::HeaderAuth => "Incorrect master password.".to_string(),
+                    blindkey_core::Error::HeaderAuth => {
+                        "Vault could not be unlocked. Check passphrase.".to_string()
+                    }
                     other => other.to_string(),
                 });
             }
@@ -481,7 +515,7 @@ impl VaultApp {
             return;
         }
         if self.pw_input != self.pw_confirm {
-            self.error = Some("Passwords do not match.".into());
+            self.error = Some("Passphrases don't match — retype confirm.".into());
             return;
         }
         // Root-of-trust gate: refuse a weak master password unless explicitly overridden.
@@ -522,7 +556,12 @@ impl VaultApp {
         self.pw_input.zeroize();
         self.pw_confirm.zeroize();
         self.focus_search = true;
-        self.status = "Vault created. Drop a keys.txt or add an entry to get started.".into();
+        self.gui_config.dismissed_first_run = true;
+        self.gui_config.save();
+        if !self.gui_config.dismissed_next_beat {
+            self.offer_next_beat = true;
+        }
+        self.status = "Vault created. Add an entry or open Workspace to create an encrypted folder.".into();
     }
 
     fn lock(&mut self) {
@@ -547,6 +586,7 @@ impl VaultApp {
         self.error = None;
         self.status.clear();
         self.focus_password = true;
+        self.settings_open = false;
     }
 
     /// Save the open vault to disk through the core's body-writing save (atomic, 0600), then advance
@@ -571,9 +611,9 @@ impl VaultApp {
         match clip::copy(&secret) {
             Ok(()) => {
                 clip::schedule_clear(secret, self.gui_config.clipboard_timeout_secs.max(1));
+                let _ = one_line(&title);
                 self.status = format!(
-                    "Copied {}'s password — clipboard clears in {}s. Clipboard is visible to other apps.",
-                    one_line(&title),
+                    "Copied. Clipboard clears in {}s.",
                     self.gui_config.clipboard_timeout_secs
                 );
                 // UC-19: learn the usage so this entry ranks higher next time; persist the bump
@@ -715,7 +755,7 @@ impl VaultApp {
             return;
         }
         self.bump_entries_generation();
-        self.status = format!("Saved {}.", one_line(&title));
+        self.status = "Entry saved.".into();
         self.editor = None;
         self.select_by_title(&title);
     }
@@ -798,11 +838,16 @@ impl VaultApp {
     }
 
     fn handle_dropped_files(&mut self, ctx: &egui::Context) {
-        if self.sealed.job_running() {
+        if self.sealed.job_running() || self.volume.job_running() {
             return;
         }
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
         if dropped.is_empty() {
+            return;
+        }
+        // A dropped `.vltd` routes to the volume mount flow (before sealed, which would otherwise
+        // treat the unknown file as something to seal).
+        if self.volume.handle_drops(&dropped) {
             return;
         }
         // Unlocked + single `.txt` → keys import (legacy path).
@@ -847,134 +892,187 @@ impl VaultApp {
 
     // ─── rendering ──────────────────────────────────────────────────────────
 
+    fn choose_vault_file(&mut self) {
+        if let Some(p) = rfd::FileDialog::new()
+            .set_title("Choose Blindkey vault")
+            .add_filter("Blindkey vault", &["vlt"])
+            .pick_file()
+        {
+            self.path = p;
+            self.vault_exists = self.path.exists();
+            self.error = None;
+            self.focus_password = true;
+            self.status = format!("Vault file: {}", self.path.display());
+        }
+    }
+
     fn locked_screen(&mut self, ctx: &egui::Context) {
         let creating = !self.vault_exists;
         let needs_keyfile = !creating && self.vault_needs_keyfile();
+        let first_run = creating && !self.gui_config.dismissed_first_run;
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add_space(60.0);
+            // Chrome band (CRAFT-10 / CRAFT-15 — title once here).
+            ui.add_space(theme::WINDOW_GUTTER);
+            ui.horizontal(|ui| {
+                ui.heading("Blindkey");
+                ui.label(format!("· {}", SessionStatus::Locked.label()));
+            });
+            ui.add_space(theme::SPACE_L);
+
+            let mut submit = false;
             ui.vertical_centered(|ui| {
-                ui.heading("🔒  Blindkey");
-                ui.add_space(4.0);
-                ui.label(if creating {
-                    "Create your vault — choose a master password you won't forget."
-                } else if needs_keyfile && self.use_recovery {
-                    "Enter your recovery code to unlock."
-                } else if needs_keyfile {
-                    "Enter master password and keyfile to unlock."
-                } else {
-                    "Enter your master password to unlock."
-                });
-                ui.add_space(20.0);
-                ui.weak("Drop a file or folder to seal · drop a .vltf to open");
-                ui.add_space(12.0);
+                theme::form_card(ui, |ui| {
+                    // Exactly one trust line (CRAFT-03 / C85).
+                    ui.weak("Local only. No account. No cloud.");
+                    ui.add_space(theme::SPACE_M);
 
-                let mut submit = false;
-                if needs_keyfile {
-                    ui.checkbox(&mut self.use_recovery, "Use recovery code (lost keyfile)");
-                    ui.add_space(6.0);
-                }
-
-                if needs_keyfile && self.use_recovery {
-                    ui.label("Recovery code");
-                    let rc = ui.add(
-                        egui::TextEdit::singleline(&mut self.recovery_input)
-                            .password(true)
-                            .desired_width(320.0),
-                    );
-                    if self.focus_password {
-                        rc.request_focus();
-                        self.focus_password = false;
-                    }
-                    if rc.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        submit = true;
-                    }
-                } else {
-                    ui.label("Master password");
-                    let pw = ui.add(
-                        egui::TextEdit::singleline(&mut self.pw_input)
-                            .password(true)
-                            .hint_text("Master password")
-                            .desired_width(320.0),
-                    );
-                    if self.focus_password {
-                        pw.request_focus();
-                        self.focus_password = false;
-                    }
-                    if pw.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        submit = true;
-                    }
-
-                    if needs_keyfile {
-                        ui.add_space(6.0);
-                        ui.label("Keyfile path");
+                    if first_run {
+                        // CRAFT-06 / H2: choice strip alone — no competing form primary yet.
+                        ui.label(
+                            "Blindkey keeps secrets and encrypted folders on this computer.",
+                        );
+                        ui.add_space(theme::SPACE_S);
                         ui.horizontal(|ui| {
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.keyfile_path)
-                                    .desired_width(220.0)
-                                    .hint_text("/path/to/vault.key"),
-                            );
-                            if ui.button("Choose…").clicked() {
-                                if let Some(p) = rfd::FileDialog::new()
-                                    .set_title("Choose keyfile")
-                                    .pick_file()
-                                {
-                                    self.keyfile_path = p.display().to_string();
-                                }
+                            let half = (theme::FORM_WIDTH - theme::SPACE_S) / 2.0;
+                            if theme::secondary_button(ui, "Create vault", half).clicked() {
+                                self.gui_config.dismissed_first_run = true;
+                                self.gui_config.save();
+                            }
+                            if theme::secondary_button(ui, "Open existing…", half).clicked() {
+                                self.choose_vault_file();
+                                self.gui_config.dismissed_first_run = true;
+                                self.gui_config.save();
                             }
                         });
-                    }
-                }
-
-                if creating && !self.pw_input.is_empty() {
-                    let (bits, label, color) = strength_meter(&self.pw_input);
-                    ui.add_space(4.0);
-                    ui.colored_label(color, format!("Strength: ~{bits:.0} bits ({label})"));
-                    if bits < blindkey_core::audit::WEAK_MASTER_BITS {
-                        ui.checkbox(
-                            &mut self.allow_weak_create,
-                            "⚠ Create anyway (weak password)",
-                        );
-                    }
-                }
-
-                if creating {
-                    ui.add_space(6.0);
-                    ui.label("Confirm password");
-                    let cf = ui.add(
-                        egui::TextEdit::singleline(&mut self.pw_confirm)
-                            .password(true)
-                            .hint_text("Confirm password")
-                            .desired_width(320.0),
-                    );
-                    if cf.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        submit = true;
-                    }
-                }
-
-                ui.add_space(14.0);
-                if ui
-                    .add_sized(
-                        [320.0, 30.0],
-                        egui::Button::new(if creating { "Create vault" } else { "Unlock" }),
-                    )
-                    .clicked()
-                {
-                    submit = true;
-                }
-
-                if let Some(err) = &self.error {
-                    ui.add_space(10.0);
-                    ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
-                }
-
-                if submit {
-                    if creating {
-                        self.try_create();
                     } else {
-                        self.try_unlock();
+                        ui.label(if creating {
+                            "Create your vault — choose a strong passphrase. You cannot recover it if forgotten."
+                        } else if needs_keyfile && self.use_recovery {
+                            "Enter your recovery code to unlock."
+                        } else if needs_keyfile {
+                            "Enter master password and keyfile to unlock."
+                        } else {
+                            "Enter your master password to unlock."
+                        });
+                        ui.add_space(theme::SPACE_M);
+
+                        if needs_keyfile {
+                            ui.checkbox(&mut self.use_recovery, "Use recovery code (lost keyfile)");
+                            ui.add_space(theme::SPACE_S);
+                        }
+
+                        if needs_keyfile && self.use_recovery {
+                            let rc = theme::labeled_secret_row(
+                                ui,
+                                "Recovery code",
+                                &mut self.recovery_input,
+                                &mut self.show_master_pw,
+                                &mut self.focus_password,
+                            );
+                            if rc.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                submit = true;
+                            }
+                        } else {
+                            let pw = theme::labeled_secret_row(
+                                ui,
+                                "Master password",
+                                &mut self.pw_input,
+                                &mut self.show_master_pw,
+                                &mut self.focus_password,
+                            );
+                            if pw.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                submit = true;
+                            }
+
+                            if needs_keyfile {
+                                ui.add_space(theme::SPACE_S);
+                                ui.label("Keyfile path");
+                                ui.horizontal(|ui| {
+                                    let field_w = theme::secret_field_width();
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut self.keyfile_path)
+                                            .desired_width(field_w)
+                                            .hint_text("/path/to/vault.key"),
+                                    );
+                                    if ui.button("Choose…").clicked() {
+                                        if let Some(p) = rfd::FileDialog::new()
+                                            .set_title("Choose keyfile")
+                                            .pick_file()
+                                        {
+                                            self.keyfile_path = p.display().to_string();
+                                        }
+                                    }
+                                });
+                            }
+                        }
+
+                        if creating && !self.pw_input.is_empty() {
+                            let (bits, label, color) = strength_meter(&self.pw_input);
+                            ui.add_space(theme::SPACE_XS);
+                            ui.colored_label(color, format!("Strength: ~{bits:.0} bits ({label})"));
+                            if bits < blindkey_core::audit::WEAK_MASTER_BITS {
+                                ui.checkbox(
+                                    &mut self.allow_weak_create,
+                                    "Create anyway (weak password)",
+                                );
+                            }
+                        }
+
+                        if creating {
+                            ui.add_space(theme::SPACE_S);
+                            let cf = theme::labeled_secret_confirm(
+                                ui,
+                                "Confirm password",
+                                &mut self.pw_confirm,
+                                self.show_master_pw,
+                            );
+                            if cf.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                submit = true;
+                            }
+                        }
+
+                        ui.add_space(theme::SPACE_L);
+                        if theme::primary_button(
+                            ui,
+                            if creating { "Create vault" } else { "Unlock" },
+                            theme::FORM_WIDTH,
+                        )
+                        .clicked()
+                        {
+                            submit = true;
+                        }
+
+                        ui.add_space(theme::SPACE_S);
+                        if ui.button("Choose vault file…").clicked() {
+                            self.choose_vault_file();
+                        }
                     }
-                }
+
+                    // One caption block (CRAFT-13) — always visible for path context.
+                    ui.add_space(theme::SPACE_S);
+                    theme::vault_path_caption(ui, &self.path);
+
+                    if let Some(err) = &self.error {
+                        ui.add_space(theme::SPACE_M);
+                        ui.colored_label(theme::DANGER, err);
+                    }
+                });
             });
+
+            // Footer band (CRAFT-10 / CRAFT-09).
+            ui.add_space(theme::SPACE_XL);
+            ui.vertical_centered(|ui| {
+                theme::caption(ui, "Drop a file or folder to seal · drop a .vltf to open");
+            });
+
+            if submit {
+                if creating {
+                    self.try_create();
+                } else {
+                    self.try_unlock();
+                }
+            }
         });
     }
 
@@ -1001,10 +1099,6 @@ impl VaultApp {
         self.ensure_search_cache();
         let items = &self.display_items;
         let total = self.display_total;
-        let mut pad_on = matches!(
-            self.vault.as_ref().expect("unlocked").padding(),
-            blindkey_core::pad::PadMode::Padme
-        );
 
         // Keyboard-first navigation (when no overlay is open): ↑/↓ move the selection and Enter
         // copies the selected password — type-to-search then Enter, like the TUI.
@@ -1060,84 +1154,60 @@ impl VaultApp {
                 ui.add_space(2.0);
             }
             ui.add_space(4.0);
+            let status_label = match self.mode {
+                GuiMode::Credentials => SessionStatus::Unlocked.label(),
+                GuiMode::Workspace => self.volume.session_status().label(),
+            };
             ui.horizontal(|ui| {
                 ui.heading("Blindkey");
+                for m in [GuiMode::Credentials, GuiMode::Workspace] {
+                    if ui.selectable_label(self.mode == m, m.label()).clicked() {
+                        action = Some(Action::SwitchMode(m));
+                    }
+                }
+                ui.separator();
+                ui.label(format!("Status: {status_label}"));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("🔒 Lock").clicked() {
+                    if theme::secondary_button(ui, "Lock", 72.0).clicked() {
                         action = Some(Action::Lock);
                     }
-                    let mut lob = self.gui_config.lock_on_blur;
                     if ui
-                        .checkbox(&mut lob, "Lock on blur")
-                        .on_hover_text("Lock immediately when the window loses focus (C47).")
-                        .changed()
+                        .button("Seal files…")
+                        .on_hover_text("Encrypt a file or folder to a .vltf for Dropbox/USB.")
+                        .clicked()
                     {
-                        self.gui_config.lock_on_blur = lob;
-                        self.gui_config.save();
-                    }
-                    let mut ct = self.gui_config.clipboard_timeout_secs;
-                    egui::ComboBox::from_id_salt("clip_timeout")
-                        .selected_text(format!("Clipboard: {ct}s"))
-                        .show_ui(ui, |ui| {
-                            for s in [15u64, 30, 60] {
-                                if ui
-                                    .selectable_value(&mut ct, s, format!("{s}s"))
-                                    .clicked()
-                                {
-                                    action = Some(Action::SetClipboardTimeout(s));
-                                }
-                            }
-                        });
-                    let mut al = self.auto_lock_secs;
-                    egui::ComboBox::from_id_salt("autolock")
-                        .selected_text(format!("Auto-lock: {}", auto_lock_label(al)))
-                        .show_ui(ui, |ui| {
-                            for secs in [60u64, 300, 900, 1800, 0] {
-                                if ui
-                                    .selectable_value(&mut al, secs, auto_lock_label(secs))
-                                    .clicked()
-                                {
-                                    action = Some(Action::SetAutoLock(secs));
-                                }
-                            }
-                        });
-                    if ui
-                        .checkbox(&mut pad_on, "Pad size")
-                        .on_hover_text(
-                            "Hide the file's exact size (Padmé padding) — better privacy on \
-                             untrusted storage, ≤ ~12% larger.",
-                        )
-                        .changed()
-                    {
-                        action = Some(Action::SetPadding(pad_on));
-                    }
-                    if ui.button("🩺 Audit").clicked() {
-                        action = Some(Action::Audit);
-                    }
-                    if self.vault.as_ref().is_some_and(|v| !v.is_2fa())
-                        && ui.button("🔑 Keyfile 2FA").clicked()
-                    {
-                        action = Some(Action::EnrollKeyfile);
-                    }
-                    if ui.button("Import keys.txt").clicked() {
-                        action = Some(Action::ChooseImport);
-                    }
-                    if ui.button("➕ Add").clicked() {
-                        action = Some(Action::Add);
+                        action = Some(Action::SealFiles);
                     }
                 });
             });
-            ui.add_space(2.0);
-            let search = ui.add(
-                egui::TextEdit::singleline(&mut self.query)
-                    .hint_text(
-                        "🔎 Fuzzy search (⌘K) — titles, usernames, urls, tags only (never passwords)",
-                    )
-                    .desired_width(f32::INFINITY),
-            );
-            if self.focus_search {
-                search.request_focus();
-                self.focus_search = false;
+            if matches!(self.mode, GuiMode::Credentials) {
+                ui.horizontal(|ui| {
+                    ui.weak("Local only. No account. No cloud.");
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if theme::primary_button(ui, "Add", 72.0).clicked() {
+                            action = Some(Action::Add);
+                        }
+                        if ui.button("Settings…").clicked() {
+                            action = Some(Action::OpenSettings);
+                        }
+                    });
+                });
+            } else {
+                ui.weak("Local only. No account. No cloud.");
+            }
+            if matches!(self.mode, GuiMode::Credentials) {
+                ui.add_space(2.0);
+                let search = ui.add(
+                    egui::TextEdit::singleline(&mut self.query)
+                        .hint_text(
+                            "Fuzzy search (⌘K) — titles, usernames, urls, tags only (never passwords)",
+                        )
+                        .desired_width(f32::INFINITY),
+                );
+                if self.focus_search {
+                    search.request_focus();
+                    self.focus_search = false;
+                }
             }
             ui.add_space(4.0);
         });
@@ -1157,7 +1227,13 @@ impl VaultApp {
             ui.add_space(2.0);
         });
 
-        // Left: entry list.
+        if matches!(self.mode, GuiMode::Workspace) {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                self.volume.workspace_home(ui);
+            });
+        } else {
+        // Left: entry list (Credentials mode).
+
         egui::SidePanel::left("entries")
             .resizable(true)
             .default_width(300.0)
@@ -1169,7 +1245,22 @@ impl VaultApp {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         if items.is_empty() {
-                            ui.weak("No matching entries.");
+                            ui.weak(if total == 0 {
+                                "No entries yet — Add an entry, or Import keys.txt."
+                            } else {
+                                "No matching entries."
+                            });
+                            if total == 0 {
+                                ui.add_space(8.0);
+                                ui.horizontal(|ui| {
+                                    if theme::primary_button(ui, "Add entry", 120.0).clicked() {
+                                        action = Some(Action::Add);
+                                    }
+                                    if ui.button("Import keys.txt").clicked() {
+                                        action = Some(Action::ChooseImport);
+                                    }
+                                });
+                            }
                             return;
                         }
                         let scroll_off = (-ui.min_rect().top()).max(0.0);
@@ -1204,7 +1295,13 @@ impl VaultApp {
             let Some(idx) = self.selected.filter(|&i| i < total) else {
                 ui.add_space(40.0);
                 ui.vertical_centered(|ui| {
-                    ui.weak("Select an entry to view it, or drop a keys.txt to import.");
+                    ui.weak("No entries yet — Add an entry, or Import keys.txt.");
+                    if theme::primary_button(ui, "Add entry", 120.0).clicked() {
+                        action = Some(Action::Add);
+                    }
+                    if ui.button("Import keys.txt").clicked() {
+                        action = Some(Action::ChooseImport);
+                    }
                 });
                 return;
             };
@@ -1265,7 +1362,7 @@ impl VaultApp {
                     ui.label("Password");
                     ui.horizontal(|ui| {
                         ui.monospace(&pw_shadow);
-                        if ui.button("📋 Copy").clicked() {
+                        if ui.button("Copy").clicked() {
                             action = Some(Action::CopyPassword(idx));
                         }
                         let reveal_label = if self.reveal { "Hide" } else { "Reveal" };
@@ -1313,6 +1410,8 @@ impl VaultApp {
                 action = Some(Action::Edit(idx));
             }
         });
+
+        } // end Credentials mode panels
 
         if let Some(a) = action {
             match a {
@@ -1365,6 +1464,150 @@ impl VaultApp {
                         ));
                     }
                 }
+                Action::SealFiles => {
+                    if let Some(p) = rfd::FileDialog::new()
+                        .set_title("Choose a file to seal")
+                        .pick_file()
+                    {
+                        self.sealed.open_seal_dialog(vec![p]);
+                    }
+                }
+                Action::SwitchMode(m) => {
+                    self.mode = m;
+                }
+                Action::OpenSettings => {
+                    self.settings_open = true;
+                }
+            }
+        }
+    }
+
+    /// Credentials settings (UC-27 CRAFT-07 / C87) — progressive disclosure.
+    fn settings_window(&mut self, ctx: &egui::Context) {
+        if !self.settings_open {
+            return;
+        }
+        let mut close = false;
+        let mut action: Option<Action> = None;
+        let mut pad_on = matches!(
+            self.vault.as_ref().map(|v| v.padding()),
+            Some(blindkey_core::pad::PadMode::Padme)
+        );
+        let mut open = self.settings_open;
+
+        egui::Window::new("Settings")
+            .collapsible(false)
+            .resizable(true)
+            .default_width(420.0)
+            .max_width(theme::SETTINGS_CONTENT_MAX)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .open(&mut open)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.set_max_width(theme::SETTINGS_CONTENT_MAX);
+                    ui.heading("Vault");
+                    ui.add_space(theme::SPACE_S);
+                    if ui
+                        .checkbox(&mut pad_on, "Pad size")
+                        .on_hover_text("Hide exact vault size (Padmé) on untrusted storage.")
+                        .changed()
+                    {
+                        action = Some(Action::SetPadding(pad_on));
+                    }
+                    let mut al = self.auto_lock_secs;
+                    egui::ComboBox::from_id_salt("settings_autolock")
+                        .selected_text(format!("Auto-lock: {}", auto_lock_label(al)))
+                        .show_ui(ui, |ui| {
+                            for secs in [60u64, 300, 900, 1800, 0] {
+                                if ui
+                                    .selectable_value(&mut al, secs, auto_lock_label(secs))
+                                    .clicked()
+                                {
+                                    action = Some(Action::SetAutoLock(secs));
+                                }
+                            }
+                        });
+                    let mut ct = self.gui_config.clipboard_timeout_secs;
+                    egui::ComboBox::from_id_salt("settings_clip")
+                        .selected_text(format!("Clipboard clear: {ct}s"))
+                        .show_ui(ui, |ui| {
+                            for s in [15u64, 30, 60] {
+                                if ui.selectable_value(&mut ct, s, format!("{s}s")).clicked() {
+                                    action = Some(Action::SetClipboardTimeout(s));
+                                }
+                            }
+                        });
+                    let mut lob = self.gui_config.lock_on_blur;
+                    if ui
+                        .checkbox(&mut lob, "Lock on blur")
+                        .on_hover_text("Lock when the window loses focus (C47).")
+                        .changed()
+                    {
+                        self.gui_config.lock_on_blur = lob;
+                        self.gui_config.save();
+                    }
+
+                    ui.add_space(theme::SPACE_L);
+                    ui.heading("Security");
+                    ui.add_space(theme::SPACE_S);
+                    if ui.button("Audit passwords…").clicked() {
+                        action = Some(Action::Audit);
+                    }
+                    if self.vault.as_ref().is_some_and(|v| !v.is_2fa())
+                        && ui.button("Enroll keyfile 2FA…").clicked()
+                    {
+                        action = Some(Action::EnrollKeyfile);
+                    }
+
+                    ui.add_space(theme::SPACE_L);
+                    ui.heading("Import");
+                    ui.add_space(theme::SPACE_S);
+                    if ui.button("Import keys.txt…").clicked() {
+                        action = Some(Action::ChooseImport);
+                    }
+
+                    ui.add_space(theme::SPACE_L);
+                    if ui.button("Close").clicked() {
+                        close = true;
+                    }
+                });
+            });
+
+        self.settings_open = open && !close;
+        if let Some(a) = action {
+            match a {
+                Action::SetPadding(on) => self.set_padding(on),
+                Action::SetAutoLock(secs) => {
+                    self.auto_lock_secs = secs;
+                    self.gui_config.auto_lock_secs = secs;
+                    self.gui_config.save();
+                    self.last_activity = Instant::now();
+                    self.status = format!("Auto-lock set to {}.", auto_lock_label(secs));
+                }
+                Action::SetClipboardTimeout(secs) => {
+                    self.gui_config.clipboard_timeout_secs = secs;
+                    self.gui_config.save();
+                    self.status = format!("Clipboard clears after {secs}s.");
+                }
+                Action::ChooseImport => self.choose_and_load_import(),
+                Action::EnrollKeyfile => {
+                    if let Some(p) = rfd::FileDialog::new()
+                        .set_title("Create or choose keyfile path")
+                        .save_file()
+                    {
+                        self.start_keyfile_enroll(p.display().to_string());
+                    }
+                }
+                Action::Audit => {
+                    if let Some(v) = self.vault.as_ref() {
+                        self.audit_report = Some(blindkey_core::audit::analyze(
+                            v.entries(),
+                            now_unix(),
+                            &blindkey_core::audit::AuditConfig::default(),
+                        ));
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -1468,16 +1711,24 @@ impl VaultApp {
                         });
 
                     if let Some(err) = &ed.error {
-                        ui.add_space(4.0);
-                        ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
+                        ui.add_space(theme::SPACE_XS);
+                        ui.colored_label(theme::DANGER, err);
                     }
 
                     ui.separator();
                     ui.horizontal(|ui| {
-                        if ui.button("Save").clicked() {
+                        let can_save = !ed.title.trim().is_empty();
+                        // Editor primary = Save (same accent weight as Add — research §4.3 / §8.1).
+                        let save = ui.add_enabled(
+                            can_save,
+                            egui::Button::new("Save")
+                                .fill(theme::ACCENT)
+                                .min_size(egui::vec2(72.0, theme::PRIMARY_BTN_HEIGHT)),
+                        );
+                        if save.clicked() {
                             commit = true;
                         }
-                        if ui.button("Cancel").clicked() {
+                        if theme::secondary_button(ui, "Cancel", 72.0).clicked() {
                             cancel = true;
                         }
                         if editing {
@@ -1485,12 +1736,15 @@ impl VaultApp {
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
                                     if !ed.confirm_delete {
-                                        if ui.button("🗑 Delete").clicked() {
+                                        if theme::danger_button(ui, "🗑 Delete", 88.0).clicked() {
                                             ed.confirm_delete = true;
                                         }
-                                    } else if ui
-                                        .button("Confirm delete — this can't be undone")
-                                        .clicked()
+                                    } else if theme::danger_button(
+                                        ui,
+                                        "Confirm delete — this can't be undone",
+                                        280.0,
+                                    )
+                                    .clicked()
                                     {
                                         delete = true;
                                     }
@@ -1728,16 +1982,18 @@ impl VaultApp {
                 .show(ctx, |ui| {
                     ui.label(format!("Keyfile path: {}", st.path));
                     ui.label("Re-enter your master password to confirm. Keep the keyfile on a separate device.");
-                    ui.add_space(6.0);
-                    ui.label("Master password");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut st.enroll_pw)
-                            .password(true)
-                            .desired_width(280.0),
+                    ui.add_space(theme::SPACE_S);
+                    let mut focus = false;
+                    theme::labeled_secret_row(
+                        ui,
+                        "Master password",
+                        &mut st.enroll_pw,
+                        &mut st.show_password,
+                        &mut focus,
                     );
-                    ui.add_space(8.0);
+                    ui.add_space(theme::SPACE_S);
                     ui.horizontal(|ui| {
-                        if ui.button("Enroll").clicked() {
+                        if theme::primary_button(ui, "Enroll", 100.0).clicked() {
                             confirm = true;
                         }
                         if ui.button("Cancel").clicked() {
@@ -1776,6 +2032,51 @@ impl VaultApp {
             self.recovery_reveal = None;
         }
     }
+
+    /// UC-26 post-unlock next beat (dismissible forever).
+    fn next_beat_window(&mut self, ctx: &egui::Context) {
+        if !self.offer_next_beat {
+            return;
+        }
+        let mut dismiss = false;
+        let mut add = false;
+        let mut workspace = false;
+        egui::Window::new("Next steps")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.label("Next: Add an API key, or open Workspace to create an encrypted folder.");
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    if theme::primary_button(ui, "Add entry", 100.0).clicked() {
+                        add = true;
+                    }
+                    if ui.button("Open Workspace").clicked() {
+                        workspace = true;
+                    }
+                    if ui.button("Not now").clicked() {
+                        dismiss = true;
+                    }
+                });
+            });
+        if add {
+            self.offer_next_beat = false;
+            self.gui_config.dismissed_next_beat = true;
+            self.gui_config.save();
+            self.mode = GuiMode::Credentials;
+            self.editor = Some(Editor::new_add());
+        } else if workspace {
+            self.offer_next_beat = false;
+            self.gui_config.dismissed_next_beat = true;
+            self.gui_config.save();
+            self.mode = GuiMode::Workspace;
+        } else if dismiss {
+            self.offer_next_beat = false;
+            self.gui_config.dismissed_next_beat = true;
+            self.gui_config.save();
+        }
+    }
 }
 
 impl eframe::App for VaultApp {
@@ -1789,8 +2090,26 @@ impl eframe::App for VaultApp {
             self.error = Some(err);
         }
 
+        self.volume.poll_worker(ctx);
+        if let Some(msg) = self.volume.take_status() {
+            self.status = msg;
+            self.error = None;
+        }
+        if let Some(err) = self.volume.take_error() {
+            self.error = Some(err);
+        }
+        if self.volume.take_seal_request() {
+            if let Some(p) = rfd::FileDialog::new()
+                .set_title("Choose a file to seal")
+                .pick_file()
+            {
+                self.sealed.open_seal_dialog(vec![p]);
+            }
+        }
+
         self.handle_dropped_files(ctx);
         self.sealed.windows(ctx);
+        self.volume.windows(ctx);
 
         if self.vault.is_some() {
             self.enforce_auto_lock(ctx);
@@ -1800,12 +2119,14 @@ impl eframe::App for VaultApp {
             self.enforce_reveal_timeout(ctx);
             self.enforce_otp_live_refresh(ctx);
             self.unlocked_screen(ctx);
+            self.settings_window(ctx);
             self.editor_window(ctx);
             self.import_window(ctx);
             self.keyfile_enroll_window(ctx);
             self.recovery_reveal_window(ctx);
             self.rollback_modal(ctx);
             self.audit_modal(ctx);
+            self.next_beat_window(ctx);
         } else {
             self.locked_screen(ctx);
         }

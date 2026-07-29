@@ -28,6 +28,8 @@ Blindkey is a Cargo workspace with a deliberately small, auditable security core
 │  memory/     Secret/Zeroizing types · mlock · constant-time  │  C11–C13, C25, C33
 │  search/     fuzzy metadata search (in-memory only)          │  C35–C39
 │  rollback/   monotonic counter · local anchor · atomic save  │  C16, C32
+│  sealed/     sealed file containers (.vltf) — UC-23          │  C61–C66
+│  volume/     local encrypted volume (.vltd) — UC-25          │  C67–C74
 └───────────────┬─────────────────────────────────────────────┘
                 │ uses
 ┌───────────────▼─────────────────────────────────────────────┐
@@ -38,8 +40,23 @@ Blindkey is a Cargo workspace with a deliberately small, auditable security core
 │  blindkey-hardware  (optional crate, feature-gated)             │
 │  v1 shipped: YubiKey CR (`ykman`) · keyfile 2FA              │
 │  mock/stub only: FIDO2 (libfido2) · TPM · SE · DPAPI (S-8*)  │  C14, C15
-└─────────────────────────────────────────────────────────────┘
+└───────────────┬─────────────────────────────────────────────┘
+                │ Phase B/C (in progress)
+┌───────────────▼─────────────────────────────────────────────┐
+│  blindkey-fuse (or CLI feature `volume-mount`) — FUSE adapter   │  C72
+│  over blindkey-core::volume; no crypto in the adapter           │
+└───────────────────────────────────────────────────────────────┘
 ```
+
+> **UC-25 (Implemented v1.0):** live local volumes — see
+> [specs/UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md).
+> The `volume/` module (fixed-size AEAD blocks, Kcom, HMAC-SHA-256 Merkle tree, local freshness
+> anchor, Padmé) and the desktop GUI Create/Mount/Eject shell are **shipped**; kind table
+> (`MAGIC_VLTD` / `ContainerKind::Volume`) frozen in [ADR-0007](adr/0007-volume-magic-vltd.md),
+> merkle [ADR-0008](adr/0008-volume-merkle-hmac-sha256.md), mount crate
+> [ADR-0009](adr/0009-volume-mount-blindkey-fuse.md), macOS matrix
+> [ADR-0010](adr/0010-volume-macos-mount-matrix.md). The `blindkey volume` CLI verbs and userspace
+> FUSE live-folder mount are the remaining Phase-B/C lane.
 
 ## Why this shape
 

@@ -26,6 +26,14 @@ pub enum Error {
     #[error("sealed container could not be opened")]
     SealedOpenFailed,
 
+    /// A volume could not be opened — uniform message (C74 / C64, no format oracle).
+    #[error("volume could not be opened")]
+    VolumeOpenFailed,
+
+    /// Volume local freshness anchor mismatch (C70) — fail closed.
+    #[error("volume freshness anchor mismatch; use `blindkey volume trust-anchor` on a new device")]
+    VolumeAnchorMismatch,
+
     /// The file was created by a newer, unsupported format version (constraint C7).
     #[error("vault was created by a newer version of this tool; please upgrade")]
     NewerVersion,

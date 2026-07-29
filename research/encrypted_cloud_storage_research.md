@@ -15,6 +15,11 @@
 > gap-fill pass on threat-modeling/key-management/practitioner friction.
 > Markers: ✓ verified against primary source · ~ inferred/corroborated ·
 > ? unverified (flagged inline — check before relying on it for a security decision).
+>
+> **See also (live mount / PGP Disk class, 2026-07-21):**
+> [`encrypted_volume_mount_research.md`](encrypted_volume_mount_research.md) ·
+> [`encrypted_volume_maximum_security_research.md`](encrypted_volume_maximum_security_research.md)
+> (algorithm study + MSV crypto profile).
 
 ---
 

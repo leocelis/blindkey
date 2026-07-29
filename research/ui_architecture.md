@@ -9,6 +9,17 @@
 > **Scope:** how a *graphical or terminal* front-end should sit on top of the Rust `blindkey-core`
 > security boundary without weakening it. Not about the crypto (that is `vault_spec.md`); about the
 > presentation layer and the trust boundary between it and the core.
+>
+> **IA / usable-security companion (2026-07-29):**
+> [`desktop_security_ui_research.md`](desktop_security_ui_research.md) — academic papers (Whitten/Tygar,
+> Chiasson, SOUPS), Nielsen/Shneiderman UX heuristics, progressive disclosure, journey maps,
+> NIST / WCAG / Apple HIG / Fluent, Cryptomator patterns, and Blindkey Credentials vs Workspace
+> mode + “great experience” playbook. Read that for *what* screens and *how it should feel*;
+> this file for *which toolkit* may render them.
+>
+> **Visual craft companion (2026-07-29):**
+> [`desktop_app_ui_ux_research.md`](desktop_app_ui_ux_research.md) — desktop UI history (PARC →
+> Liquid Glass), layout/spacing/type systems, screenshot diagnosis, egui craft playbook.
 
 ---
 

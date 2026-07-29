@@ -108,3 +108,44 @@ store-now-decrypt-later exposure but wrap only the data key; the password stanza
 `format_version = 2` may add hybrid-PQ stanza types per ADR-0005 deferral.
 
 Canonical user statement: [guides/post-quantum-posture.md](guides/post-quantum-posture.md).
+
+## Related formats
+
+| Kind | Magic | Spec |
+|------|-------|------|
+| Credential vault | `VLT\0` | this document |
+| Sealed file archive | `VLTF` | [UC-23](specs/UC-23-sealed-file-storage.md) |
+| Local encrypted volume (UC-25) | `VLTD` | [UC-25 §4](specs/UC-25-local-encrypted-volume.md) · [ADR-0007](adr/0007-volume-magic-vltd.md) — magic/extension frozen; payload **implemented** (see below) |
+
+## Volume payload (`.vltd` / magic `VLTD`) — UC-25
+
+Implemented in `blindkey-core::volume` (constraints **C67–C74**). Reuses the same plaintext header
+machinery above (magic `VLTD`, Argon2id KDF params, `master_seed`, stanzas, `header_hash`,
+data-key-keyed `header_hmac`) — only the magic and payload differ. Layout after the header:
+
+```
+┌── authenticated inner header (AEAD-wrapped, dual copy — MSV-15 / LUKS2) ──┐
+│ block_size_kib, pad_mode, size_bytes, max_bytes                          │
+│ version u64 (monotonic), block_count, meta_block_count, meta_len         │
+│ kcom[32]        key commitment on the password factor          │  C69     │
+│ merkle_root[32] HMAC-SHA-256 tree over all block tags at this version     │  C70 · ADR-0008
+└───────────────────────────────────────────────────────────────────────────┘
+┌── fixed-size AEAD data blocks (CryFS-class), Padmé-padded file length ────┐
+│ each block on disk: nonce[24] ‖ ciphertext ‖ tag[16]  (XChaCha20-Poly1305)│  C68
+│   plaintext capacity: 32 KiB default (tunable 16–32)                     │
+│   nonce = HMAC-SHA-256(nonce_key, block_id_le ‖ version_le)[0:24]         │  derived, not logged
+│   AAD   = volume_id ‖ block_id_le ‖ version_le ‖ kind                     │  dir/file bound as AAD
+│ dir-meta region (packed inode/path table) then file-data region          │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Key hierarchy:** the stanza envelope yields the master data key (C61 parity); HKDF splits it into
+  independent `volume_key` / `mac_key` / `nonce_key` (info labels `volume-data-v1` / `volume-mac-v1`
+  / `volume-nonce-v1`).
+- **Open order (fail-closed, C74):** header parse → data-key unwrap → `header_hmac` → dual inner
+  header → **Kcom** constant-time compare (C69) → per-block AEAD → **Merkle root** compare (C70) →
+  **local freshness anchor** (`volume-anchors/<id>/`) → unpack VFS. Any failure collapses to the
+  uniform `VOLUME_OPEN_ERROR`.
+- **No plaintext paths/sizes** leak: inode/path table lives inside AEAD blocks; on-disk length
+  follows Padmé buckets by default (C71). Freed blocks are overwritten with random bytes on the next
+  `sync` (secure free). Full contract: [UC-25 §4](specs/UC-25-local-encrypted-volume.md).

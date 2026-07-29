@@ -67,6 +67,10 @@ cargo run -p blindkey-gui
 ./scripts/bundle-macos.sh    # → target/Blindkey.app
 ```
 
+The GUI crate enables egui’s `default_fonts` feature (readable labels with
+`eframe` `default-features = false`). If glyphs ever render blank on a host,
+file an issue — optional follow-up is embedding a known TTF via egui font APIs.
+
 ### Linux GUI dependencies
 
 `blindkey-gui` uses native file dialogs via **xdg-desktop-portal**:

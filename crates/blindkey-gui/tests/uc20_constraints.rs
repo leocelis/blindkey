@@ -35,6 +35,10 @@ fn c41_eframe_glow_pinned_no_persistence() {
         "eframe must pin glow: {eframe_line}"
     );
     assert!(
+        eframe_line.contains("default_fonts"),
+        "eframe must enable default_fonts (UC-26 C75): {eframe_line}"
+    );
+    assert!(
         eframe_line.contains("default-features = false"),
         "eframe must disable default features: {eframe_line}"
     );
@@ -117,12 +121,14 @@ fn c43_list_virtualization_wired() {
 fn c44_password_fields_masked() {
     let src = read_gui_main();
     assert!(
-        src.contains("pw_input") && src.contains(".password(true)"),
-        "unlock field must use password(true)"
+        src.contains("pw_input")
+            && (src.contains(".password(!self.show_master_pw)") || src.contains(".password(true)")),
+        "unlock field must mask unless Show is checked"
     );
     assert!(
-        src.contains("pw_confirm") && src.contains(".password(true)"),
-        "confirm field must use password(true)"
+        src.contains("pw_confirm")
+            && (src.contains(".password(!self.show_master_pw)") || src.contains(".password(true)")),
+        "confirm field must mask unless Show is checked"
     );
     assert!(
         src.contains(".password(!ed.show_password)"),

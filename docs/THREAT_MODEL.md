@@ -30,11 +30,15 @@
 | **Hostile-file attacker** | Hands you a crafted vault file | Parser fuzzing; KDF parameter ceiling; bounded allocations | C2, C7–C10, C30 |
 | **Hostile sealed container** | Validly sealed `.vltf` with zip-slip paths or corrupt inner chunks | Inner archive TLV fuzzing; traversal-safe extract (C65); fail-closed staging (C64); uniform errors | C62–C66, C30 |
 | **Passive `.vltf` observer** | Stores the sealed blob on untrusted cloud | Same as credential vault: outer blob size + mtime only; inner paths/sizes/counts inside AEAD (C62) | C61–C66, C17 |
+| **Stolen laptop / USB / offline `.vltd`** | Has a locked encrypted volume at rest | Fixed-size AEAD blocks (no XTS/XCB); explicit key commitment (C69); Merkle/MAC tree + local freshness anchor (C70); Padmé-bucketed length, zero plaintext paths (C71); uniform fail-closed open (C74) | C67–C74 |
+| **Hostile `.vltd` file** | Hands you a crafted volume | `fuzz/volume_block_parse` on the full open path; bounded allocations; uniform `VOLUME_OPEN_ERROR` | C74, C30 |
+| **Rolled-back `.vltd`** | Serves an older-but-valid volume copy | Local freshness anchor fails closed; `trust-anchor` re-bless only on explicit new-device confirm | C70 |
 
 `*` = partially covered today. Further hardening (macOS anti-ptrace, dependency budget,
 live TPM/FIDO2 FFI) is tracked in
 [research/security_coverage_gaps.md](../research/security_coverage_gaps.md) Part 2 — distinct from
-the shipped C1–C66 set (C35–C39 are omni-search; C61–C66 are sealed file storage, intent v1.8.0).
+the shipped C1–C66 set (C35–C39 are omni-search; C61–C66 are sealed file storage, intent v1.8.0;
+C67–C74 are the UC-25 local encrypted volume, intent v1.9.1).
 
 ## Explicitly out of scope (residual risk)
 
@@ -55,6 +59,18 @@ the shipped C1–C66 set (C35–C39 are omni-search; C61–C66 are sealed file s
   with no local state anchor is trust-on-first-use: any valid older vault is accepted and becomes
   the anchor. `blindkey open --expect-min-version N` can pin expectations during provisioning; a TPM
   NV monotonic counter is the hardened upgrade path.
+- **A mounted local volume is cleartext to the OS (UC-25 / C72 / SC10).** While a `.vltd` is
+  mounted, its files are readable by the operating system and by any process or agent with
+  filesystem access — the same class as an unlocked FileVault disk. Blindkey's model-blind retrieval
+  (C27) protects the credential *vault*; it does **not** cover Finder/Explorer reads of a mounted
+  volume. Defenses are operational: the GUI shows a once-per-session residual-risk banner, best-effort
+  auto-eject on sleep/screen-lock (not a guarantee), and zeroize-on-eject. Adversary v1 for UC-25 is
+  the **stolen laptop / offline `.vltd`**, not a live-session attacker.
+- **Live cloud sync of a mounted `.vltd` is unsupported (UC-25 / C73).** Running a read-write volume
+  file on Dropbox/Google Drive/iCloud/Syncthing can corrupt it (partial-block writes across the sync
+  boundary) and is out of scope. The CLI/GUI warn or refuse when the path is under a detectable sync
+  root and point to `blindkey seal` → a `.vltf` snapshot for cloud. Blindkey does **not** claim
+  malicious-sync-backend protection for live volumes — that remains the sealed-archive (`.vltf`) story.
 - **Clipboard managers that ignore concealment hints** (C33 limitation) — on X11 especially, any
   client can read the clipboard during the window before the timed clear.
 - **YubiKey stale-challenge replay window** (C5 graceful staleness) — if body-writing saves happen

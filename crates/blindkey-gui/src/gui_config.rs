@@ -16,6 +16,10 @@ pub struct GuiConfig {
     pub clipboard_timeout_secs: u64,
     pub lock_on_blur: bool,
     pub dismissed_pre10: bool,
+    /// UC-26 first-launch welcome dismissed forever.
+    pub dismissed_first_run: bool,
+    /// UC-26 post-unlock “next beat” dismissed forever.
+    pub dismissed_next_beat: bool,
 }
 
 impl Default for GuiConfig {
@@ -25,6 +29,8 @@ impl Default for GuiConfig {
             clipboard_timeout_secs: DEFAULT_CLIPBOARD_TIMEOUT_SECS,
             lock_on_blur: false,
             dismissed_pre10: false,
+            dismissed_first_run: false,
+            dismissed_next_beat: false,
         }
     }
 }
@@ -61,6 +67,12 @@ impl GuiConfig {
                 "dismissed_pre10" => {
                     cfg.dismissed_pre10 = matches!(v, "1" | "true" | "yes");
                 }
+                "dismissed_first_run" => {
+                    cfg.dismissed_first_run = matches!(v, "1" | "true" | "yes");
+                }
+                "dismissed_next_beat" => {
+                    cfg.dismissed_next_beat = matches!(v, "1" | "true" | "yes");
+                }
                 _ => {}
             }
         }
@@ -75,11 +87,13 @@ impl GuiConfig {
             let _ = std::fs::write(
                 &p,
                 format!(
-                    "auto_lock_secs={}\nclipboard_timeout_secs={}\nlock_on_blur={}\ndismissed_pre10={}\n",
+                    "auto_lock_secs={}\nclipboard_timeout_secs={}\nlock_on_blur={}\ndismissed_pre10={}\ndismissed_first_run={}\ndismissed_next_beat={}\n",
                     self.auto_lock_secs,
                     self.clipboard_timeout_secs,
                     if self.lock_on_blur { 1 } else { 0 },
                     if self.dismissed_pre10 { 1 } else { 0 },
+                    if self.dismissed_first_run { 1 } else { 0 },
+                    if self.dismissed_next_beat { 1 } else { 0 },
                 ),
             );
         }
@@ -134,7 +148,11 @@ mod tests {
         let c = GuiConfig::default();
         assert_eq!(c.auto_lock_secs, DEFAULT_AUTOLOCK_SECS);
         assert_eq!(c.clipboard_timeout_secs, DEFAULT_CLIPBOARD_TIMEOUT_SECS);
+        assert_eq!(c.clipboard_timeout_secs, 30);
+        assert_eq!(REVEAL_TIMEOUT_SECS, 15);
         assert!(!c.lock_on_blur);
+        assert!(!c.dismissed_first_run);
+        assert!(!c.dismissed_next_beat);
     }
 
     #[test]

@@ -63,13 +63,16 @@ fn uc23_password_labels_in_sealed_dialogs() {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/sealed_gui.rs"),
     )
     .unwrap();
-    for label in [
-        "ui.label(\"Passphrase\")",
-        "ui.label(\"Confirm passphrase\")",
-    ] {
-        assert!(sealed.contains(label), "missing {label}");
-    }
-    let lines: Vec<&str> = sealed.lines().collect();
+    let theme = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/theme.rs"),
+    )
+    .unwrap();
+    // UC-27: labels via theme::labeled_secret_row / labeled_secret_confirm.
+    assert!(sealed.contains("\"Passphrase\""));
+    assert!(sealed.contains("\"Confirm passphrase\""));
+    assert!(theme.contains("ui.label(label)"));
+    let combined = format!("{sealed}\n{theme}");
+    let lines: Vec<&str> = combined.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         if !line.contains(".password(") {
             continue;
@@ -78,10 +81,10 @@ fn uc23_password_labels_in_sealed_dialogs() {
             .iter()
             .skip(i.saturating_sub(8))
             .take(8)
-            .any(|l| l.contains("ui.label("));
+            .any(|l| l.contains("ui.label(") || l.contains("labeled_secret"));
         assert!(
             window,
-            "password field at line {} lacks preceding ui.label",
+            "password field at line {} lacks preceding label",
             i + 1
         );
     }

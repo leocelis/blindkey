@@ -36,7 +36,8 @@ pub mod rollback; // C16     monotonic counter + local anchor
 pub mod sealed; // UC-23   sealed file containers (.vltf)
 pub mod search; // UC-19   fuzzy keyboard-first omni-search (metadata only — C35)
 pub mod totp; // 2FA      RFC 6238 TOTP codes from an entry's otp_secret
-              // open/save orchestration (the v0 blindkey-core API)
+pub mod volume; // UC-25   local encrypted workspace volumes (.vltd)
+                // open/save orchestration (the v0 blindkey-core API)
 mod vault;
 pub mod wordlist; // C26     built-in diceware wordlist
 
@@ -47,6 +48,7 @@ pub use sealed::{
     SEALED_OPEN_ERROR, STDOUT_SIZE_LIMIT,
 };
 pub use vault::{RotateDataKeyOptions, SaveOptions, SaveReport, Vault, YUBIKEY_STALE_WARNING};
+pub use volume::{NodeKind, Volume, VolumeCreateOpts, VolumeUnlock, VOLUME_OPEN_ERROR};
 
 /// The current on-disk format version (constraint C7).
 pub const FORMAT_VERSION: u16 = 1;
@@ -57,13 +59,22 @@ pub const MAGIC: [u8; 4] = [0x56, 0x4C, 0x54, 0x00];
 /// Magic bytes that prefix sealed file containers (UC-23 / ADR-0005 sibling format).
 pub const MAGIC_VLTF: [u8; 4] = *b"VLTF";
 
-/// On-disk container kind — header layout is identical; only the magic differs (UC-23 §3.1).
+/// Magic bytes that prefix local encrypted volumes (UC-25 / C67 / ADR-0007).
+///
+/// Same 4-byte peer style as [`MAGIC_VLTF`]. Payload layout is a future `volume/` module —
+/// only the kind table and header branch land in A1.
+pub const MAGIC_VLTD: [u8; 4] = *b"VLTD";
+
+/// On-disk container kind — header/stanza layout is shared; only the magic differs
+/// (UC-23 §3.1 · UC-25 §2.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContainerKind {
     /// Credential vault (`.vlt`).
     Vault,
     /// Sealed file archive (`.vltf`).
     SealedFile,
+    /// Local encrypted workspace volume (`.vltd`).
+    Volume,
 }
 
 impl ContainerKind {
@@ -72,15 +83,18 @@ impl ContainerKind {
         match self {
             Self::Vault => MAGIC,
             Self::SealedFile => MAGIC_VLTF,
+            Self::Volume => MAGIC_VLTD,
         }
     }
 
-    /// Parse kind from the first four bytes (constraint C7).
+    /// Parse kind from the first four bytes (constraint C7 / C67).
     pub fn from_magic(magic: [u8; 4]) -> Option<Self> {
         if magic == MAGIC {
             Some(Self::Vault)
         } else if magic == MAGIC_VLTF {
             Some(Self::SealedFile)
+        } else if magic == MAGIC_VLTD {
+            Some(Self::Volume)
         } else {
             None
         }

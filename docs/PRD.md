@@ -1,7 +1,7 @@
 # Blindkey — Product Requirements Document (PRD)
 
 > **Status:** Accepted v0.2 · June 2026 · **v1.0.0** (CLI + desktop app; format v1 frozen per ADR-0005)
-> **Sources of truth:** [`blindkey_intent.yaml`](../blindkey_intent.yaml) (66 constraints — 60 implemented + 6 forward for UC-23, v1.8.0),
+> **Sources of truth:** [`blindkey_intent.yaml`](../blindkey_intent.yaml) (87 constraints — **87 implemented**: C1–C81 + UC-27 C82–C87, **v1.9.4**; volume macOS FUSE packaging remains Phase C),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),
 > [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md).
@@ -270,7 +270,7 @@ docs (no SOC2/SSO/team vaults in v1).
 See [spec UC-22](specs/UC-22-enterprise-readiness.md).
 
 ### UC-23 · Seal any file or folder for storage you don't trust
-**Persona:** P1, P2 · **Constraints:** proposed C61–C66; reuses C1, C2, C7, C11, C27, C30, C31, C32 · **Status:** Draft (post-1.0, first "bigger vision" feature)
+**Persona:** P1, P2 · **Constraints:** C61–C66; reuses C1, C2, C7, C11, C27, C30, C31, C32 · **Status:** Accepted v1.0 · shipped July 2026
 
 A developer has a folder — `.env` files, deploy keys, a client's contracts, a whole project —
 that needs to live on Dropbox, Drive, S3, or a git remote they don't trust. `blindkey seal <folder>`
@@ -283,16 +283,71 @@ pipeline** (C63) — a 20 GB folder seals on a small laptop at hundreds of MiB/s
 is fail-closed (C64) and traversal-safe against hostile containers (C65). One crypto path: the
 existing STREAM envelope, no new primitives (C61). **Deliberately not a synced folder**: the
 sealed-archive model is the strongest metadata posture in the ecosystem survey and avoids the
-FUSE/mobile platform swamp; live sync remains a non-goal.
+FUSE/mobile platform swamp; live mount is a **separate** use case (UC-25), not an expansion of UC-23.
 See [spec UC-23](specs/UC-23-sealed-file-storage.md).
+
+### UC-24 · Serve the handle broker to MCP clients
+**Persona:** P1 · **Constraints:** C27, C13 · extends UC-16 · **Status:** Accepted v0.2 · headless MCP delivery shipped
+
+`blindkey mcp` exposes handle **metadata** and `use_handle` **status only** to MCP hosts
+(Cursor, Claude Code, …) so an agent can trigger credential injection at a pre-registered
+destination without ever receiving the secret. Approval stays on an interactive
+`blindkey agent run` companion process.
+See [spec UC-24](specs/UC-24-mcp-broker.md).
+
+### UC-25 · Local encrypted workspace volume (live mount)
+**Persona:** P1, P2 · **Constraints:** C67–C74 (G17); reuses C1–C3, C5, C7, C11, C16 posture, C23, C27 (SC10 residual), C30–C32, C64 culture · **Status:** Implemented v1.0 — `blindkey-core::volume` + `blindkey volume` CLI + Linux `blindkey-fuse` + GUI Create/Mount/Eject shell shipped (C67–C74 PASS); macOS FUSE provider (macFUSE/Fuse-T) = Phase-C packaging
+
+A developer wants PGP Disk / VeraCrypt-class UX on their workstation: create a Blindkey
+volume (`.vltd` — [ADR-0007](adr/0007-volume-magic-vltd.md); magic `VLTD`), mount it
+as a normal folder, edit files in Finder/shell, unmount → ciphertext only. This is
+**local-only** (stolen laptop / USB adversary; threat ladder **L0–L4**) — **not** a Dropbox
+live-sync folder (use UC-23 `seal` for cloud). Live RW of the same `.vltd` under
+Dropbox/Drive/iCloud/Syncthing is **unsupported**: warn/refuse when a sync root is
+detectable; always Seal CTA (C73). Crypto is the **Maximum Security Volume (MSV)** profile:
+CryFS-class fixed-size **AEAD blocks** (XChaCha20-Poly1305 default; optional AEGIS-256),
+Merkle/MAC tree, local freshness/rollback anchor, **Padmé default-on**, Argon2id +
+**explicit key commitment** (GCM-SIV alone is not enough) + Blindkey stanzas — never naked
+XTS/XCB, never cipher-cascade theater. Composition win vs CryFS = Kcom + Padmé + stanzas +
+IVD — **not** a stronger bulk cipher. CLI: `blindkey volume create|mount|umount|resize|status|trust-anchor`
+plus `peek` (tree without mount). macOS/desktop GUI: Create / Mount / Eject over
+`blindkey-core` (UC-18 thin shell); residual-risk banner that mounted files are cleartext to
+the OS (FileVault-unlocked class). Userspace FUSE / macFUSE-FSKit / Fuse-T — no kext hard
+requirement for v1 (budget Fuse-T commercial license if embedding).
+See [spec UC-25](specs/UC-25-local-encrypted-volume.md) · research
+[encrypted_volume_mount_research.md](../research/encrypted_volume_mount_research.md) ·
+[encrypted_volume_maximum_security_research.md](../research/encrypted_volume_maximum_security_research.md).
+
+### UC-26 · Redesign the desktop UI for calm, honest Credentials vs Workspace use
+**Persona:** P1, P3 · **Constraints:** C75–C81 (G18); touches C20, C27, C40–C54, C72–C74 · **Status:** Implemented v1.0 — shipped 2026-07-29
+
+The shipped `blindkey-gui` gets an information-architecture and usability pass grounded in
+security-UX research (Whitten, Chiasson, Nielsen, Yee) and peer OSS (Cryptomator-class Workspace):
+**embedded fonts + WCAG AA contrast** (legibility gate), a primary **Credentials | Workspace**
+mode switch with **Seal** as secondary, persistent lock/mount status, human labels, progressive
+disclosure of advanced options, and honest Mount/Reveal copy when FUSE packaging is absent.
+No toolkit swap; crypto and delivery stay in `blindkey-core`. See
+[spec UC-26](specs/UC-26-desktop-ui-information-architecture.md) · research
+[desktop_security_ui_research.md](../research/desktop_security_ui_research.md).
+
+### UC-27 · Polish desktop UI visual craft (layout, hierarchy, spacing, accent)
+**Persona:** P1, P3 · **Constraints:** C82–C87 (G19); must not regress C20, C27, C40–C54, C75–C81 · **Status:** Implemented v1.0 — shipped 2026-07-29
+
+After UC-26 IA, the egui shell got a **presentation craft** pass: fixed-width unlock card,
+left-aligned fields, accent Create/Unlock/Add, Spacing tokens, non-redundant trust copy,
+Settings overflow, and Workspace/dialog consistency — without toolkit swap or crypto changes. See
+[spec UC-27](specs/UC-27-desktop-ui-visual-craft.md) · research
+[desktop_app_ui_ux_research.md](../research/desktop_app_ui_ux_research.md).
 
 ## 6. Out of scope for v1 (non-goals)
 
 From the intent's `non_goals:` — hosted sync service, browser extension, team vaults,
 custom crypto, and any LLM/agent inside the trust boundary. **Native macOS SwiftUI shell** is
-post-v1; **egui TUI/GUI shells are shipped** as pre-1.0 beta. Residual risks accepted and
-documented in [THREAT_MODEL](THREAT_MODEL.md): kernel-level compromise with root, TPM bus
-attacks, social engineering of the user.
+post-v1; **egui TUI/GUI shells are shipped** as pre-1.0 beta. UC-25 also excludes: live RW
+mount of a volume file on cloud sync backends (C73), VeraCrypt/TrueCrypt format compat and
+naked AES-XTS/XCB as sole volume data plane (C68), and PD / hidden volumes / interactive
+ORAM as v1 claims. Residual risks accepted and documented in [THREAT_MODEL](THREAT_MODEL.md):
+kernel-level compromise with root, TPM bus attacks, social engineering of the user.
 
 ## 7. Success metrics (v1)
 

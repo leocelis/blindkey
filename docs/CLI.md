@@ -88,12 +88,47 @@ Open/extract failure after auth → uniform message `sealed container could not 
 
 Spec: [UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md).
 
+## Local encrypted volumes (UC-25 — `.vltd`)
+
+Live **local** encrypted workspace (PGP Disk / VeraCrypt-class): create a `.vltd`, mount it as a
+folder, edit files, eject → ciphertext only. Reuses the v1 header + stanza envelope; the payload is
+fixed-size AEAD blocks + Merkle/Kcom + local freshness (constraints **C61 parity, C67–C74**). Padmé
+padding is **on by default**. Sibling to `.vltf` (UC-23, for cloud); a `.vltd` is **local-only** —
+live RW mount on a cloud-sync folder is unsupported (C73).
+
+> **Status:** the volume crypto core (`blindkey-core::volume`), the `blindkey volume` CLI verbs +
+> `peek` magic dispatch, the desktop **GUI** Create / Mount / Eject shell, and the userspace
+> **Linux FUSE** adapter (`blindkey-fuse`, [ADR-0009](specs/../adr/0009-volume-mount-blindkey-fuse.md))
+> are **implemented**. **macOS** live-folder mount (macFUSE FSKit / Fuse-T,
+> [ADR-0010](adr/0010-volume-macos-mount-matrix.md)) compiles to an honest "not supported on this
+> platform" stub — the real provider is the **Phase-C packaging** piece. The surface below is the
+> accepted contract ([spec §7](specs/UC-25-local-encrypted-volume.md#7-cli-surface-clap)).
+
+| Command | Description |
+|---------|-------------|
+| `blindkey volume create PATH.vltd --size SIZE [--max-size SIZE] [--block-size-kib 32] [--no-pad]` | Create a new encrypted volume (refuses overwrite; Padmé on by default). |
+| `blindkey volume mount PATH.vltd [MOUNTPOINT]` | Unlock + mount as a folder (userspace FUSE). Files are cleartext to the OS while mounted. |
+| `blindkey volume umount PATH.vltd\|MOUNTPOINT` | Eject: end the FUSE session, sync, zeroize keys. |
+| `blindkey volume resize PATH.vltd --size SIZE` | Grow the sparse volume up to `--max-size`. |
+| `blindkey volume status PATH.vltd\|MOUNTPOINT` | Mount state + version/freshness summary (no secrets). |
+| `blindkey volume trust-anchor PATH.vltd` | Explicitly accept the current on-disk version as fresh on a new device (MSV-19). |
+| `blindkey peek PATH.vltd` | List the virtual tree (paths + sizes only, no file bodies). |
+
+**Unlock flags:** same UC-09 paths as vault/`.vltf` (`--password-stdin`, `--password-file`,
+`--keyfile`, `--recovery`). **KDF tuning:** `--allow-weak-kdf`, `--kdf-m-cost`, `--kdf-t-cost`,
+`--kdf-p-cost`. **Cloud policy (C73):** if `PATH.vltd` is under a detectable sync root
+(Dropbox/Drive/iCloud/Syncthing), `mount` warns/refuses and points to `blindkey seal`.
+**Errors:** auth/parse failures collapse to the uniform `volume could not be opened` (C74).
+
+Spec: [UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md).
+
 ## Not yet implemented
 
 | Command | Notes |
 |---------|-------|
 | `blindkey import --format txt\|json` | Structured importers (UC-12). |
 | `blindkey merge OLD NEW` | Conflict merge (UC-08). |
+| `blindkey volume mount` on **macOS** | Linux FUSE implemented; macOS provider (macFUSE/Fuse-T) is Phase-C packaging (stub today). |
 
 ## `blindkey find` — searchable fields (constraint C35)
 

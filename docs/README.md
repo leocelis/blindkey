@@ -5,6 +5,7 @@ Start here based on what you need:
 | I want to… | Read |
 |------------|------|
 | Seal files for untrusted cloud storage | [CLI.md](CLI.md) (`blindkey seal` / `open` / `peek`) · [specs/UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md) |
+| Local live encrypted volume (design) | [specs/UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md) · [PRD §5 UC-25](PRD.md) |
 | Install or build | [INSTALL.md](INSTALL.md) |
 | Use the CLI | [CLI.md](CLI.md) |
 | Try a sample import | [../samples/README.md](../samples/README.md) |
@@ -13,7 +14,7 @@ Start here based on what you need:
 | Read the crypto design | [CRYPTO.md](CRYPTO.md) |
 | Read the file format | [FILE_FORMAT.md](FILE_FORMAT.md) |
 | See system architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| See all 66 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
+| See all 74 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
 | Verify a release binary | [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md) |
 | See what's shipped vs planned | [../ROADMAP.md](../ROADMAP.md) · [guides/hardware-factor-status.md](guides/hardware-factor-status.md) |
 | Enterprise / fleet deployment | [ENTERPRISE_POSTURE.md](ENTERPRISE_POSTURE.md) · [guides/enterprise-deployment.md](guides/enterprise-deployment.md) |
@@ -29,8 +30,9 @@ Start here based on what you need:
 
 ## Specs (design)
 
-22 use-case specs live in [specs/](specs/README.md). They are the design source for implementation;
-start with UC-01 (install) and UC-04 (model-blind retrieval) if you are new to the project.
+Use-case specs live in [specs/](specs/README.md) (UC-01…UC-25). They are the design source for
+implementation; start with UC-01 (install) and UC-04 (model-blind retrieval) if you are new to
+the project.
 
 ## Architecture decisions
 

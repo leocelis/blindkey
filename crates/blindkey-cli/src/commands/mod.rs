@@ -19,6 +19,7 @@ use crate::unlock_secret::{self, UnlockSecretOpts};
 use crate::Command;
 
 mod sealed;
+pub mod volume;
 
 type CmdResult = Result<(), String>;
 type SaveResult = Result<Vec<u8>, String>;
@@ -259,7 +260,19 @@ pub fn dispatch(vault_opt: Option<PathBuf>, opts: &OpenOpts, command: Command) -
             sealed::cmd_seal(paths, output, append, seal_opts, opts)
         }
         Command::Open { file, dest, stdout } => sealed::cmd_open(file, dest, stdout, opts),
-        Command::Peek { file } => sealed::cmd_peek(file, opts),
+        Command::Peek { file } => {
+            // Magic dispatch (UC-25 §7): VLTD → volume tree list; otherwise sealed (VLTF) peek.
+            let is_volume = std::fs::read(&file)
+                .ok()
+                .map(|b| b.len() >= 4 && b[0..4] == blindkey_core::MAGIC_VLTD)
+                .unwrap_or(false);
+            if is_volume {
+                volume::cmd_peek(&file, opts)
+            } else {
+                sealed::cmd_peek(file, opts)
+            }
+        }
+        Command::Volume { action } => volume::dispatch(opts, action),
     }
 }
 

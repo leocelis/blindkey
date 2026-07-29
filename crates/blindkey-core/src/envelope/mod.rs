@@ -23,6 +23,8 @@ use crate::{Error, Result};
 
 /// HKDF info label for the password stanza's wrapping key (constraint C5 — exact bytes matter).
 const PW_WRAP_INFO: &[u8] = b"vault-pw-wrap-v1";
+/// Explicit key commitment for UC-25 volumes (C69 / ADR-0007 sibling — distinct from wrap).
+const VOLUME_KCOM_INFO: &[u8] = b"volume-kcom-v1";
 /// HKDF info label for the composite password+YubiKey 2FA wrapping key (UC-09 AND model).
 const TWOFA_WRAP_INFO: &[u8] = b"vault-2fa-wrap-v1";
 /// HKDF info label for the composite password+keyfile 2FA wrapping key (domain-separated).
@@ -71,6 +73,24 @@ fn password_wrapping_key(
 ) -> Result<[u8; 32]> {
     let ikm = kdf::argon2id(password, salt, m_cost, t_cost, p_cost)?;
     Ok(crypto::hkdf32(ikm.expose_secret(), vault_id, PW_WRAP_INFO))
+}
+
+/// Explicit key commitment for UC-25 volume unlock (C69).
+///
+/// Derived from the same Argon2id→HKDF wrapping key as [`wrap_password_stanza`], with a
+/// distinct info label. AEAD wrap alone is **not** key-committing (Albertini / Len).
+pub fn password_key_commitment(
+    password: &[u8],
+    salt: &[u8; 32],
+    vault_id: &[u8; 16],
+    m_cost: u32,
+    t_cost: u32,
+    p_cost: u32,
+) -> Result<[u8; 32]> {
+    let mut wrapping_key = password_wrapping_key(password, salt, vault_id, m_cost, t_cost, p_cost)?;
+    let kcom = crypto::hkdf32(&wrapping_key, vault_id, VOLUME_KCOM_INFO);
+    wrapping_key.zeroize();
+    Ok(kcom)
 }
 
 /// Wrap `data_key` in a new password stanza (constraint C5, password path).

@@ -33,6 +33,10 @@ plan and open questions.
 | [UC-21](UC-21-desktop-gaps-closure.md) | Desktop gaps closure — session hygiene, keyfile GUI, trust UX | C46–C54; C27, C35, C44, UC-09 |
 | [UC-22](UC-22-enterprise-readiness.md) | Fleet deploy & release quality gate | C55–C60; C38, C39 |
 | [UC-23](UC-23-sealed-file-storage.md) | Seal any file/folder for storage you don't trust *(Accepted v1.0 · shipped July 2026)* | C61–C66; C1, C2, C7, C11, C27, C30–C32 |
+| [UC-24](UC-24-mcp-broker.md) | Serve the handle broker to MCP clients (`blindkey mcp`) *(Accepted v0.2 · shipped)* | C27, C13; extends UC-16 |
+| [UC-25](UC-25-local-encrypted-volume.md) | Local encrypted workspace volume — live mount *(Accepted v0.5 · phased implementation · A1 kind table landed)* | C67–C74 (FORWARD); C1–C3, C5, C7, C11, C16, C23, C27, C30–C32, C64 |
+| [UC-26](UC-26-desktop-ui-information-architecture.md) | Desktop UI IA & usability redesign (`blindkey-gui`) *(Implemented v1.0)* | C75–C81; C20, C27, C40–C54, C72–C74 |
+| [UC-27](UC-27-desktop-ui-visual-craft.md) | Desktop UI visual craft polish (`blindkey-gui`) *(Implemented v1.0)* | C82–C87; C20, C27, C40–C54, C75–C81 |
 
 ## Spec lifecycle
 
@@ -44,6 +48,13 @@ Most UC specs through CP-7 are **Accepted v0.2 · implemented pre-1.0** as of th
 constraint sweep. Exceptions: UC-08 and UC-12 (design only, not yet implemented); UC-16 (post-v1
 exploration); UC-13 (checksums + reproducible build shipped; cosign/SLSA deferred). **UC-23** is
 **Accepted v1.0 · shipped** (July 2026) — sealed `.vltf` containers with C61–C66 verified in-tree.
+**UC-24** MCP broker delivery is **Accepted v0.2 · shipped**. **UC-25** (live local volume) is
+**Accepted v0.5** — requirements-traced implementation contract; A1 kind table landed; remaining
+Gate-0 ADRs (magic freeze, merkle, mount crate, macOS provider) before A2+.
+**UC-26** (desktop UI IA & usability) is **Implemented v1.0** — fonts/legibility gate, Credentials |
+Workspace mode chrome, mount honesty; **C75–C81 PASS** (intent v1.9.3 / G18).
+**UC-27** (desktop UI visual craft) is **Implemented v1.0** — layout/hierarchy/spacing/accent polish;
+**C82–C87 PASS** (intent v1.9.4 / G19); ROADMAP **S-26**. Does not change UC-26 IA.
 
 New constraints discovered while spec-writing are proposed as Part-2 candidates — the
 2026-06-10 pass promoted the first batch as C28–C34 (see

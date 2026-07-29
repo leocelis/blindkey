@@ -6,7 +6,7 @@
 # Reference: https://ivdframework.dev
 #
 # IVD rules applied in this artifact:
-#   Rule 1 — Intent Before Implementation: 66 constraints, HIGH density.
+#   Rule 1 — Intent Before Implementation: 74 constraints, HIGH density.
 #             Segmented implementation required (see implementation_notes).
 #   Rule 3 — Constraint Tests Are Mandatory: every constraint has a `test:` field.
 #   Rule 4 — Stress-Test Intent: constraint_satisfiability block documents all
@@ -41,12 +41,12 @@ meta:
   intent_type: "feature"        # scope: single deliverable, not system-level
   name: vault
   tagline: "Zero-plaintext · local-first · open-source credential vault"
-  version: "1.8.0"   # 1.8.0: UC-23 sealed-file-storage FORWARD constraints (C61–C66, G16) — bind the post-1.0 feature before any code, Gate-0 style; vacuously satisfied until it ships. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
+  version: "1.9.4"   # 1.9.4: UC-27 desktop UI visual craft — G19 C82–C87 PASS. 1.9.3: UC-26 desktop UI IA — G18 C75–C81 PASS (fonts, modes, honesty, AA theme). 1.9.2: UC-25 shipped — G17 C67–C74 tests now PASS (volume core + CLI + Linux fuse + GUI); macOS FUSE packaging remains ADR-0010. 1.9.1: G17 enriched to match UC-25 tech spec; Accepted 2026-07-21. 1.9.0: first landing of UC-25 FORWARD constraints. Prior: 1.8.0 UC-23 C61–C66 G16. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
   license: "MIT OR Apache-2.0"
   language: rust
-  ifscale_density: high         # IVD Rule 1: 66 constraints → segmented implementation
-  constraint_count: 66
-  constraint_groups: 16
+  ifscale_density: high         # IVD Rule 1: 74 constraints → segmented implementation
+  constraint_count: 74
+  constraint_groups: 17
   target_platforms:
     - x86_64-unknown-linux-musl
     - aarch64-apple-darwin
@@ -85,6 +85,10 @@ intent:
     - Custom KDF or cipher implementation (all crypto from audited libraries)
     - "LLM / AI agent inside the vault trust boundary (v1 ships none; any future agentic
        interface is bound by C27's model-blind delivery rule)"
+    - "Live RW mount of a UC-25 volume file on Dropbox/Drive/iCloud/Syncthing (C73) —
+       use UC-23 seal for untrusted cloud; local encrypted workspace only"
+    - "VeraCrypt/TrueCrypt format compatibility; naked AES-XTS or XCB as sole volume data plane (C68)"
+    - "Plausible deniability / hidden volumes / interactive ORAM as UC-25 v1 claims (MSV non-goals)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 distinctiveness:
@@ -143,6 +147,9 @@ constraint_groups:
   G14: "Desktop GUI session hygiene and 2FA parity (UC-21)"
   G15: "Fleet deployment and release quality gate (UC-22)"
   G16: "Sealed file containers — encrypted file/folder storage for untrusted clouds (UC-23, post-1.0 forward constraints)"
+  G17: "Local encrypted volume — live mountable workspace (UC-25; MSV profile; C67–C74 PASS)"
+  G18: "Desktop UI information architecture & usable-security chrome (UC-26; C75–C81 PASS)"
+  G19: "Desktop UI visual craft polish (UC-27; C82–C87 PASS)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 constraints:
@@ -2076,14 +2083,296 @@ constraints:
       FORWARD. Then: UNIT — two inputs in the same Padmé bucket seal to identical
       lengths by default; only the explicit opt-out yields exact-size output.
 
+  # ── G17: Local encrypted volume (UC-25) — IMPLEMENTED (intent v1.9.2) ──
+  # Design sources (authoritative for implementers):
+  #   docs/specs/UC-25-local-encrypted-volume.md  (implementation contract)
+  #   docs/PRD.md §5 UC-25
+  #   research/encrypted_volume_mount_research.md
+  #   research/encrypted_volume_maximum_security_research.md
+  # Operator craft patterns (MNT-*/MSV-*) are encoded as C67–C74 + the UC-25 §18
+  # traceability table — do not load private operator trees at runtime.
+
+  - id: C67
+    group: G17
+    title: "Live volume is a distinct container and use case — not a silent UC-23 expansion"
+    description: |
+      IF Blindkey ships a live mountable encrypted volume (UC-25), it MUST use a
+      distinct container magic and file kind (magic `VLTD` / extension `.vltd` —
+      [ADR-0007](docs/adr/0007-volume-magic-vltd.md)), share Blindkey header/stanza
+      layout without changing `.vlt` / `.vltf` bytes (ADR-0005 hygiene), and MUST
+      NOT reframe UC-23 seal/open/peek as FUSE or watch-daemon live sync.
+      Architecture MUST be Family B+ (CryFS-class AEAD fixed blocks + virtual
+      POSIX tree in `blindkey-core`) — not Family A block-device+mkfs, not Family C
+      (`hdiutil`) as the crypto core. Implementation MUST NOT begin until this G17
+      group is merged (Gate-0).
+    test: |
+      UNIT — `crates/blindkey-core/tests/volume_constraints.rs` (`c67_*`) — wrong-kind
+      open of `.vlt` / `.vltf` / `.vltd` yields a clear kind-mismatch error; REVIEW —
+      no UC-23 scope creep in seal/open docs or APIs; magic matches ADR-0007.
+      JOINT — `uc25_joint_satisfaction.rs`.
+
+  - id: C68
+    group: G17
+    title: "Volume data plane is fixed-size AEAD blocks — never naked XTS/XCB as sole plane"
+    description: |
+      Volume file contents MUST be stored as fixed-size AEAD-sealed blocks
+      (XChaCha20-Poly1305 default; optional AEGIS-256 profile; default plaintext
+      block 32 KiB, tunable 16–32 KiB class). Nonces MUST be derived
+      `PRF(nonce_key, block_id ‖ version)` (24-byte XChaCha); AAD MUST bind
+      `volume_id ‖ block_id ‖ version ‖ kind`. The product MUST NOT ship naked
+      AES-XTS as the sole data plane, MUST NOT use XCB-style TEMs (broken 2024;
+      removed from IEEE 1619.2-2025), and MUST NOT offer cipher cascades as a
+      security feature. Length-preserving wide-block modes (HCTR2, Adiantum, EME2)
+      MAY appear later only under an AEAD outer layer — not in MSV v1. This is a
+      new payload kind using the same XChaCha20-Poly1305 primitive as C1
+      (STREAM-per-block class) — it MUST NOT silently reverse C61 for sealed `.vltf`.
+    test: |
+      REVIEW — Cargo.toml / architecture deny XTS-only and XCB paths for the volume
+      feature; UNIT — `c68_*` block AEAD bit-flip fail-closed; sealed `.vltf` STREAM
+      path unchanged (`sealed_constraints` / `uc23_joint_satisfaction` C61 regression).
+
+  - id: C69
+    group: G17
+    title: "Password unlock of volumes requires explicit key commitment"
+    description: |
+      Passphrase → Argon2id (C2 floor/ceiling) → wrap of the volume master key MUST
+      verify an explicit key commitment (Albertini-style `Kcom` or analyzed padding
+      fix) before accepting the unwrapped key. Wrap MAY use XChaCha20-Poly1305 or
+      AES-GCM-SIV for nonce-misuse resistance, but AES-GCM-SIV, ChaCha20-Poly1305,
+      or AEGIS alone MUST NOT be treated as satisfying key commitment (Len USENIX'21 /
+      Albertini USENIX'22). scrypt/PBKDF2 MUST NOT be the sole volume KDF. Multi-stanza
+      unlock (C5 / UC-09; password + keyfile + YubiKey) remains the enrollment model —
+      not a parallel enrollment story. Password change / upgrade-kdf MUST be header-only
+      rewrap (master volume keys immutable for volume lifetime).
+    test: |
+      UNIT — `c69_*` unlock rejects when Kcom mismatches; REVIEW — no "GCM-SIV is
+      committing" claims in docs; header-only rewrap leaves block ciphertext bytes
+      unchanged (`upgrade_kdf` path).
+
+  - id: C70
+    group: G17
+    title: "Volume integrity tree plus local freshness anchor"
+    description: |
+      Every stored block's AEAD tag MUST be bound into a Merkle or keyed MAC tree
+      (HMAC-SHA-256 or BLAKE3) whose root lives in the authenticated volume header
+      (dual-copy, LUKS2 lesson). Verify on the metadata path and with periodic
+      data-path checks. A local freshness anchor (C16 posture; config-dir
+      `volume-anchors/<volume_id>/`) MUST detect rollback/fork of volume contents
+      when the anchor is intact; on mismatch Blindkey MUST fail closed by default.
+      A new device MUST require explicit trust of the baseline (CLI
+      `volume trust-anchor` or equivalent first-mount ritual) before accepting an
+      unfamiliar anchor.
+    test: |
+      UNIT — `c70_*` stale body vs local anchor fails closed; explicit `trust_anchor` /
+      `open_ignoring_anchor` path tested; ADR-0008 HMAC-SHA-256 Merkle.
+
+  - id: C71
+    group: G17
+    title: "Locked volumes expose no plaintext filenames, sizes, or directory tree"
+    description: |
+      When unmounted/locked, a volume container MUST NOT reveal plaintext file names,
+      per-file sizes, or directory structure on disk (CryFS-class fixed blocks;
+      kinds indistinguishable by outer size). Padmé size padding MUST be default-on
+      for volume containers (align C66 sealed posture). Exact-size output requires
+      an explicit opt-out (`--no-pad` or equivalent). Compression-before-AEAD MUST
+      be off by default (size oracle).
+    test: |
+      UNIT — `c71_*` ciphertext grep for inner path segments finds no plaintext;
+      Padmé bucket equality for near-size volumes by default; CLI `--no-pad` opt-out.
+
+  - id: C72
+    group: G17
+    title: "Mount lifecycle hygiene — userspace preferred, zeroize, no telemetry"
+    description: |
+      Mount SHOULD use userspace FUSE-class presentation (Linux `fuser`; macOS
+      macFUSE FSKit backend ≈15.4+, Fuse-T NFS/SMB for older, Fuse-T native FSKit
+      only on macOS 26+ — preferred over a hard kext requirement). The mount path
+      MUST make zero network calls (C23) and MUST NOT emit telemetry. Volume keys
+      MUST be zeroized on umount (C11); clear page-cache cleartext where the
+      platform allows; handle FUSE TOCTOU without plaintext log spills. Product docs
+      and first-mount GUI UX MUST state that while mounted, the OS sees cleartext
+      (FileVault-unlocked residual) — C27 clipboard/stdout rules are unchanged and
+      do not claim to blind Finder/shell reads of mounted files (SC10). GUI/CLI MUST
+      remain thin shells over `blindkey-core` (UC-18).
+    test: |
+      UNIT — `c72_*` unlock Debug redacts + close round-trip; GUI —
+      `uc25_constraints.rs` residual-risk banner once/session; FUSE —
+      `blindkey-fuse` MountGuard Drop sync+zeroize; REVIEW — ADR-0009/0010.
+
+  - id: C73
+    group: G17
+    title: "Live RW mount plus cloud sync of the same container is unsupported"
+    description: |
+      Blindkey MUST document that placing a live-mounted (or concurrently synced)
+      volume file on Dropbox/Drive/iCloud/Syncthing-class backends is unsupported.
+      CLI and GUI MUST point users to UC-23 `seal` for untrusted cloud storage
+      (Seal CTA when a cloud folder is chosen). The product MUST NOT market live
+      sync of `.vltd` as a supported workflow.
+    test: |
+      UNIT — `c73_*` THREAT_MODEL/CLI docs; CLI — `commands/volume.rs` sync-root
+      refuse + Seal CTA; GUI — `uc25_constraints.rs` cloud Seal CTA.
+
+  - id: C74
+    group: G17
+    title: "Hostile volume parsing is fail-closed, fuzzed, and oracle-free"
+    description: |
+      Volume headers and block graphs are untrusted input (UC-10 stance). Parsers
+      MUST follow C30 rules (bounded reads, length caps) with a dedicated fuzz
+      target (`fuzz/volume_block_parse` or equivalent) from day one. Authentication
+      and commitment failures MUST leave no partial cleartext workspace and MUST
+      use uniform error text (C64 culture — no format oracle via error position;
+      constant-time tag/Kcom compares). Freed blocks MUST be securely erased
+      (re-encrypt with fresh random or hole-punch + overwrite policy).
+    test: |
+      FUZZ — `fuzz/volume_block_parse`; UNIT — `c74_*` uniform `VOLUME_OPEN_ERROR`;
+      JOINT — `uc25_joint_satisfaction.rs` bitflip path.
+
+  # ── G18: Desktop UI IA & usable-security chrome (UC-26) ─────────────────────
+  - id: C75
+    group: G18
+    title: "Desktop GUI embeds readable fonts"
+    description: |
+      When `eframe` is pinned with `default-features = false`, Blindkey MUST enable the
+      `default_fonts` feature (or embed an equivalent TTF) so primary chrome labels and
+      buttons render glyphs. Persistence MUST remain disabled (C41).
+    test: |
+      UNIT — `uc26_constraints.rs` `c75_default_fonts_enabled`; `uc20_constraints.rs` C41
+      still asserts glow + no persistence.
+
+  - id: C76
+    group: G18
+    title: "Desktop GUI shows lock/mount status every frame"
+    description: |
+      While the main window is open, Blindkey MUST show vault/session status as Locked /
+      Unlocked (and Workspace Mounted only when an OS mount path exists) using icon+text —
+      never color alone. Eject is a closure event that returns status to Locked.
+    test: |
+      UNIT — `uc26_constraints.rs` `c76_status_chrome_wired`; REVIEW — SessionStatus labels
+      in `gui_mode.rs` / unlocked chrome.
+
+  - id: C77
+    group: G18
+    title: "Desktop GUI separates Credentials and Workspace modes"
+    description: |
+      Primary navigation MUST be exactly two modes — Credentials and Workspace. Seal files
+      is a secondary CTA/dialog, never a third mode. Volume create/unlock controls live in
+      Workspace mode only (not as peer toolbar buttons next to Add on Credentials).
+    test: |
+      UNIT — `uc26_constraints.rs` `c77_two_modes_seal_not_mode`; `gui_mode.rs` enum has
+      two variants.
+
+  - id: C78
+    group: G18
+    title: "Desktop GUI primary chrome uses human labels"
+    description: |
+      Primary buttons and mode names MUST use human verbs (Credentials, Workspace, Seal
+      files, Unlock, Eject, Reveal in Finder). VLTF / VLTD / Kcom MUST NOT be the sole
+      primary button text.
+    test: |
+      UNIT — `uc26_constraints.rs` `c78_human_primary_labels`.
+
+  - id: C79
+    group: G18
+    title: "Desktop GUI does not claim mount when unavailable"
+    description: |
+      When the GUI only validates/unlocks a volume without creating an OS mount, success
+      copy MUST state unlocked/validated and MUST NOT claim Mounted. Reveal in Finder is
+      offered only when a mount path exists (Yee Expected Ability).
+    test: |
+      UNIT — `uc26_constraints.rs` `c79_mount_honesty_message`;
+      `volume_gui::unlock_success_never_claims_mounted`.
+
+  - id: C80
+    group: G18
+    title: "Desktop GUI progressive-discloses advanced volume/vault options"
+    description: |
+      Workspace create/unlock MUST be usable with Advanced collapsed. Block size / max size /
+      keyfile / trust-anchor controls live behind Advanced disclosure (NN/g progressive
+      disclosure).
+    test: |
+      UNIT — `uc26_constraints.rs` `c80_progressive_disclosure_advanced`.
+
+  - id: C81
+    group: G18
+    title: "Desktop GUI primary chrome meets WCAG AA contrast and target size"
+    description: |
+      Startup MUST apply documented egui Visuals with primary text contrast meeting WCAG
+      2.2 AA 1.4.3 (≥4.5:1) intent, and primary interactive targets SHOULD be ≥24×24 CSS px
+      (2.5.8) or document an equivalent-control exception.
+    test: |
+      UNIT — `uc26_constraints.rs` `c81_aa_theme_documented`; `theme.rs` AA_FG/AA_BG +
+      PRIMARY_BTN_HEIGHT.
+
+  # ── G19: Desktop UI visual craft (UC-27) ────────────────────────────────────
+  - id: C82
+    group: G19
+    title: "Desktop GUI unlock/create form uses a fixed-width left-aligned card"
+    description: |
+      The locked unlock/create screen MUST present passphrase fields inside a fixed-width
+      form card (`FORM_WIDTH` = 420 logical px) with an inner left-justified vertical stack.
+      Passphrase `horizontal` rows MUST NOT be direct children of `vertical_centered` without
+      that inner card (egui Ui alignment).
+    test: |
+      UNIT — `uc27_constraints.rs` `c82_form_width_card`; `theme.rs` `form_card` + FORM_WIDTH.
+
+  - id: C83
+    group: G19
+    title: "Desktop GUI primary Create/Unlock/Add CTAs use accent fill"
+    description: |
+      Primary Create vault / Unlock (locked and Workspace) and Credentials Add MUST use an
+      accent-filled button (`Button::fill(ACCENT)` or `theme::primary_button`) at least
+      PRIMARY_BTN_HEIGHT tall. Secondary actions remain quiet.
+    test: |
+      UNIT — `uc27_constraints.rs` `c83_accent_primaries`.
+
+  - id: C84
+    group: G19
+    title: "Desktop GUI applies craft Spacing at startup"
+    description: |
+      Startup MUST apply craft Spacing overrides so `text_edit_width` matches FORM_WIDTH,
+      `interact_size.y` matches PRIMARY_BTN_HEIGHT, and vertical `item_spacing` is raised
+      above egui 0.29.1's default Y=3.
+    test: |
+      UNIT — `uc27_constraints.rs` `c84_craft_spacing_startup`; `theme::apply_craft_style`.
+
+  - id: C85
+    group: G19
+    title: "Desktop GUI locked screen has non-redundant trust copy"
+    description: |
+      The locked screen MUST show the trust phrase "No account. No cloud." at most once.
+      Passphrase `hint_text` MUST NOT be identical to the field's visible label.
+    test: |
+      UNIT — `uc27_constraints.rs` `c85_trust_copy_and_hints`.
+
+  - id: C86
+    group: G19
+    title: "Desktop GUI TextEdit chrome contrasts panel"
+    description: |
+      TextEdit fill (`extreme_bg_color` on egui 0.29.1) MUST differ from panel fill, and/or
+      inactive widget `bg_stroke` MUST be visible against the field fill (WCAG 1.4.11 intent).
+      Newer-only Visuals fields (`text_edit_bg_color`, `weak_text_alpha`) MUST NOT be used.
+    test: |
+      UNIT — `uc27_constraints.rs` `c86_field_chrome_contrasts`; `theme.rs` AA_FIELD_BG.
+
+  - id: C87
+    group: G19
+    title: "Desktop GUI credential settings use progressive disclosure"
+    description: |
+      Unlocked Credentials mode MUST NOT keep Pad size / Auto-lock / Clipboard / Lock on blur /
+      Audit / Keyfile enrollment always visible on the primary toolbar. Those controls MUST be
+      reachable via a Settings surface (window or equivalent). Import MAY remain as an empty-state
+      CTA.
+    test: |
+      UNIT — `uc27_constraints.rs` `c87_settings_overflow`.
+
 # ──────────────────────────────────────────────────────────────────────────────
 constraint_satisfiability:
   # IVD Rule 6 — SATISFIABILITY CHECK
   # Required when 3 or more constraints exist. Documents every identified conflict,
   # its resolution, and binding priority ordering.
   # No constraint may be silently violated when it conflicts with another.
-  density: high  # 66 constraints, 16 groups (C61-C66 forward/vacuous until UC-23 ships)
-  conflicts_identified: 9
+  density: high  # 87 constraints, 19 groups (C61–C66 UC-23 PASS; C67–C74 UC-25 PASS; C75–C81 UC-26 PASS; C82–C87 UC-27 PASS / intent v1.9.4)
+  conflicts_identified: 11
   conflicts:
 
     - id: SC1
@@ -2225,16 +2514,50 @@ constraint_satisfiability:
         at any flag. Threshold calibrated during implementation (IVD Rule 5).
       priority: C64_fail_closed > C27_pipe_convenience  # forward conflict — binds when UC-23 ships
 
+    - id: SC10
+      between: [C72, C27]
+      description: |
+        C27 requires model-blind delivery on LLM-readable channels (clipboard default,
+        no silent stdout). A live-mounted volume (C72) necessarily presents cleartext
+        files to the OS (Finder/shell) while unlocked — the same residual class as
+        unlocked FileVault — which an agent with filesystem tools can read.
+      resolution: |
+        Not a contradiction of C27's channel rules: C27 continues to govern Blindkey's
+        own secret-delivery APIs (get/clipboard/stdout). C72 mandates honest documentation
+        and a first-mount residual-risk banner that mounted files are OS-visible cleartext.
+        Blindkey MUST NOT claim that UC-25 "extends model-blind protection to Finder."
+      priority: C72_honest_residual > C27_overclaim  # forward — binds when UC-25 ships
+
+    - id: SC11
+      between: [C61, C68]
+      description: |
+        C61 requires sealed `.vltf` containers to reuse the vault STREAM crypto path
+        with no second stack. C68 requires UC-25 volumes to use fixed-size AEAD blocks
+        (a random-access layout), which is not the sealed-file STREAM archive.
+      resolution: |
+        Not a contradiction: C61 binds the sealed-file feature only. UC-25 is a new
+        container kind (C67 magic `VLTD`) that reuses the same audited XChaCha20-Poly1305
+        primitive and header/stanza machinery (C1/C2/C5/C7) in a STREAM-per-block /
+        fixed-block AEAD layout — it MUST NOT alter `.vltf` seal/open behavior or add
+        an unaudited cipher. C61 regression tests remain green when volume code lands.
+      priority: C61_sealed_path_unchanged ∧ C68_volume_aead_blocks  # both bind; different kinds
+
   joint_satisfaction_test: |
     Phase A (UC-23): `crates/blindkey-core/tests/uc23_joint_satisfaction.rs` — seal one
-    hostile+large corpus once; assert C61–C66 on that single artifact (docs/specs/UC-23-sealed-file-storage.md §5.6).
+    hostile+large corpus once; assert C61–C66 on that single artifact (docs/specs/UC-23-sealed-file-storage.md §5).
+    Phase A (UC-25, when implemented): `crates/blindkey-core/tests/uc25_joint_satisfaction.rs` —
+    create+mount+tamper+umount matrix on one `.vltd`; assert C67–C74 on that single artifact
+    (docs/specs/UC-25-local-encrypted-volume.md §11).
 
   all_constraints_simultaneously_satisfiable: true
   note: |
-    All 66 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
-    described in vault/research/vault_spec.md. No cryptographic incompatibilities exist
-    among the selected primitives (XChaCha20-Poly1305, Argon2id, HKDF-SHA-256, HMAC-SHA-256).
-    The eight identified conflicts are resolved by explicit priority ordering above.
+    All 74 constraints are satisfiable in the Rust / libsodium / RustCrypto stack
+    described in research/vault_spec.md (and UC-25 MSV profile for G17). No cryptographic
+    incompatibilities exist among the selected primitives (XChaCha20-Poly1305, Argon2id,
+    HKDF-SHA-256, HMAC-SHA-256). Optional AEGIS-256 for volumes is an alternate AEAD profile
+    under C68, not a second unaudited stack. The identified conflicts are resolved by explicit
+    priority ordering above (including SC10 mounted-cleartext honesty and SC11 sealed-vs-volume
+    kind separation).
     C26 (CSPRNG generation) and C27 (model-blind delivery) add no cryptographic primitives —
     C26 reuses OsRng; C27 is a delivery/trust-boundary policy — so they introduce no new
     library or algorithm conflicts. The constraints promoted on 2026-06-10 (C28–C34, plus
@@ -2251,11 +2574,14 @@ constraint_satisfiability:
     the UC-18 thin-shell boundary for `blindkey-gui`. C42 complements C38 (cache avoids redundant
     scans; C38 still bounds a single scan). C41's persistence ban complements C36/C17 (no extra
     on-disk artifacts). No new conflicts identified.
+    The UC-25 volume group (C67–C74, G17, intent v1.9.1) adds no novel ciphers: fixed-block
+    XChaCha (or optional AEGIS) + explicit Kcom + Merkle/HMAC tree + Padmé + local freshness;
+    FUSE is presentation only. Satisfiable alongside G16 (SC11).
 
 # ──────────────────────────────────────────────────────────────────────────────
 implementation_notes:
   segmentation_plan: |
-    IVD Rule 1 — HIGH constraint density (66 constraints) requires segmented
+    IVD Rule 1 — HIGH constraint density (74 constraints) requires segmented
     implementation. Implement one segment, re-read its constraints from disk,
     verify they all pass, then proceed to the next segment. Never implement
     across segments without verifying the preceding segment first.
@@ -2315,8 +2641,17 @@ implementation_notes:
       Run joint_satisfaction_test on one hostile+large artifact before declaring Phase A done.
       Gate: intent amendment merged (Gate-0) before any code in this segment.
 
+    SEGMENT 13 — Local encrypted volume (G17, UC-25, post-1.0)
+      Implement and verify: C67, C68, C69, C70, C71, C72, C73, C74
+      Re-read C67–C74 from disk before each sub-segment (IVD Rule 1 — 8 constraints).
+      Sub-segments (UC-25 §12): A1 magic/ContainerKind | A2 Kcom+dual header+Padmé |
+      A3 blocks+virtual FS+merkle+anchor | A4 fuzz+joint | then B/C mount+CLI+GUI.
+      Run `uc25_joint_satisfaction` before declaring Phase A done.
+      Gate: intent G17 merged (Gate-0) + UC-25 Accepted + magic ADR — before any volume/mount code.
+      Preserve C61 sealed regression (SC11).
+
     IVD Rule 2 — POST-IMPLEMENTATION AUDIT: Re-read this entire file from disk
-    (not from memory). For each constraint (C1–C66), diff the implementation
+    (not from memory). For each constraint (C1–C74), diff the implementation
     against the constraint and report: PASS / FAIL / NEEDS_REVIEW.
     Do not declare the implementation complete until every constraint is PASS
     or NEEDS_REVIEW with written justification. Undeclared FAILs are not acceptable.

@@ -27,10 +27,11 @@ Goals:
 5. Same unlock story as the vault: passphrase always; keyfile/YubiKey stanzas reuse the
    shipped UC-09/UC-21 machinery. No new key formats, no new recovery story.
 
-**Non-goals:** live-synced/mounted folders (FUSE, watch daemons) — the sealed-archive model
-is a deliberate product stance, see §2; hosted sync (intent `non_goals`); deduplication or
-any deterministic-encryption mode; per-file random access inside a container (v1 is
-seal/open whole-container).
+**Non-goals:** live-synced/mounted folders as part of *this* UC (FUSE, watch daemons) — the
+sealed-archive model is a deliberate product stance, see §2. Live local mount is specified
+separately as [UC-25](UC-25-local-encrypted-volume.md). Also out of scope here: hosted sync
+(intent `non_goals`); deduplication or any deterministic-encryption mode; per-file random
+access inside a container (v1 is seal/open whole-container).
 
 ## 2. Prior art
 

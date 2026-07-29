@@ -15,8 +15,16 @@ categories.workspace = true
 name = "blindkey"
 path = "src/main.rs"
 
+[features]
+# Off by default so `cargo build`/CI without FUSE still compile (ADR-0009). Turn on for desktop
+# builds to enable `blindkey volume mount|umount` via the blindkey-fuse adapter.
+default = []
+volume-mount = ["dep:blindkey-fuse"]
+
 [dependencies]
 blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+# UC-25 live mount adapter — only pulled in under the `volume-mount` feature (ADR-0009).
+blindkey-fuse = { path = "../blindkey-fuse", version = "1.0.0", optional = true }
 blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
 # The YubiKey 2FA path shells out to `ykman` (std subprocess), so this is a cheap, always-on dep.
 blindkey-hardware = { path = "../blindkey-hardware", version = "1.0.0" }

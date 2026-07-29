@@ -255,9 +255,17 @@ enum Command {
         stdout: bool,
     },
     /// List inner paths and sizes after unlock — never file contents (UC-23 / C27).
+    ///
+    /// Magic-dispatched: a `.vltf` sealed archive lists its entries; a `.vltd` volume lists its
+    /// virtual tree (UC-25 §7).
     Peek {
-        /// Sealed container file.
+        /// Sealed container or volume file.
         file: PathBuf,
+    },
+    /// Local encrypted workspace volumes (UC-25): create, mount, umount, resize, status, and more.
+    Volume {
+        #[command(subcommand)]
+        action: crate::commands::volume::VolumeAction,
     },
     /// Internal: detached clipboard auto-clear helper. Reads the secret on stdin; not for direct
     /// use (constraint C13 / UC-04).

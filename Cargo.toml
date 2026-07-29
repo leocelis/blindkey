@@ -12,6 +12,7 @@ members = [
     "crates/blindkey-hardware",
     "crates/blindkey-clip",
     "crates/blindkey-agent",
+    "crates/blindkey-fuse",
 ]
 # fuzz/ is intentionally its own crate (cargo-fuzz requires nightly-only features not pinned
 # for the main workspace toolchain); exclude it so `cargo check`/`cargo test` here don't treat
@@ -50,6 +51,10 @@ zeroize          = { version = "1", features = ["derive"] }   # C11
 secrecy          = "0.8"        # C11 secret wrappers
 # --- OS hardening FFI (the only place `unsafe` lives — blindkey-sys) ---
 libc             = "0.2"        # C12/C25 mlock + setrlimit (unix)
+# --- UC-25 live mount (blindkey-fuse; ADR-0009) ---
+# default-features off: no libfuse link at build time — pure-Rust userspace mount via the
+# `fusermount` helper at runtime (Linux). Keeps `cargo check` working on macOS without macFUSE.
+fuser            = { version = "0.15", default-features = false }
 # --- CLI / support ---
 clap             = { version = "4", features = ["derive"] }   # C21 CLI
 serde            = { version = "1", features = ["derive"] }   # C29 JSON export
@@ -59,7 +64,8 @@ ratatui          = "0.29"       # UC-18 TUI shell (pure-Rust, alt-screen secret 
 crossterm        = "0.28"       # TUI backend
 # --- Desktop GUI (UC-18 P2 — pure-Rust windowed app, eframe/egui) ---
 # UC-20: pin glow explicitly — smaller binary/RAM on weak hardware; no persistence (VG-S5).
-eframe           = { version = "0.29", default-features = false, features = ["glow", "wayland", "x11"] }
+# UC-26: default_fonts required when default-features = false (legibility gate C75).
+eframe           = { version = "0.29", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"] }
 egui             = "0.29"       # immediate-mode UI widgets
 rfd              = "0.15"       # native "open file" dialog for dropping in a keys.txt
 thiserror        = "2"

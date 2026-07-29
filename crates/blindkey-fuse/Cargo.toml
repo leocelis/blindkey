@@ -1,0 +1,22 @@
+[package]
+name = "blindkey-fuse"
+description = "Blindkey — FUSE mount adapter for UC-25 local encrypted volumes (.vltd). Maps a userspace FUSE session onto an unlocked blindkey-core Volume; contains no cryptography (ADR-0009)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+
+# The real FUSE backend is Linux-only for v1 (ADR-0009/0010): `fuser` builds without libfuse only
+# on Linux (pure-Rust `fusermount` path). macOS/other platforms compile a stub that returns a
+# honest "not supported on this platform" error — macOS mount (macFUSE/Fuse-T) is Phase C packaging.
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser.workspace = true
+# libc: FUSE error codes (ENOENT/EIO/…) only — no unsafe FFI in this crate.
+libc.workspace = true

@@ -58,6 +58,36 @@ master password ──Argon2id(salt, m,t,p)──▶ master_key
 - No server-supplied or compiled-in KDF params — the **file** is authoritative (C8).
 - No `memset`/`memzero` for zeroization — `zeroize`'s volatile write + fence only (C11).
 - No network calls, telemetry, or update checks (C23).
+- No naked AES-XTS / XCB as a Blindkey volume data plane (UC-25 MSV profile is
+  [implemented](specs/UC-25-local-encrypted-volume.md) as fixed-size AEAD blocks — never XTS/XCB;
+  password wraps carry an explicit key commitment).
+
+## Volume data plane (UC-25 — `.vltd`)
+
+The local encrypted volume (`blindkey-core::volume`, constraints C67–C74) is a **committing,
+authenticated, versioned block store** — not naked FDE:
+
+- **Per-block AEAD (C68):** each fixed-size block is sealed with XChaCha20-Poly1305 as
+  `nonce[24] ‖ ciphertext ‖ tag[16]`. The nonce is **derived** —
+  `HMAC-SHA-256(nonce_key, block_id ‖ version)[0:24]` — so a fresh monotonic `version` per sync
+  gives every block position a unique nonce (no keystream reuse), never a logged random nonce. The
+  block `kind` (dir/file) and `(volume_id, block_id, version)` are bound as AAD, so a block cannot be
+  replayed at a different position or kind. **No naked AES-XTS/XCB, no cipher cascades.**
+- **Explicit key commitment (C69):** on unlock, `Kcom` is recomputed from the password factor and
+  compared **constant-time** against the stored commitment before any block is accepted. AES-GCM /
+  ChaCha-Poly / GCM-SIV **alone** are non-committing and do **not** satisfy this — the commitment is
+  the partitioning-oracle backstop (Albertini / Len; MSV-13).
+- **Merkle/MAC tree + local freshness (C70):** all per-block tags at a given version are folded into
+  a **HMAC-SHA-256 Merkle root** ([ADR-0008](adr/0008-volume-merkle-hmac-sha256.md) — HMAC first to
+  avoid a new dep; blake3 is a documented optional speed upgrade). The root is stored in the AEAD
+  inner header and compared on open; a **local freshness anchor** (`volume-anchors/<id>/`, reusing
+  the C16 rollback machinery) pins the last-seen version so a rolled-back disk fails closed unless
+  explicitly re-blessed with `trust-anchor` (new-device flow).
+- **Key hierarchy:** the same stanza envelope as `.vlt`/`.vltf` unwraps the master data key (C61
+  parity); HKDF-SHA-256 splits it into independent `volume_key`, `mac_key`, `nonce_key`. Password /
+  KDF change is a **header-only rewrap** — the master keys and all block ciphertext are immutable for
+  the volume's lifetime.
+- **Padmé default-on (C71)** and **uniform fail-closed errors (C74)** as elsewhere.
 
 ## Post-quantum posture
 

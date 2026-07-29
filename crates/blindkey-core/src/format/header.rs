@@ -50,7 +50,8 @@ pub struct KdfParams {
 /// The parsed plaintext header. Contains no secret material, so it may derive `Debug`/`Clone`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
-    /// Container magic — [`MAGIC`] or [`crate::MAGIC_VLTF`] (UC-23 §3.1).
+    /// Container magic — [`MAGIC`], [`crate::MAGIC_VLTF`], or [`crate::MAGIC_VLTD`]
+    /// (UC-23 §3.1 · UC-25 §2.2 / C67).
     pub magic: [u8; 4],
     /// On-disk format version (constraint C7).
     pub format_version: u16,
@@ -296,6 +297,18 @@ mod tests {
     }
 
     #[test]
+    fn vltd_magic_round_trip() {
+        let mut h = sample_header();
+        h.magic = crate::MAGIC_VLTD;
+        h.seal(&[0xAB; 32]);
+        let parsed =
+            Header::parse_with_kind(&h.serialize(), Some(ContainerKind::Volume)).unwrap();
+        assert_eq!(parsed.magic, crate::MAGIC_VLTD);
+        assert_eq!(parsed.kind(), ContainerKind::Volume);
+        assert_eq!(parsed, h);
+    }
+
+    #[test]
     fn wrong_kind_rejected() {
         let mut h = sample_header();
         h.magic = crate::MAGIC_VLTF;
@@ -304,6 +317,27 @@ mod tests {
             Header::parse_with_kind(&h.serialize(), Some(ContainerKind::Vault)),
             Err(Error::WrongContainerKind)
         ));
+        assert!(matches!(
+            Header::parse_with_kind(&h.serialize(), Some(ContainerKind::Volume)),
+            Err(Error::WrongContainerKind)
+        ));
+    }
+
+    #[test]
+    fn volume_wrong_kind_rejected() {
+        let mut h = sample_header();
+        h.magic = crate::MAGIC_VLTD;
+        h.seal(&[0xAB; 32]);
+        let bytes = h.serialize();
+        assert!(matches!(
+            Header::parse_with_kind(&bytes, Some(ContainerKind::Vault)),
+            Err(Error::WrongContainerKind)
+        ));
+        assert!(matches!(
+            Header::parse_with_kind(&bytes, Some(ContainerKind::SealedFile)),
+            Err(Error::WrongContainerKind)
+        ));
+        assert!(Header::parse_with_kind(&bytes, Some(ContainerKind::Volume)).is_ok());
     }
 
     #[test]

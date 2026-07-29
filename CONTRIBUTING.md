@@ -8,7 +8,7 @@ makes that bar explicit and reachable.
 
 Blindkey uses **Intent-Verified Development (IVD)**: the design lives as testable constraints in
 [`blindkey_intent.yaml`](blindkey_intent.yaml) *before* code is written. Every security property is a
-numbered constraint (`C1`…`C66`) with a `test:` field. When you implement or change behavior:
+numbered constraint (`C1`…`C74`) with a `test:` field. When you implement or change behavior:
 
 1. **Read the relevant constraint(s)** in `blindkey_intent.yaml`.
 2. **Implement to satisfy them** — for security-critical work, in the segment order in the intent.
@@ -19,7 +19,7 @@ See [`docs/CONSTRAINT_INDEX.md`](docs/CONSTRAINT_INDEX.md) for where constraint 
 
 If you're proposing new behavior with no constraint yet, open a discussion first — we add the
 constraint (with a test) before the implementation. See [research/security_coverage_gaps.md](research/security_coverage_gaps.md)
-for post-1.0 candidate areas beyond the current 66 constraints.
+for post-1.0 candidate areas beyond the current 74 constraints.
 
 ## Ground rules for a security codebase
 

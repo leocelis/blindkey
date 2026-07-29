@@ -111,6 +111,7 @@ pub struct SealDialog {
     /// Padmé on by default (C66); only toggled via advanced expander.
     pub pad_enabled: bool,
     pub show_advanced: bool,
+    pub show_password: bool,
     pub error: Option<String>,
 }
 
@@ -129,6 +130,7 @@ impl SealDialog {
             enroll_yubikey: false,
             pad_enabled: true,
             show_advanced: false,
+            show_password: false,
             error: None,
         }
     }
@@ -146,6 +148,7 @@ pub struct OpenDialog {
     pub dest_path: String,
     pub password: String,
     pub keyfile_path: String,
+    pub show_password: bool,
     pub error: Option<String>,
 }
 
@@ -156,6 +159,7 @@ impl OpenDialog {
             dest_path: ".".into(),
             password: String::new(),
             keyfile_path: String::new(),
+            show_password: false,
             error: None,
         }
     }
@@ -353,7 +357,7 @@ impl SealedGui {
             return false;
         };
         if dlg.password != dlg.confirm {
-            dlg.error = Some("Passphrases do not match.".into());
+            dlg.error = Some("Passphrases don't match — retype confirm.".into());
             self.seal_dialog = Some(dlg);
             return true;
         }
@@ -743,7 +747,7 @@ impl SealedGui {
         egui::Window::new("🔐 Seal files")
             .collapsible(false)
             .resizable(true)
-            .default_width(420.0)
+            .default_width(crate::theme::FORM_WIDTH)
             .show(ctx, |ui| {
                 ui.label(format!("{} path(s) selected.", dlg.input_paths.len()));
                 ui.horizontal(|ui| {
@@ -764,20 +768,22 @@ impl SealedGui {
                         }
                     }
                 });
-                ui.add_space(6.0);
-                ui.label("Passphrase");
-                ui.add(
-                    egui::TextEdit::singleline(&mut dlg.password)
-                        .password(true)
-                        .desired_width(320.0),
+                ui.add_space(crate::theme::SPACE_S);
+                let mut focus_pw = false;
+                crate::theme::labeled_secret_row(
+                    ui,
+                    "Passphrase",
+                    &mut dlg.password,
+                    &mut dlg.show_password,
+                    &mut focus_pw,
                 );
-                ui.label("Confirm passphrase");
-                ui.add(
-                    egui::TextEdit::singleline(&mut dlg.confirm)
-                        .password(true)
-                        .desired_width(320.0),
+                crate::theme::labeled_secret_confirm(
+                    ui,
+                    "Confirm passphrase",
+                    &mut dlg.confirm,
+                    dlg.show_password,
                 );
-                ui.add_space(4.0);
+                ui.add_space(crate::theme::SPACE_XS);
                 ui.collapsing("Advanced", |ui| {
                     dlg.show_advanced = true;
                     ui.checkbox(&mut dlg.pad_enabled, "Pad size (Padmé — recommended)");
@@ -814,14 +820,14 @@ impl SealedGui {
                     ui.label("Size padding: on (Padmé default)");
                 }
                 if let Some(e) = &dlg.error {
-                    ui.colored_label(egui::Color32::RED, e);
+                    ui.colored_label(crate::theme::DANGER, e);
                 }
-                ui.add_space(8.0);
+                ui.add_space(crate::theme::SPACE_S);
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
                         cancel = true;
                     }
-                    if ui.button("Seal").clicked() {
+                    if crate::theme::primary_button(ui, "Seal", 100.0).clicked() {
                         start = true;
                     }
                 });
@@ -843,7 +849,7 @@ impl SealedGui {
         egui::Window::new("📂 Open sealed container")
             .collapsible(false)
             .resizable(true)
-            .default_width(420.0)
+            .default_width(crate::theme::FORM_WIDTH)
             .show(ctx, |ui| {
                 ui.label(format!(
                     "Container: {}",
@@ -868,12 +874,14 @@ impl SealedGui {
                         }
                     }
                 });
-                ui.add_space(6.0);
-                ui.label("Passphrase");
-                ui.add(
-                    egui::TextEdit::singleline(&mut dlg.password)
-                        .password(true)
-                        .desired_width(320.0),
+                ui.add_space(crate::theme::SPACE_S);
+                let mut focus_pw = false;
+                crate::theme::labeled_secret_row(
+                    ui,
+                    "Passphrase",
+                    &mut dlg.password,
+                    &mut dlg.show_password,
+                    &mut focus_pw,
                 );
                 if SealedContainer::requires_keyfile(
                     &std::fs::read(&dlg.container_path).unwrap_or_default(),
@@ -896,9 +904,9 @@ impl SealedGui {
                     });
                 }
                 if let Some(e) = &dlg.error {
-                    ui.colored_label(egui::Color32::RED, e);
+                    ui.colored_label(crate::theme::DANGER, e);
                 }
-                ui.add_space(8.0);
+                ui.add_space(crate::theme::SPACE_S);
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
                         cancel = true;
@@ -906,7 +914,7 @@ impl SealedGui {
                     if ui.button("Peek").clicked() {
                         peek = true;
                     }
-                    if ui.button("Extract").clicked() {
+                    if crate::theme::primary_button(ui, "Extract", 100.0).clicked() {
                         extract = true;
                     }
                 });
@@ -978,7 +986,7 @@ impl SealedGui {
                         }
                     });
                 }
-                ui.add_space(8.0);
+                ui.add_space(crate::theme::SPACE_S);
                 if ui.button("Close").clicked() {
                     close = true;
                 }

@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **UC-25 local encrypted volume** — `.vltd` workspace container (`blindkey-core::volume`: AEAD
+  blocks, Kcom, HMAC-SHA-256 Merkle, local authenticity anchor, Padmé); `blindkey volume` CLI;
+  Linux `blindkey-fuse`; GUI Create/Unlock/Eject + Seal secondary; ADRs 0007–0010; fuzz +
+  constraint/joint tests; intent **C67–C74** (ROADMAP **S-23**). macOS FUSE provider remains
+  packaging follow-up.
+- **UC-26 desktop UI IA & usability** (`blindkey-gui`) — `default_fonts` + AA theme; Credentials |
+  Workspace mode switch with Seal as secondary CTA; mount-honesty unlock copy (no false
+  “Mounted”); Advanced progressive disclosure on volume create/unlock; first-run + next-beat
+  onboarding; intent **G18 C75–C81** + `uc26_constraints.rs` (ROADMAP **S-25**).
+- **UC-27 desktop UI visual craft** (`blindkey-gui`) — `FORM_WIDTH` unlock card, `SPACE_*` /
+  Spacing tokens, accent Create/Unlock/Add/Save, Danger Delete, Settings overflow, field chrome
+  via `extreme_bg_color`; intent **G19 C82–C87** + `uc27_constraints.rs` (ROADMAP **S-26**).
 - **Extended legal/compliance research** — a follow-up pass specifically looking for regimes not
   covered the first time, again against primary sources:
   - **OFAC sanctions** (`docs/EXPORT_COMPLIANCE.md`) — a distinct regime from EAR export control

@@ -1,10 +1,16 @@
 # Constraint test index (IVD Rule 3)
 
-Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **66 constraints**, **16 groups**, intent **v1.8.0**.
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **87 constraints**, **19 groups**, intent **v1.9.4**
+(extends the v1.9.3 / C1–C81 set with UC-27 C82–C87).
 C61–C66 (G16, [UC-23 sealed file storage](specs/UC-23-sealed-file-storage.md)) ship in **S-22**
-(Phase A–C). The CP-7 sweep below is **66/66 PASS** at the automated gate; C63 RSS ceiling
-on Linux release tests (`c63_rss_ceiling_large_on_disk_seal`); throughput bench via
-`BLINDKEY_SEAL_BENCH_MIN_MIB_S` in `audit-readiness.sh`.
+(implemented). C67–C74 (G17, [UC-25 local encrypted volume](specs/UC-25-local-encrypted-volume.md))
+are **PASS**. C75–C81 (G18, [UC-26 desktop UI IA](specs/UC-26-desktop-ui-information-architecture.md))
+are **PASS** via `uc26_constraints.rs` + theme/mode modules. C82–C87 (G19,
+[UC-27 desktop UI visual craft](specs/UC-27-desktop-ui-visual-craft.md)) are **PASS** via
+`uc27_constraints.rs` + craft theme helpers.
+The CP-7 sweep below is **66/66 PASS** at the automated gate for the original **66 constraints**
+through C66; C67–C74 are **PASS** at the core+CLI+GUI+fuzz level; C75–C81 are **PASS** at the
+GUI presentation level; C82–C87 are **PASS** at the GUI craft level (see the C82–C87 rows).
 
 Tests are **distributed** across crate suites (not a single monolithic file). Run everything with:
 
@@ -85,8 +91,26 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C64 | Sealed containers: fail-closed extraction | PASS | `sealed_constraints.rs` (`c64_*`), `uc23_joint_satisfaction.rs`, `.vltf-partial/` staging |
 | C65 | Sealed containers: traversal-safe extraction | PASS | `file_archive.rs`, `sealed_constraints.rs` (`c65_*`), `fuzz/file_archive_parse` |
 | C66 | Sealed containers: Padmé default-on | PASS | `sealed_constraints.rs` (`c66_*`), `uc23_joint_satisfaction.rs`, CLI `--no-pad` |
+| C67 | Volume: distinct UC + magic (not UC-23 creep) | PASS | `volume_constraints.rs` (`c67_*`), `uc25_joint_satisfaction.rs`; `lib.rs` `ContainerKind::Volume` |
+| C68 | Volume: fixed-size AEAD blocks; no XTS-only/XCB | PASS | `volume/block.rs`, `volume_constraints.rs` (`c68_*`), `uc25_joint_satisfaction.rs` |
+| C69 | Volume: explicit key commitment on password unlock | PASS | `volume/mod.rs` Kcom compare, `volume_constraints.rs` (`c69_*`), `uc25_joint_satisfaction.rs` |
+| C70 | Volume: Merkle/MAC tree + local freshness | PASS | `volume/merkle.rs`, `volume/anchor.rs`, `volume_constraints.rs` (`c70_*`); [ADR-0008](adr/0008-volume-merkle-hmac-sha256.md) |
+| C71 | Volume: locked metadata + Padmé default-on | PASS | `volume_constraints.rs` (`c71_*`), `uc25_joint_satisfaction.rs` (no plaintext paths; Padmé bucket equality) |
+| C72 | Volume: mount hygiene + honest cleartext residual | PASS | `volume/mod.rs` zeroize on `close`; GUI banner/lock-note `volume_gui.rs` + `uc25_constraints.rs`; FUSE page-cache hygiene = Phase B |
+| C73 | Volume: no live cloud sync of RW `.vltd` | PASS | GUI Seal CTA / sync-root refusal `volume_gui.rs` + `uc25_constraints.rs`; docs [THREAT_MODEL](THREAT_MODEL.md), [CLI](CLI.md) |
+| C74 | Volume: hostile parse fail-closed + fuzzed | PASS | `fuzz/volume_block_parse`, `volume_constraints.rs` (`c74_*`), uniform `VOLUME_OPEN_ERROR` |
+| C75 | GUI embeds readable fonts (`default_fonts`) | PASS | `uc26_constraints.rs` (`c75_*`); workspace `Cargo.toml` eframe features |
+| C76 | GUI lock/mount status every frame | PASS | `uc26_constraints.rs` (`c76_*`); `gui_mode::SessionStatus` |
+| C77 | GUI Credentials \| Workspace modes (Seal secondary) | PASS | `uc26_constraints.rs` (`c77_*`); `gui_mode::GuiMode` |
+| C78 | GUI human primary labels | PASS | `uc26_constraints.rs` (`c78_*`) |
+| C79 | GUI mount honesty (no false Mounted) | PASS | `uc26_constraints.rs` (`c79_*`); `volume_gui::unlock_success_message` |
+| C80 | GUI progressive disclosure (Advanced…) | PASS | `uc26_constraints.rs` (`c80_*`) |
+| C81 | GUI WCAG AA theme + target size | PASS | `uc26_constraints.rs` (`c81_*`); `theme.rs` |
 
-**1.0.0 tag:** all 66 constraints PASS at automated gate; libfido2/TPM FFI optional M7; tag after first CP-6 release run.
+**1.0.0 tag:** all implemented constraints through C66 PASS at automated gate; C67–C74 PASS with
+UC-25 (macOS FUSE provider packaging remains a Phase-C platform note); C75–C81 PASS with UC-26;
+C82–C87 PASS with UC-27;
+libfido2/TPM FFI optional M7; tag after first CP-6 release run.
 
 ## Where constraints are verified
 
@@ -110,6 +134,9 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C46–C54 | `crates/blindkey-gui/tests/uc21_constraints.rs` | Session hygiene + keyfile GUI |
 | C55–C60 | `crates/blindkey-gui/tests/uc22_constraints.rs`, `scripts/audit-readiness.sh` | Fleet deploy + quality gate |
 | C61–C66 | `crates/blindkey-core/tests/uc23_joint_satisfaction.rs`, `sealed_constraints.rs`, CLI/GUI/TUI UC-23 suites | UC-23 sealed file storage per [spec §5](specs/UC-23-sealed-file-storage.md) |
+| C67–C74 | `crates/blindkey-core/tests/volume_constraints.rs`, `tests/uc25_joint_satisfaction.rs`, `fuzz/volume_block_parse`, `crates/blindkey-cli` volume sync-root tests, `crates/blindkey-gui/tests/uc25_constraints.rs`, `crates/blindkey-fuse` | UC-25 local encrypted volume per [spec §10 · §11 · §18](specs/UC-25-local-encrypted-volume.md). Core + CLI + Linux FUSE + GUI shell implemented; macOS provider packaging per [ADR-0010](adr/0010-volume-macos-mount-matrix.md) |
+| C75–C81 | `crates/blindkey-gui/tests/uc26_constraints.rs`, `theme.rs`, `gui_mode.rs`, `volume_gui.rs` | UC-26 desktop UI IA per [spec](specs/UC-26-desktop-ui-information-architecture.md) |
+| C82–C87 | `crates/blindkey-gui/tests/uc27_constraints.rs`, `theme.rs` (`form_card` / `primary_button` / `apply_craft_style`), `main.rs` Settings | UC-27 desktop UI visual craft per [spec](specs/UC-27-desktop-ui-visual-craft.md) |
 
 ## Manual review
 
