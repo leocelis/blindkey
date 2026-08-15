@@ -339,6 +339,25 @@ Settings overflow, and Workspace/dialog consistency — without toolkit swap or 
 [spec UC-27](specs/UC-27-desktop-ui-visual-craft.md) · research
 [desktop_app_ui_ux_research.md](../research/desktop_app_ui_ux_research.md).
 
+### UC-28 · Ship desktop UI component kit & surfaces (cards, roles, Settings rows)
+**Persona:** P1, P3 · **Constraints:** C88–C93 (G20); must not regress C20, C27, C40–C54, C75–C87 · **Status:** Implemented v1.0
+
+After UC-27 craft, the egui shell still reads “unfinished” without a **component kit**: outlined
+`surface_card`, quiet/text button roles, GNOME-style Settings rows, optical vertical balance,
+list full-row hits, Search keyboard focus, and dialog Esc/Return contracts — without locked-state
+rails or toolkit swap. See
+[spec UC-28](specs/UC-28-desktop-ui-component-kit.md) · research
+[desktop_ui_components_styling_research.md](../research/desktop_ui_components_styling_research.md).
+
+### UC-29 · Fix desktop UI contrast, typography & theme polarity
+**Persona:** P1, P3 · **Constraints:** C94–C98 (G21); must not regress C20, C27, C40–C54, C75–C93 · **Status:** Implemented v1.0
+
+Post–UC-28 smoke showed a **light macOS canvas + dark card** polarity collision (egui System theme),
+illegible captions, and failing primary-button contrast. UC-29 forces Dark theme, retunes tokens to
+measured WCAG 2.2 AA ratios, raises type scale toward NIST ≥12 pt, and uses white primary ink. See
+[spec UC-29](specs/UC-29-desktop-ui-contrast-typography.md) · research
+[desktop_ui_contrast_typography_research.md](../research/desktop_ui_contrast_typography_research.md).
+
 ## 6. Out of scope for v1 (non-goals)
 
 From the intent's `non_goals:` — hosted sync service, browser extension, team vaults,

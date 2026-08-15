@@ -10,7 +10,9 @@
 > **Research (binding craft SoT):** [desktop_app_ui_ux_research.md](../../research/desktop_app_ui_ux_research.md)
 > §1 incident · §4 systems · §8 playbook · §13 egui 0.29.1 API map · §16 H1–H7 · §17 checklist · §19 audit  
 > **Companions:** [desktop_security_ui_research.md](../../research/desktop_security_ui_research.md) (IA/honesty),
-> [ui_architecture.md](../../research/ui_architecture.md) (toolkit)  
+> [ui_architecture.md](../../research/ui_architecture.md) (toolkit),
+> [desktop_ui_components_styling_research.md](../../research/desktop_ui_components_styling_research.md) +
+> [UC-28](UC-28-desktop-ui-component-kit.md) (component kit / surfaces — Implemented v1.0)  
 > **Sibling (not this UC):** SwiftUI / Liquid Glass = UC-18 P3; vault Argon2 cancel = UC-26 DF-6;
 > multi-volume list = UC-26 DF-7; AccessKit enable = research G4 / R4  
 > **Cross-check:** research ↔ Draft **v0.2**; **Implemented 2026-07-29** (ROADMAP S-26);

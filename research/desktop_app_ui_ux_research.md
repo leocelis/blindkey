@@ -15,6 +15,7 @@
 > | **This file** | Desktop craft **history** (§2–§11) + **Blindkey stack craft** (§12–§18): egui 0.29 / eframe / glow, official APIs, trusted authors → concrete widgets |
 > | Spec [UC-26](../docs/specs/UC-26-desktop-ui-information-architecture.md) | Binding IA contract (modes, honesty, microcopy) |
 > | Spec [UC-27](../docs/specs/UC-27-desktop-ui-visual-craft.md) | Binding **craft** contract — **Implemented v1.0** / ROADMAP S-26 (C82–C87 PASS) |
+> | [`desktop_ui_components_styling_research.md`](desktop_ui_components_styling_research.md) | **Components + styling** (cards, button roles, boxed lists, elevation) — post–UC-27 polish SoT |
 >
 > **Trigger:** Live `blindkey-gui` unlock/create screen (screenshot 2026-07-29) — readable fonts
 > after UC-26, but **layout, hierarchy, and redundancy still look unfinished** (§1).
@@ -413,6 +414,7 @@ Keep Cryptomator sparsity (security research). Large Create/Unlock. Seal seconda
 | 2026-07-29 | **Source cross-check** — §19 audit; fix egui **0.29.1** API drift (`text_edit_bg_color` etc.); accesskit OFF; Apple HIG pillar wording; FORM_WIDTH vs UC-26; hint_text diagnosis; Spacing defaults |
 | 2026-07-29 | **Spec promotion** — craft checklist → [UC-27](../docs/specs/UC-27-desktop-ui-visual-craft.md) Draft v0.1 + ROADMAP S-26 |
 | 2026-07-29 | **Spec↔research cross-check** — UC-27 **Draft v0.2** closes gaps (H1–H7 map, density/bands, FIELD_HEIGHT, Add/Workspace accent, §8.5 anti-patterns, Spacing defaults, AccessKit OFF, Settings→C87, R1–R4 deferred) |
+| 2026-07-30 | Pointer → [`desktop_ui_components_styling_research.md`](desktop_ui_components_styling_research.md) (component kit / surfaces; proposed UC-28) |
 
 ---
 

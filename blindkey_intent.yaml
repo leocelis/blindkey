@@ -41,7 +41,7 @@ meta:
   intent_type: "feature"        # scope: single deliverable, not system-level
   name: vault
   tagline: "Zero-plaintext · local-first · open-source credential vault"
-  version: "1.9.4"   # 1.9.4: UC-27 desktop UI visual craft — G19 C82–C87 PASS. 1.9.3: UC-26 desktop UI IA — G18 C75–C81 PASS (fonts, modes, honesty, AA theme). 1.9.2: UC-25 shipped — G17 C67–C74 tests now PASS (volume core + CLI + Linux fuse + GUI); macOS FUSE packaging remains ADR-0010. 1.9.1: G17 enriched to match UC-25 tech spec; Accepted 2026-07-21. 1.9.0: first landing of UC-25 FORWARD constraints. Prior: 1.8.0 UC-23 C61–C66 G16. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
+  version: "1.9.6"   # 1.9.6: UC-29 desktop UI contrast/typography/polarity — G21 C94–C98 PASS. 1.9.5: UC-28 desktop UI component kit — G20 C88–C93 PASS. 1.9.4: UC-27 desktop UI visual craft — G19 C82–C87 PASS. 1.9.3: UC-26 desktop UI IA — G18 C75–C81 PASS (fonts, modes, honesty, AA theme). 1.9.2: UC-25 shipped — G17 C67–C74 tests now PASS (volume core + CLI + Linux fuse + GUI); macOS FUSE packaging remains ADR-0010. 1.9.1: G17 enriched to match UC-25 tech spec; Accepted 2026-07-21. 1.9.0: first landing of UC-25 FORWARD constraints. Prior: 1.8.0 UC-23 C61–C66 G16. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
   license: "MIT OR Apache-2.0"
   language: rust
   ifscale_density: high         # IVD Rule 1: 74 constraints → segmented implementation
@@ -150,6 +150,8 @@ constraint_groups:
   G17: "Local encrypted volume — live mountable workspace (UC-25; MSV profile; C67–C74 PASS)"
   G18: "Desktop UI information architecture & usable-security chrome (UC-26; C75–C81 PASS)"
   G19: "Desktop UI visual craft polish (UC-27; C82–C87 PASS)"
+  G20: "Desktop UI component kit & surfaces (UC-28; C88–C93 PASS)"
+  G21: "Desktop UI contrast, typography & theme polarity (UC-29; C94–C98 PASS)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 constraints:
@@ -2365,13 +2367,126 @@ constraints:
     test: |
       UNIT — `uc27_constraints.rs` `c87_settings_overflow`.
 
+  # ── G20: Desktop UI component kit & surfaces (UC-28) ────────────────────────
+  - id: C88
+    group: G20
+    title: "Desktop GUI locked unlock/create body uses an outlined surface card"
+    description: |
+      The locked unlock/create screen MUST wrap the form body in `theme::surface_card` using
+      `AA_CARD_BG` distinct from panel `AA_BG` and a visible `AA_CARD_STROKE` (Fluent stroke-first
+      on dark). Ambient card shadow is optional and MUST default off.
+    test: |
+      UNIT — `uc28_constraints.rs` `c88_surface_card_locked`; `theme.rs` AA_CARD_* + `surface_card`.
+
+  - id: C89
+    group: G20
+    title: "Desktop GUI quiet/text button roles for Cancel and tertiary actions"
+    description: |
+      Cancel, first-run Create/Open strip, and tertiary “Choose vault file…” MUST use
+      `quiet_button` and/or `text_button` — not accent fill. Dialog footers in Credentials,
+      volume, and seal flows MUST place Cancel before Affirm (GNOME / Blindkey stance).
+    test: |
+      UNIT — `uc28_constraints.rs` `c89_quiet_text_button_kit` + `craft_s05_dialog_cancel_before_affirm`.
+
+  - id: C90
+    group: G20
+    title: "Desktop GUI Settings presents boxed-list rows inside card chrome"
+    description: |
+      The Credentials Settings window MUST present at least three Vault controls (Pad size,
+      Auto-lock, Clipboard clear, and/or Lock on blur) as labeled rows via `settings_switch_row`
+      / `settings_value_row` (or equivalent) inside `surface_card` chrome. Progressive disclosure
+      (C87) is preserved — this constraint covers interior craft, not toolbar overflow.
+    test: |
+      UNIT — `uc28_constraints.rs` `c90_settings_boxed_rows`.
+
+  - id: C91
+    group: G20
+    title: "Desktop GUI locked screen applies optical vertical balance"
+    description: |
+      The locked CentralPanel MUST apply optical vertical balance so the unlock/create card is
+      not permanently top-glued with only `WINDOW_GUTTER` (use `locked_vertical_balance_spacer`
+      or equivalent spacer math). Footer drop caption remains a bottom band.
+    test: |
+      UNIT — `uc28_constraints.rs` `c91_locked_vertical_balance`.
+
+  - id: C92
+    group: G20
+    title: "Desktop GUI credential list rows are full-row selectable at medium density"
+    description: |
+      Unlocked Credentials list rows MUST expose a full-row select hit target (via
+      `list_select_row` or equivalent sized selectable) at medium `ROW_HEIGHT_LIST` density
+      (~28 logical px), kept in sync with list virtualization row height.
+    test: |
+      UNIT — `uc28_constraints.rs` `c92_full_row_list_hit`.
+
+  - id: C93
+    group: G20
+    title: "Desktop GUI Search is focusable via Cmd/Ctrl+F"
+    description: |
+      When unlocked Credentials is active, Cmd/Ctrl+F (and/or Cmd/Ctrl+K) MUST focus the Search
+      field through `focus_search` (or equivalent wiring). Enter/Tab MAY select the first match
+      when the query is non-empty and no row is selected (best-effort).
+    test: |
+      UNIT — `uc28_constraints.rs` `c93_search_focus_contract`.
+
+  # ── G21: Desktop UI contrast, typography & theme polarity (UC-29) ────────────
+  - id: C94
+    group: G21
+    title: "Desktop GUI forces Dark theme polarity for AA tokens"
+    description: |
+      The GUI MUST call `set_theme(ThemePreference::Dark)` and apply AA visuals via
+      `set_visuals_of(Theme::Dark, …)` / `style_mut_of(Theme::Dark, …)` so tokens are not lost
+      when the OS appearance is Light (egui System default polarity collision). `App::update`
+      MUST call `ensure_dark_polarity` so a drifted preference is re-applied.
+    test: |
+      UNIT — `uc29_constraints.rs` `c94_force_dark_theme`.
+
+  - id: C95
+    group: G21
+    title: "Desktop GUI type scale meets NIST ≥12 pt caption intent"
+    description: |
+      Dark-style text_styles MUST set Small ≥12, Body ≥14, Button ≥14, Heading ≥20 logical px
+      (NIST SP 800-63B customer-experience legibility guidance for user-facing auth text).
+    test: |
+      UNIT — `uc29_constraints.rs` `c95_type_scale_nist`.
+
+  - id: C96
+    group: G21
+    title: "Desktop GUI muted captions meet WCAG 4.5:1 on card and panel"
+    description: |
+      Captions, vault path helpers, and secondary shell copy MUST use `AA_MUTED` via `caption` /
+      `muted_label` (or equivalent) — not `ui.weak()` / Light-theme gray-out of black ink.
+      `AA_MUTED` MUST contrast ≥4.5:1 against both `AA_CARD_BG` and `AA_BG`.
+    test: |
+      UNIT — `uc29_constraints.rs` `c96_muted_contrast`; `theme::tests::uc29_text_contrast_aa`.
+
+  - id: C97
+    group: G21
+    title: "Desktop GUI primary button uses white label on AA accent"
+    description: |
+      `primary_button` MUST paint white (`PRIMARY_LABEL`) on a darkened `ACCENT` such that the
+      pair measures ≥4.5:1 (WCAG 1.4.3). `danger_button` MUST use `DANGER_LABEL` (near-black) on
+      `DANGER` fill — white on bright red fails AA. Bright sky-blue with dark ink is not acceptable
+      for primary.
+    test: |
+      UNIT — `uc29_constraints.rs` `c97_primary_white_on_accent`; `theme::tests::uc29_text_contrast_aa`.
+
+  - id: C98
+    group: G21
+    title: "Desktop GUI field/card strokes meet WCAG 1.4.11 non-text contrast"
+    description: |
+      `AA_FIELD_STROKE` vs `AA_FIELD_BG` and `AA_CARD_STROKE` vs `AA_CARD_BG` MUST each measure
+      ≥3:1. Window/panel fill MUST remain `AA_BG` (no light canvas under the dark card).
+    test: |
+      UNIT — `uc29_constraints.rs` `c98_nontext_strokes`; `theme::tests::uc29_nontext_stroke_contrast`.
+
 # ──────────────────────────────────────────────────────────────────────────────
 constraint_satisfiability:
   # IVD Rule 6 — SATISFIABILITY CHECK
   # Required when 3 or more constraints exist. Documents every identified conflict,
   # its resolution, and binding priority ordering.
   # No constraint may be silently violated when it conflicts with another.
-  density: high  # 87 constraints, 19 groups (C61–C66 UC-23 PASS; C67–C74 UC-25 PASS; C75–C81 UC-26 PASS; C82–C87 UC-27 PASS / intent v1.9.4)
+  density: high  # 98 constraints, 21 groups (C61–C66 UC-23 PASS; C67–C74 UC-25 PASS; C75–C81 UC-26 PASS; C82–C87 UC-27 PASS; C88–C93 UC-28 PASS; C94–C98 UC-29 PASS / intent v1.9.6)
   conflicts_identified: 11
   conflicts:
 

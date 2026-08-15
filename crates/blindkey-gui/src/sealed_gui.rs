@@ -112,6 +112,8 @@ pub struct SealDialog {
     pub pad_enabled: bool,
     pub show_advanced: bool,
     pub show_password: bool,
+    /// Request focus on passphrase once when dialog opens (CRAFT-S05).
+    pub focus_password: bool,
     pub error: Option<String>,
 }
 
@@ -131,6 +133,7 @@ impl SealDialog {
             pad_enabled: true,
             show_advanced: false,
             show_password: false,
+            focus_password: true,
             error: None,
         }
     }
@@ -149,6 +152,8 @@ pub struct OpenDialog {
     pub password: String,
     pub keyfile_path: String,
     pub show_password: bool,
+    /// Request focus on passphrase once when dialog opens (CRAFT-S05).
+    pub focus_password: bool,
     pub error: Option<String>,
 }
 
@@ -160,6 +165,7 @@ impl OpenDialog {
             password: String::new(),
             keyfile_path: String::new(),
             show_password: false,
+            focus_password: true,
             error: None,
         }
     }
@@ -769,20 +775,23 @@ impl SealedGui {
                     }
                 });
                 ui.add_space(crate::theme::SPACE_S);
-                let mut focus_pw = false;
-                crate::theme::labeled_secret_row(
+                let pw = crate::theme::labeled_secret_row(
                     ui,
                     "Passphrase",
                     &mut dlg.password,
                     &mut dlg.show_password,
-                    &mut focus_pw,
+                    &mut dlg.focus_password,
                 );
-                crate::theme::labeled_secret_confirm(
+                let cf = crate::theme::labeled_secret_confirm(
                     ui,
                     "Confirm passphrase",
                     &mut dlg.confirm,
                     dlg.show_password,
                 );
+                if crate::theme::submit_on_enter(&pw, ui) || crate::theme::submit_on_enter(&cf, ui)
+                {
+                    start = true;
+                }
                 ui.add_space(crate::theme::SPACE_XS);
                 ui.collapsing("Advanced", |ui| {
                     dlg.show_advanced = true;
@@ -797,7 +806,7 @@ impl SealedGui {
                                     .desired_width(200.0)
                                     .hint_text("path to keyfile"),
                             );
-                            if ui.button("Browse…").clicked() {
+                            if crate::theme::text_button(ui, "Browse…").clicked() {
                                 if let Some(p) = rfd::FileDialog::new()
                                     .set_title("Select or create keyfile")
                                     .save_file()
@@ -823,14 +832,13 @@ impl SealedGui {
                     ui.colored_label(crate::theme::DANGER, e);
                 }
                 ui.add_space(crate::theme::SPACE_S);
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        cancel = true;
-                    }
-                    if crate::theme::primary_button(ui, "Seal", 100.0).clicked() {
-                        start = true;
-                    }
-                });
+                let (c, a) = crate::theme::dialog_cancel_affirm(ui, "Seal");
+                if c {
+                    cancel = true;
+                }
+                if a {
+                    start = true;
+                }
             });
         if cancel {
             self.seal_dialog = None;
@@ -865,7 +873,7 @@ impl SealedGui {
                             .desired_width(220.0)
                             .hint_text("folder"),
                     );
-                    if ui.button("Choose…").clicked() {
+                    if crate::theme::text_button(ui, "Choose…").clicked() {
                         if let Some(p) = rfd::FileDialog::new()
                             .set_title("Extract sealed container")
                             .pick_folder()
@@ -875,14 +883,16 @@ impl SealedGui {
                     }
                 });
                 ui.add_space(crate::theme::SPACE_S);
-                let mut focus_pw = false;
-                crate::theme::labeled_secret_row(
+                let pw = crate::theme::labeled_secret_row(
                     ui,
                     "Passphrase",
                     &mut dlg.password,
                     &mut dlg.show_password,
-                    &mut focus_pw,
+                    &mut dlg.focus_password,
                 );
+                if crate::theme::submit_on_enter(&pw, ui) {
+                    extract = true;
+                }
                 if SealedContainer::requires_keyfile(
                     &std::fs::read(&dlg.container_path).unwrap_or_default(),
                 ) {
@@ -893,7 +903,7 @@ impl SealedGui {
                                 .desired_width(220.0)
                                 .hint_text("path to keyfile"),
                         );
-                        if ui.button("Browse…").clicked() {
+                        if crate::theme::text_button(ui, "Browse…").clicked() {
                             if let Some(p) = rfd::FileDialog::new()
                                 .set_title("Select keyfile")
                                 .pick_file()
@@ -908,13 +918,20 @@ impl SealedGui {
                 }
                 ui.add_space(crate::theme::SPACE_S);
                 ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
+                    if crate::theme::escape_pressed(ui)
+                        || crate::theme::quiet_button(ui, "Cancel", crate::theme::DIALOG_BTN_WIDTH)
+                            .clicked()
+                    {
                         cancel = true;
                     }
-                    if ui.button("Peek").clicked() {
+                    if crate::theme::quiet_button(ui, "Peek", crate::theme::DIALOG_BTN_WIDTH)
+                        .clicked()
+                    {
                         peek = true;
                     }
-                    if crate::theme::primary_button(ui, "Extract", 100.0).clicked() {
+                    if crate::theme::primary_button(ui, "Extract", crate::theme::DIALOG_BTN_WIDTH)
+                        .clicked()
+                    {
                         extract = true;
                     }
                 });
@@ -987,9 +1004,12 @@ impl SealedGui {
                     });
                 }
                 ui.add_space(crate::theme::SPACE_S);
-                if ui.button("Close").clicked() {
-                    close = true;
-                }
+                    if crate::theme::escape_pressed(ui)
+                        || crate::theme::quiet_button(ui, "Close", crate::theme::DIALOG_BTN_WIDTH)
+                            .clicked()
+                    {
+                        close = true;
+                    }
             });
         if close {
             self.peek_view = None;
@@ -1013,7 +1033,10 @@ impl SealedGui {
                 let frac = (done as f32 / total as f32).clamp(0.0, 1.0);
                 ui.add(egui::ProgressBar::new(frac).show_percentage());
                 ui.label(format!("Phase {done}/{total} ({phase_rate:.2}/s)"));
-                if ui.button("Cancel").clicked() {
+                if crate::theme::escape_pressed(ui)
+                    || crate::theme::quiet_button(ui, "Cancel", crate::theme::DIALOG_BTN_WIDTH)
+                        .clicked()
+                {
                     cancel = true;
                 }
             });

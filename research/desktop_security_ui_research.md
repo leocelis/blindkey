@@ -14,7 +14,9 @@
 > egui vs Tauri vs SwiftUI — **how** to render), this doc (**what** screens, mental models,
 > and **how it should feel** security-wise). **Visual craft / history / layout systems:**
 > [`desktop_app_ui_ux_research.md`](desktop_app_ui_ux_research.md) (classic → 2026 HIGs — **how it
-> should look**). Volume crypto:
+> should look**). **Components / styling:**
+> [`desktop_ui_components_styling_research.md`](desktop_ui_components_styling_research.md)
+> (cards, button roles, boxed lists — post–UC-27 polish). Volume crypto:
 > [`encrypted_volume_mount_research.md`](encrypted_volume_mount_research.md).
 > Specs: [UC-18](../docs/specs/UC-18-native-ui.md), [UC-20](../docs/specs/UC-20-desktop-gui-hardening.md),
 > [UC-21](../docs/specs/UC-21-desktop-gaps-closure.md), [UC-25](../docs/specs/UC-25-local-encrypted-volume.md),

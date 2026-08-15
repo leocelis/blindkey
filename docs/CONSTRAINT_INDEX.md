@@ -1,16 +1,21 @@
 # Constraint test index (IVD Rule 3)
 
-Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **87 constraints**, **19 groups**, intent **v1.9.4**
-(extends the v1.9.3 / C1–C81 set with UC-27 C82–C87).
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **98 constraints**, **21 groups**, intent **v1.9.6**
+(extends the v1.9.5 / C1–C93 set with UC-29 C94–C98).
 C61–C66 (G16, [UC-23 sealed file storage](specs/UC-23-sealed-file-storage.md)) ship in **S-22**
 (implemented). C67–C74 (G17, [UC-25 local encrypted volume](specs/UC-25-local-encrypted-volume.md))
 are **PASS**. C75–C81 (G18, [UC-26 desktop UI IA](specs/UC-26-desktop-ui-information-architecture.md))
 are **PASS** via `uc26_constraints.rs` + theme/mode modules. C82–C87 (G19,
 [UC-27 desktop UI visual craft](specs/UC-27-desktop-ui-visual-craft.md)) are **PASS** via
-`uc27_constraints.rs` + craft theme helpers.
+`uc27_constraints.rs` + craft theme helpers. C88–C93 (G20,
+[UC-28 desktop UI component kit](specs/UC-28-desktop-ui-component-kit.md)) are **PASS** via
+`uc28_constraints.rs` + surface/quiet/list helpers. C94–C98 (G21,
+[UC-29 contrast/typography/polarity](specs/UC-29-desktop-ui-contrast-typography.md)) are **PASS** via
+`uc29_constraints.rs` + Dark theme force + token retune.
 The CP-7 sweep below is **66/66 PASS** at the automated gate for the original **66 constraints**
 through C66; C67–C74 are **PASS** at the core+CLI+GUI+fuzz level; C75–C81 are **PASS** at the
-GUI presentation level; C82–C87 are **PASS** at the GUI craft level (see the C82–C87 rows).
+GUI presentation level; C82–C87 are **PASS** at the GUI craft level; C88–C93 are **PASS** at the
+GUI component-kit level; C94–C98 are **PASS** at the GUI contrast/polarity level (see the C94–C98 rows).
 
 Tests are **distributed** across crate suites (not a single monolithic file). Run everything with:
 
@@ -106,10 +111,21 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C79 | GUI mount honesty (no false Mounted) | PASS | `uc26_constraints.rs` (`c79_*`); `volume_gui::unlock_success_message` |
 | C80 | GUI progressive disclosure (Advanced…) | PASS | `uc26_constraints.rs` (`c80_*`) |
 | C81 | GUI WCAG AA theme + target size | PASS | `uc26_constraints.rs` (`c81_*`); `theme.rs` |
+| C88 | GUI surface_card on locked form | PASS | `uc28_constraints.rs` (`c88_*`); `theme::surface_card` |
+| C89 | GUI quiet/text button roles | PASS | `uc28_constraints.rs` (`c89_*`); dialog Cancel→Affirm |
+| C90 | GUI Settings boxed-list rows | PASS | `uc28_constraints.rs` (`c90_*`); `settings_*_row` |
+| C91 | GUI locked optical vertical balance | PASS | `uc28_constraints.rs` (`c91_*`) |
+| C92 | GUI full-row list hit + density | PASS | `uc28_constraints.rs` (`c92_*`); `list_select_row` |
+| C93 | GUI Search Cmd/Ctrl+F focus | PASS | `uc28_constraints.rs` (`c93_*`); `focus_search` |
+| C94 | GUI force Dark theme polarity | PASS | `uc29_constraints.rs` (`c94_*`); `set_theme(Dark)` + `ensure_dark_polarity` |
+| C95 | GUI NIST type scale (≥12 Small) | PASS | `uc29_constraints.rs` (`c95_*`); `FONT_*` + text_styles |
+| C96 | GUI muted captions ≥4.5:1 | PASS | `uc29_constraints.rs` (`c96_*`); `AA_MUTED` / `muted_label` (no `ui.weak`) |
+| C97 | GUI white primary; dark danger label | PASS | `uc29_constraints.rs` (`c97_*`); `PRIMARY_LABEL` / `DANGER_LABEL` |
+| C98 | GUI field/card stroke ≥3:1 + AA_BG panel | PASS | `uc29_constraints.rs` (`c98_*`); contrast unit tests |
 
 **1.0.0 tag:** all implemented constraints through C66 PASS at automated gate; C67–C74 PASS with
 UC-25 (macOS FUSE provider packaging remains a Phase-C platform note); C75–C81 PASS with UC-26;
-C82–C87 PASS with UC-27;
+C82–C87 PASS with UC-27; C88–C93 PASS with UC-28; C94–C98 PASS with UC-29;
 libfido2/TPM FFI optional M7; tag after first CP-6 release run.
 
 ## Where constraints are verified
@@ -137,6 +153,8 @@ libfido2/TPM FFI optional M7; tag after first CP-6 release run.
 | C67–C74 | `crates/blindkey-core/tests/volume_constraints.rs`, `tests/uc25_joint_satisfaction.rs`, `fuzz/volume_block_parse`, `crates/blindkey-cli` volume sync-root tests, `crates/blindkey-gui/tests/uc25_constraints.rs`, `crates/blindkey-fuse` | UC-25 local encrypted volume per [spec §10 · §11 · §18](specs/UC-25-local-encrypted-volume.md). Core + CLI + Linux FUSE + GUI shell implemented; macOS provider packaging per [ADR-0010](adr/0010-volume-macos-mount-matrix.md) |
 | C75–C81 | `crates/blindkey-gui/tests/uc26_constraints.rs`, `theme.rs`, `gui_mode.rs`, `volume_gui.rs` | UC-26 desktop UI IA per [spec](specs/UC-26-desktop-ui-information-architecture.md) |
 | C82–C87 | `crates/blindkey-gui/tests/uc27_constraints.rs`, `theme.rs` (`form_card` / `primary_button` / `apply_craft_style`), `main.rs` Settings | UC-27 desktop UI visual craft per [spec](specs/UC-27-desktop-ui-visual-craft.md) |
+| C88–C93 | `crates/blindkey-gui/tests/uc28_constraints.rs`, `theme.rs` (`surface_card` / `quiet_button` / `list_select_row` / `focus_search`), `main.rs` / `volume_gui.rs` / `sealed_gui.rs` | UC-28 desktop UI component kit per [spec](specs/UC-28-desktop-ui-component-kit.md) |
+| C94–C98 | `crates/blindkey-gui/tests/uc29_constraints.rs`, `theme.rs` (`ThemePreference::Dark` / `AA_MUTED` / `PRIMARY_LABEL` / contrast unit tests) | UC-29 contrast/typography/polarity per [spec](specs/UC-29-desktop-ui-contrast-typography.md) |
 
 ## Manual review
 

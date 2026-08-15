@@ -20,6 +20,10 @@
 > **Visual craft companion (2026-07-29):**
 > [`desktop_app_ui_ux_research.md`](desktop_app_ui_ux_research.md) — desktop UI history (PARC →
 > Liquid Glass), layout/spacing/type systems, screenshot diagnosis, egui craft playbook.
+>
+> **Components / styling companion (2026-07-30):**
+> [`desktop_ui_components_styling_research.md`](desktop_ui_components_styling_research.md) —
+> cards, button roles, boxed lists, elevation tokens; proposed UC-28 surfaces kit.
 
 ---
 

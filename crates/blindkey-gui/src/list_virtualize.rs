@@ -2,8 +2,8 @@
 
 /// Switch to viewport-only layout above this many filtered rows (UC-20 §3.3).
 pub const LIST_VIRTUALIZE_THRESHOLD: usize = 100;
-/// Estimated row height for scroll math (egui Body + padding).
-pub const ENTRY_ROW_HEIGHT: f32 = 24.0;
+/// Estimated row height for scroll math — must match [`crate::theme::ROW_HEIGHT_LIST`] (UC-28).
+pub const ENTRY_ROW_HEIGHT: f32 = 28.0;
 /// Extra rows painted above/below the viewport to reduce pop-in while scrolling.
 pub const VIRTUALIZE_MARGIN: usize = 3;
 

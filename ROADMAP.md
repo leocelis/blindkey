@@ -148,6 +148,8 @@ lane can build against from that point on.
 | S-23 | ✅ **Local encrypted volume (live mount)** — PGP Disk / VeraCrypt-class `.vltd` workspace; MSV AEAD blocks + FUSE; CLI + macOS GUI; **not** cloud live-sync | [UC-25](docs/specs/UC-25-local-encrypted-volume.md) | C67–C74 | **Shipped** (July 2026): `blindkey-core::volume` (AEAD blocks, Kcom, HMAC-SHA-256 Merkle, local anchor, Padmé) + `blindkey volume` CLI verbs + Linux `blindkey-fuse` + GUI Create/Mount/Eject + fuzz + joint-satisfaction; C67–C74 PASS. **Remaining:** macOS FUSE provider (macFUSE/Fuse-T packaging; stub today) + harnessed 4K/sequential benches (honest: userspace FUSE loses to dm-crypt). |
 | S-25 | ✅ **Desktop UI IA & usability** — fonts/legibility gate, Credentials \| Workspace modes, mount honesty, WCAG AA chrome | [UC-26](docs/specs/UC-26-desktop-ui-information-architecture.md) | S-17 + S-20 + S-23 | **Shipped** (2026-07-29): `default_fonts` + AA theme; `GuiMode` Credentials\|Workspace; Seal secondary; mount honesty (C79); Advanced progressive disclosure; first-run/next-beat; C75–C81 PASS via `uc26_constraints.rs`. *(Note: S-24 remains MCP broker — do not renumber.)* |
 | S-26 | ✅ **Desktop UI visual craft** — form card, Spacing tokens, accent primary, trust-copy hygiene, Settings overflow | [UC-27](docs/specs/UC-27-desktop-ui-visual-craft.md) | S-25 | **Shipped** (2026-07-29): `apply_craft_style` + `FORM_WIDTH` card; accent Create/Unlock/Add; Settings window; Workspace/Seal accents; C82–C87 PASS via `uc27_constraints.rs`. *(Note: S-24 = MCP; S-25 = UC-26.)* |
+| S-27 | ✅ **Desktop UI component kit & surfaces** — `surface_card`, quiet/text buttons, Settings boxed-list rows, vertical balance, list/search contracts | [UC-28](docs/specs/UC-28-desktop-ui-component-kit.md) | S-26 | **Shipped** (2026-07-30): UC-28 Implemented v1.0; intent G20 C88–C93 PASS (`uc28_constraints.rs`). No locked-state rail; no toolkit swap. *(Note: S-24 = MCP — do not renumber.)* |
+| S-28 | ✅ **Desktop UI contrast, typography & polarity** — force Dark theme, WCAG AA tokens, NIST type scale, white primary ink | [UC-29](docs/specs/UC-29-desktop-ui-contrast-typography.md) | S-27 | **Shipped** (2026-07-30): UC-29 Implemented v1.0; intent G21 C94–C98 PASS (`uc29_constraints.rs`). Fixes light-canvas / dark-card polarity collision. *(Note: S-24 = MCP — do not renumber.)* |
 
 ### S-25 delivery checklist (UC-26)
 
@@ -171,6 +173,28 @@ lane can build against from that point on.
 | B3 | Volume + Seal + Workspace home accent/width (CRAFT-08, 09, 12) | ✅ |
 | B4 | `uc27_constraints.rs` + GUI suites + clippy | ✅ |
 | B5 | Intent G19 C82–C87 + CONSTRAINT_INDEX + Implemented | ✅ |
+
+### S-27 delivery checklist (UC-28)
+
+| Seg | Work | Status |
+|-----|------|--------|
+| C0 | Tokens `AA_CARD_*` / radii / `ROW_HEIGHT_LIST` / `HEADER_HEIGHT` | ✅ |
+| C1 | `surface_card` + locked wrap + vertical balance | ✅ |
+| C2 | `quiet_button` / `text_button` + Cancel→Affirm + Esc/Return (main/volume/seal) | ✅ |
+| C3 | Settings boxed-list rows | ✅ |
+| C4 | Hover quiet + full-row list + `focus_search` + header quiet | ✅ |
+| C5 | `uc28_constraints.rs` + suites + clippy | ✅ |
+| C6 | Intent G20 C88–C93 + Implemented | ✅ |
+
+### S-28 delivery checklist (UC-29)
+
+| Seg | Work | Status |
+|-----|------|--------|
+| D0 | Research + measured WCAG/NIST ratios | ✅ |
+| D1 | Force Dark + `*_of(Dark)` + type scale | ✅ |
+| D2 | Token retune + white primary + muted captions | ✅ |
+| D3 | `uc29_constraints.rs` + suites | ✅ |
+| D4 | Intent G21 C94–C98 + docs | ✅ |
 
 ---
 

@@ -123,6 +123,8 @@ pub struct CreateVolumeDialog {
     pub size_mib: u64,
     pub max_size_mib: u64,
     pub show_password: bool,
+    /// Request focus on passphrase field once when dialog opens (CRAFT-S05).
+    pub focus_password: bool,
     pub error: Option<String>,
 }
 
@@ -135,6 +137,7 @@ impl CreateVolumeDialog {
             size_mib: 64,
             max_size_mib: 256,
             show_password: false,
+            focus_password: true,
             error: None,
         }
     }
@@ -153,6 +156,8 @@ pub struct MountDialog {
     pub password: String,
     pub keyfile_path: String,
     pub show_password: bool,
+    /// Request focus on passphrase field once when dialog opens (CRAFT-S05).
+    pub focus_password: bool,
     pub error: Option<String>,
 }
 
@@ -163,6 +168,7 @@ impl MountDialog {
             password: String::new(),
             keyfile_path: String::new(),
             show_password: false,
+            focus_password: true,
             error: None,
         }
     }
@@ -495,7 +501,7 @@ impl VolumeGui {
             ui.add_space(SPACE_XS);
             ui.label(format!("Volume status: {}", self.session_status().label()));
             ui.add_space(SPACE_XS);
-            ui.weak("Workspace = edit as a folder. Seal = encrypt files for Dropbox/USB.");
+            theme::muted_label(ui, "Workspace = edit as a folder. Seal = encrypt files for Dropbox/USB.");
             ui.add_space(SPACE_M);
 
             if !path_label.is_empty() {
@@ -558,7 +564,10 @@ impl VolumeGui {
                         }
                         ui.add_space(SPACE_S);
                     } else {
-                        ui.weak("Reveal in Finder appears only when an OS mount path exists.");
+                        theme::muted_label(
+                            ui,
+                            "Reveal in Finder appears only when an OS mount path exists.",
+                        );
                         ui.add_space(SPACE_S);
                     }
                     if theme::secondary_button(ui, "Eject", HOME_CTA_W).clicked() {
@@ -600,14 +609,23 @@ impl VolumeGui {
                 ui.set_max_width(460.0);
                 ui.label(RESIDUAL_RISK_BANNER);
                 ui.add_space(crate::theme::SPACE_S);
-                ui.weak(LOCK_ON_SLEEP_NOTE);
+                crate::theme::muted_label(ui, LOCK_ON_SLEEP_NOTE);
                 ui.add_space(crate::theme::SPACE_M);
                 ui.horizontal(|ui| {
-                    if ui.button("I understand — continue").clicked() {
-                        acknowledged = true;
-                    }
-                    if ui.button("Cancel").clicked() {
+                    if crate::theme::escape_pressed(ui)
+                        || crate::theme::quiet_button(ui, "Cancel", crate::theme::DIALOG_BTN_WIDTH)
+                            .clicked()
+                    {
                         cancel = true;
+                    }
+                    if crate::theme::primary_button(
+                        ui,
+                        "I understand — continue",
+                        200.0,
+                    )
+                    .clicked()
+                    {
+                        acknowledged = true;
                     }
                 });
             });
@@ -660,23 +678,29 @@ impl VolumeGui {
                     }
                 });
                 ui.add_space(crate::theme::SPACE_S);
-                let mut focus_pw = false;
-                crate::theme::labeled_secret_row(
+                let pw = crate::theme::labeled_secret_row(
                     ui,
                     "Passphrase",
                     &mut dlg.password,
                     &mut dlg.show_password,
-                    &mut focus_pw,
+                    &mut dlg.focus_password,
                 );
-                crate::theme::labeled_secret_confirm(
+                let cf = crate::theme::labeled_secret_confirm(
                     ui,
                     "Confirm passphrase",
                     &mut dlg.confirm,
                     dlg.show_password,
                 );
+                if crate::theme::submit_on_enter(&pw, ui) || crate::theme::submit_on_enter(&cf, ui)
+                {
+                    start = true;
+                }
                 ui.add_space(crate::theme::SPACE_XS);
-                ui.weak("Size padding: on (Padmé default — hides exact volume size).");
-                ui.weak(LOCK_ON_SLEEP_NOTE);
+                crate::theme::muted_label(
+                    ui,
+                    "Size padding: on (Padmé default — hides exact volume size).",
+                );
+                crate::theme::muted_label(ui, LOCK_ON_SLEEP_NOTE);
                 ui.collapsing("Advanced…", |ui| {
                     ui.horizontal(|ui| {
                         ui.label("Initial size (MiB)");
@@ -688,7 +712,7 @@ impl VolumeGui {
                 if let Some(cta) = &sync_warning {
                     ui.add_space(crate::theme::SPACE_XS);
                     ui.colored_label(crate::theme::WARN, cta);
-                    if crate::theme::secondary_button(ui, "Seal files…", 160.0).clicked()
+                    if crate::theme::quiet_button(ui, "Seal files…", 160.0).clicked()
                     {
                         self.seal_request = true;
                         cancel = true;
@@ -699,14 +723,13 @@ impl VolumeGui {
                     ui.colored_label(crate::theme::DANGER, e);
                 }
                 ui.add_space(crate::theme::SPACE_S);
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        cancel = true;
-                    }
-                    if crate::theme::primary_button(ui, "Create", 100.0).clicked() {
-                        start = true;
-                    }
-                });
+                let (c, a) = crate::theme::dialog_cancel_affirm(ui, "Create");
+                if c {
+                    cancel = true;
+                }
+                if a {
+                    start = true;
+                }
             });
         if cancel {
             self.create_dialog = None;
@@ -728,14 +751,16 @@ impl VolumeGui {
             .show(ctx, |ui| {
                 ui.label(format!("Volume: {}", dlg.volume_path.display()));
                 ui.add_space(crate::theme::SPACE_S);
-                let mut focus_pw = false;
-                crate::theme::labeled_secret_row(
+                let pw = crate::theme::labeled_secret_row(
                     ui,
                     "Passphrase",
                     &mut dlg.password,
                     &mut dlg.show_password,
-                    &mut focus_pw,
+                    &mut dlg.focus_password,
                 );
+                if crate::theme::submit_on_enter(&pw, ui) {
+                    unlock = true;
+                }
                 ui.collapsing("Advanced…", |ui| {
                     ui.label("Keyfile path (optional)");
                     ui.horizontal(|ui| {
@@ -744,7 +769,7 @@ impl VolumeGui {
                                 .desired_width(220.0)
                                 .hint_text("/path/to/keyfile"),
                         );
-                        if ui.button("Choose…").clicked() {
+                        if crate::theme::text_button(ui, "Choose…").clicked() {
                             if let Some(p) = rfd::FileDialog::new()
                                 .set_title("Choose keyfile")
                                 .pick_file()
@@ -755,21 +780,20 @@ impl VolumeGui {
                     });
                 });
                 ui.add_space(crate::theme::SPACE_XS);
-                ui.weak(LOCK_ON_SLEEP_NOTE);
+                crate::theme::muted_label(ui, LOCK_ON_SLEEP_NOTE);
                 if let Some(e) = &dlg.error {
                     ui.add_space(crate::theme::SPACE_XS);
                     ui.colored_label(crate::theme::DANGER, e);
                 }
                 ui.add_space(crate::theme::SPACE_S);
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        cancel = true;
-                    }
-                    // C79: Unlock — not Mount — when this dialog only validates credentials.
-                    if crate::theme::primary_button(ui, "Unlock", 100.0).clicked() {
-                        unlock = true;
-                    }
-                });
+                // C79: Unlock — not Mount — when this dialog only validates credentials.
+                let (c, a) = crate::theme::dialog_cancel_affirm(ui, "Unlock");
+                if c {
+                    cancel = true;
+                }
+                if a {
+                    unlock = true;
+                }
             });
         if cancel {
             self.mount_dialog = None;
@@ -795,7 +819,10 @@ impl VolumeGui {
                 let frac = (done as f32 / total as f32).clamp(0.0, 1.0);
                 ui.add(egui::ProgressBar::new(frac).show_percentage());
                 ui.label(format!("Phase {done}/{total} ({elapsed:.1}s)"));
-                if ui.button("Cancel").clicked() {
+                if crate::theme::escape_pressed(ui)
+                    || crate::theme::quiet_button(ui, "Cancel", crate::theme::DIALOG_BTN_WIDTH)
+                        .clicked()
+                {
                     cancel = true;
                 }
             });

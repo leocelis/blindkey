@@ -19,6 +19,18 @@ All notable changes to this project are documented here. The format is based on
 - **UC-27 desktop UI visual craft** (`blindkey-gui`) — `FORM_WIDTH` unlock card, `SPACE_*` /
   Spacing tokens, accent Create/Unlock/Add/Save, Danger Delete, Settings overflow, field chrome
   via `extreme_bg_color`; intent **G19 C82–C87** + `uc27_constraints.rs` (ROADMAP **S-26**).
+- **UC-28 desktop UI component kit & surfaces** (`blindkey-gui`) — `surface_card` +
+  `AA_CARD_*`, quiet/text buttons, Settings boxed-list rows, optical vertical balance, full-row
+  list hits, Search Cmd/Ctrl+F, dialog Cancel→Affirm + Esc/Return + initial field focus;
+  intent **G20 C88–C93** + `uc28_constraints.rs` (ROADMAP **S-27**).
+- **UC-29 desktop UI contrast, typography & polarity** (`blindkey-gui`) — force
+  `ThemePreference::Dark` + `set_visuals_of(Dark)` + `ensure_dark_polarity`; retuned `ACCENT` /
+  `AA_MUTED` / field+card strokes / `DANGER`+`DANGER_LABEL` for WCAG 2.2 AA; NIST type scale
+  (Small≥12); white primary labels; `muted_label` (no `ui.weak`); intent **G21 C94–C98**
+  + `uc29_constraints.rs` (ROADMAP **S-28**). Cross-check gap pass closed (UC-29 §10).
+- **Brand mark + form column alignment** (`blindkey-gui`) — painted keyhole mark +
+  `brand_chrome` on locked/unlocked headers; confirm/CTA share `form_column_width` (no phantom
+  Show gap); `assets/blindkey-mark.png` for docs/icons.
 - **Extended legal/compliance research** — a follow-up pass specifically looking for regimes not
   covered the first time, again against primary sources:
   - **OFAC sanctions** (`docs/EXPORT_COMPLIANCE.md`) — a distinct regime from EAR export control

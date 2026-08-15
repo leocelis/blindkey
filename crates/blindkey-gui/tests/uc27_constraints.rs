@@ -82,7 +82,16 @@ fn c85_trust_copy_and_hints() {
         !main.contains("hint_text(\"Master password\")"),
         "hint must not echo Master password label"
     );
-    assert!(theme.contains("hint_text(\"••••••••\")") || theme.contains("hint_text(\"••••"));
+    // Bullet hint looks prefilled when empty (BK-UI-008).
+    assert!(
+        !theme.contains("hint_text(\"••••••••\")") && !theme.contains("hint_text(\"••••"),
+        "passphrase helpers must not use bullet hint_text"
+    );
+    assert!(
+        theme.contains("SHOW_ROW_CHECK_WIDTH: f32 = 80.0")
+            || theme.contains("SHOW_ROW_CHECK_WIDTH = 80.0"),
+        "Show slot must be wide enough after 16px type"
+    );
 }
 
 /// CRAFT-06 — first-run strip does not compete with form Create primary.
@@ -159,13 +168,30 @@ fn craft12_workspace_home_tokens() {
     assert!(home.contains("Create volume") && home.contains("Unlock"));
 }
 
-/// Confirm field width matches master TextEdit column (CRAFT-02).
+/// Confirm spans full form column; master+Show share the same outer width (CRAFT-02).
 #[test]
 fn craft02_confirm_matches_secret_field_width() {
     let theme = read_gui_src("theme.rs");
     assert!(
-        theme.contains("desired_width(secret_field_width())"),
-        "labeled_secret_confirm must use secret_field_width (CRAFT-02)"
+        theme.contains("fn form_column_width"),
+        "form_column_width drives outer alignment"
+    );
+    assert!(
+        theme.contains("desired_width(w)") || theme.contains("form_column_width(ui)"),
+        "labeled_secret_confirm must span form_column_width (CRAFT-02 outer edge)"
+    );
+    let confirm = theme
+        .split("fn labeled_secret_confirm(")
+        .nth(1)
+        .and_then(|s| s.split("fn caption(").next())
+        .expect("labeled_secret_confirm");
+    assert!(
+        confirm.contains("form_column_width"),
+        "confirm must use form_column_width, not secret_field_width gap"
+    );
+    assert!(
+        !confirm.contains("secret_field_width()"),
+        "confirm must not leave a phantom Show-column gap"
     );
 }
 

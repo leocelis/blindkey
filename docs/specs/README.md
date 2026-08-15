@@ -37,6 +37,8 @@ plan and open questions.
 | [UC-25](UC-25-local-encrypted-volume.md) | Local encrypted workspace volume — live mount *(Accepted v0.5 · phased implementation · A1 kind table landed)* | C67–C74 (FORWARD); C1–C3, C5, C7, C11, C16, C23, C27, C30–C32, C64 |
 | [UC-26](UC-26-desktop-ui-information-architecture.md) | Desktop UI IA & usability redesign (`blindkey-gui`) *(Implemented v1.0)* | C75–C81; C20, C27, C40–C54, C72–C74 |
 | [UC-27](UC-27-desktop-ui-visual-craft.md) | Desktop UI visual craft polish (`blindkey-gui`) *(Implemented v1.0)* | C82–C87; C20, C27, C40–C54, C75–C81 |
+| [UC-28](UC-28-desktop-ui-component-kit.md) | Desktop UI component kit & surfaces (`blindkey-gui`) *(Implemented v1.0)* | C88–C93 (G20); C20, C27, C40–C54, C75–C87 |
+| [UC-29](UC-29-desktop-ui-contrast-typography.md) | Desktop UI contrast, typography & theme polarity (`blindkey-gui`) *(Implemented v1.0)* | C94–C98 (G21); C20, C27, C40–C54, C75–C93 |
 
 ## Spec lifecycle
 
@@ -55,6 +57,11 @@ Gate-0 ADRs (magic freeze, merkle, mount crate, macOS provider) before A2+.
 Workspace mode chrome, mount honesty; **C75–C81 PASS** (intent v1.9.3 / G18).
 **UC-27** (desktop UI visual craft) is **Implemented v1.0** — layout/hierarchy/spacing/accent polish;
 **C82–C87 PASS** (intent v1.9.4 / G19); ROADMAP **S-26**. Does not change UC-26 IA.
+**UC-28** (desktop UI component kit & surfaces) is **Implemented v1.0** — cards, button roles, Settings
+rows, vertical balance, list/search/dialog contracts; **C88–C93** / ROADMAP **S-27** ✅.
+Research cross-check closed (§14).
+**UC-29** (contrast / typography / theme polarity) is **Implemented v1.0** — force Dark theme, WCAG AA
+token retune, NIST type scale; **C94–C98** / ROADMAP **S-28** ✅.
 
 New constraints discovered while spec-writing are proposed as Part-2 candidates — the
 2026-06-10 pass promoted the first batch as C28–C34 (see
