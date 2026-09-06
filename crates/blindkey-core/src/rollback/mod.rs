@@ -68,6 +68,15 @@ pub fn advance_anchor(path: &Path, seen: u64) -> Result<()> {
 
 /// Path to the non-synced local state anchor for a given vault id (constraints C16, C17).
 ///
+/// Platform data directory used for local anchors (C16 / C70) and UC-30 working copies.
+///
+/// - macOS: `~/Library/Application Support`
+/// - Linux: `$XDG_DATA_HOME` or `~/.local/share`
+/// - Windows: `%LOCALAPPDATA%`
+pub fn platform_data_dir() -> Result<PathBuf> {
+    data_dir()
+}
+
 /// `<data_dir>/blindkey/<vault_id_hex>.state` — `data_dir` is `$XDG_DATA_HOME` (or `~/.local/share`)
 /// on Linux, `~/Library/Application Support` on macOS, `%LOCALAPPDATA%` on Windows.
 pub fn anchor_path(vault_id: &[u8; 16]) -> Result<PathBuf> {

@@ -33,3 +33,10 @@ extensions are increasingly hostile. Cryptomator's Dokany/WebDAV lessons apply.
 - Ship docs must state the matrix honestly (perf vs dm-crypt; residual cleartext while mounted).
 - CI primary mount tests remain **Linux `fuser`**; macOS mount is HITL / Phase C packaging.
 - License gate blocks embedding Fuse-T until Leo/legal clears commercial terms.
+- **Shipped (2026-09):** GUI Blindfolder uses `MaterializedMount` (cleartext working folder) by
+  default on macOS. Checkin uses real `NSFileCoordinator` `ForReplacing` via `blindkey-sys`
+  (objc2). Linux GUI enables FUSE with default `volume-mount`. Optional macOS live mount:
+  user installs [macFUSE](https://macfuse.io), then rebuilds with `--features macos-fuse`
+  (links libfuse at build time; runtime probe via `macfuse_available`). Blindkey never
+  embeds/redistributes macFUSE or Fuse-T. kill-9 leftover cleartext is adopted on unlock
+  (`open_or_adopt`), never wiped.

@@ -34,6 +34,36 @@ pub enum Error {
     #[error("volume freshness anchor mismatch; use `blindkey volume trust-anchor` on a new device")]
     VolumeAnchorMismatch,
 
+    /// UC-30 working copy could not be prepared (hydration / sync-root / copy) — no format oracle.
+    #[error("volume working copy could not be prepared")]
+    WorkingCopyFailed,
+
+    /// UC-30 E5: source not fully hydrated / stub / mid-sync — same public string as [`Self::WorkingCopyFailed`].
+    #[error("volume working copy could not be prepared")]
+    WorkingCopyHydration,
+
+    /// UC-30 E6: work path itself sits under a sync root — same public string as [`Self::WorkingCopyFailed`].
+    #[error("volume working copy could not be prepared")]
+    WorkingCopyWorkSyncRoot,
+
+    /// UC-30 C101: sync-folder brick changed since checkout — refuse overwrite.
+    #[error("sync-folder brick changed since checkout; refusing overwrite")]
+    WorkingCopyRemoteChanged,
+
+    /// UC-30 E8: atomic replace / rename failed; work + sidecar retained.
+    #[error("working-copy checkin replace failed; work retained for retry")]
+    WorkingCopyRenameFailed,
+
+    /// UC-30 E9: unresolved cloud conflict versions — resolve in Finder first.
+    #[error(
+        "cloud file has unresolved conflict versions; resolve them in Finder, then try again"
+    )]
+    WorkingCopyUnresolvedConflicts,
+
+    /// UC-30: checkin refused because the working copy is still mounted / cleartext open.
+    #[error("working copy is still open; eject or close the folder before checkin")]
+    WorkingCopyStillMounted,
+
     /// The file was created by a newer, unsupported format version (constraint C7).
     #[error("vault was created by a newer version of this tool; please upgrade")]
     NewerVersion,

@@ -2210,6 +2210,14 @@ impl VaultApp {
 impl eframe::App for VaultApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         theme::ensure_dark_polarity(ctx);
+        // Quit / close window → same Blindfolder eject chain as the Eject button.
+        if ctx.input(|i| i.viewport().close_requested()) {
+            self.volume.prepare_quit();
+            if self.volume.live_mount_open() {
+                // Keep the window open so the operator can retry seal / see the error.
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            }
+        }
         theme::sync_viewport_to_shell(
             ctx,
             self.vault.is_none(),

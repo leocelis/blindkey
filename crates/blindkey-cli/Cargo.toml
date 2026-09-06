@@ -20,6 +20,8 @@ path = "src/main.rs"
 # builds to enable `blindkey volume mount|umount` via the blindkey-fuse adapter.
 default = []
 volume-mount = ["dep:blindkey-fuse"]
+# Optional macOS FUSE against user-installed macFUSE (https://macfuse.io). See ADR-0010.
+macos-fuse = ["volume-mount", "blindkey-fuse/macos-fuse"]
 
 [dependencies]
 blindkey-core = { path = "../blindkey-core", version = "1.0.0" }

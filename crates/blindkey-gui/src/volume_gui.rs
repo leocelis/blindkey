@@ -4,19 +4,26 @@
 //!
 //! Honesty posture (C72 / SC10): while a volume is mounted the OS sees cleartext — same class as
 //! an unlocked FileVault. The residual-risk banner states this once per session. Live RW mount of
-//! a `.vltd` on a cloud-sync folder is unsupported (C73) — we refuse and point to `blindkey seal`.
-//! Live folder mounting itself runs through the userspace FUSE path (`blindkey volume mount` /
-//! `blindkey-fuse`); this shell drives Create and Open/validate against the core today.
+//! a `.vltd` on a cloud-sync folder is unsupported (C73) — we refuse and point to Blindfolder /
+//! `blindkey seal`. Unlock materializes a cleartext working folder via
+//! [`blindkey_core::MaterializedMount`] (ADR-0010 degraded path when FUSE packaging is absent).
+//! With `--features volume-mount` on Linux, unlock prefers [`blindkey_fuse`] when `fusermount`
+//! works; otherwise MaterializedMount. macOS always uses MaterializedMount (ADR-0010).
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
 
 use blindkey_core::pad::PadMode;
-use blindkey_core::{Error, Volume, VolumeCreateOpts, VolumeUnlock, MAGIC_VLTD, VOLUME_OPEN_ERROR};
+use blindkey_core::{
+    cleartext_mnt_beside, has_unresolved_conflicts, orphan_work_sessions,
+    orphaned_cleartext_sessions, CheckinOpts, CheckoutOpts, Error, MaterializedMount, Volume,
+    VolumeCreateOpts, VolumeUnlock, WorkPhase, WorkingCopySession, MAGIC_VLTD, VOLUME_OPEN_ERROR,
+    WORKING_COPY_ERROR,
+};
 use eframe::egui;
 use zeroize::{Zeroize, Zeroizing};
 
@@ -55,36 +62,17 @@ pub fn is_vltd_path(path: &Path) -> bool {
 }
 
 /// Detect a cloud-sync root in `path` by name segment (C73 — no network probe; purely local, C23).
-/// Matches the common consumer sync folders; deliberately conservative (name-based, case-insensitive).
+/// Delegates to [`blindkey_core::is_under_sync_root`] (UC-30 unified detector).
 pub fn is_under_sync_root(path: &Path) -> bool {
-    const SYNC_MARKERS: &[&str] = &[
-        "dropbox",
-        "google drive",
-        "googledrive",
-        "onedrive",
-        "icloud drive",
-        "com~apple~clouddocs", // iCloud Drive on macOS
-        "mobile documents",    // ~/Library/Mobile Documents (iCloud)
-        "syncthing",
-        "pcloud",
-        "box sync",
-        "mega",
-        "nextcloud",
-        "owncloud",
-    ];
-    path.components().any(|c| {
-        let seg = c.as_os_str().to_string_lossy().to_ascii_lowercase();
-        SYNC_MARKERS.iter().any(|m| seg == *m || seg.contains(m))
-    })
+    blindkey_core::is_under_sync_root(path)
 }
 
-/// Seal CTA (C73) when `path` is under a sync root — warn + point to the sealed-file path. `None`
-/// when the path is local, so the caller can proceed normally.
+/// Seal / checkout CTA (C73) when `path` is under a sync root. `None` when the path is local.
 pub fn sync_root_seal_cta(path: &Path) -> Option<String> {
     if is_under_sync_root(path) {
         Some(
-            "Dropbox sync of a live volume is unsupported. Seal files instead. \
-             (Live-mounting a .vltd on Dropbox/Drive/iCloud/Syncthing can corrupt the volume.)"
+            "Live mount of a .vltd on Dropbox/Drive/iCloud/Syncthing is unsupported and can \
+             corrupt the volume. Use Open Blindfolder (checkout) or Seal files instead."
                 .to_string(),
         )
     } else {
@@ -234,11 +222,55 @@ impl VolumeWorker {
 pub enum VolumeSessionKind {
     #[default]
     Locked,
-    /// Credentials validated; Finder mount may still be unavailable (C79).
+    /// Credentials validated; folder open when `mount_path` is set (C79 honesty).
     Unlocked,
 }
 
-/// UC-25 volume GUI controller — Create / Unlock / Eject over `blindkey_core::volume`.
+/// Live open folder: cleartext materialization and/or FUSE (`volume-mount` / `macos-fuse`).
+enum LiveMount {
+    Materialized(MaterializedMount),
+    #[cfg(any(
+        all(feature = "volume-mount", target_os = "linux"),
+        all(feature = "macos-fuse", target_os = "macos")
+    ))]
+    Fuse(blindkey_fuse::MountGuard),
+}
+
+impl LiveMount {
+    fn mountpoint(&self) -> &Path {
+        match self {
+            Self::Materialized(m) => m.mountpoint(),
+            #[cfg(any(
+                all(feature = "volume-mount", target_os = "linux"),
+                all(feature = "macos-fuse", target_os = "macos")
+            ))]
+            Self::Fuse(g) => g.mountpoint(),
+        }
+    }
+
+    /// Seal / unmount. Materialized returns the volume for an explicit close; FUSE syncs on disk.
+    fn seal(self) -> Result<(), (Error, Option<LiveMount>)> {
+        match self {
+            Self::Materialized(mat) => match mat.close() {
+                Ok(vol) => {
+                    let _ = vol.close();
+                    Ok(())
+                }
+                Err(close_err) => Err((close_err.error, Some(Self::Materialized(close_err.mount)))),
+            },
+            #[cfg(any(
+                all(feature = "volume-mount", target_os = "linux"),
+                all(feature = "macos-fuse", target_os = "macos")
+            ))]
+            Self::Fuse(guard) => {
+                guard.unmount();
+                Ok(())
+            }
+        }
+    }
+}
+
+/// UC-25 volume GUI controller — Create / Unlock / Eject / Blindfolder over `blindkey_core::volume`.
 pub struct VolumeGui {
     create_dialog: Option<CreateVolumeDialog>,
     mount_dialog: Option<MountDialog>,
@@ -252,12 +284,24 @@ pub struct VolumeGui {
     /// Last volume path touched this session (create/unlock).
     active_path: Option<PathBuf>,
     session: VolumeSessionKind,
-    /// Set only when a real OS mount point exists (Reveal in Finder gate).
+    /// Cleartext / FUSE folder path while a [`LiveMount`] is held (Reveal gate).
     mount_path: Option<PathBuf>,
+    /// Live folder mount (MaterializedMount and/or FUSE).
+    live_mount: Option<LiveMount>,
+    /// Worker → UI handoff for the open mount (avoids serializing `Volume` on the channel).
+    mount_handoff: Option<Arc<Mutex<Option<LiveMount>>>>,
     /// C73 recovery: open Seal files flow (picker) from sync-refuse UI.
     seal_request: bool,
     /// Last sync-root refuse message (survives `take_error` for Workspace CTA).
     sync_refuse_cta: Option<String>,
+    /// Pending Blindfolder checkout path (sync-root `.vltd`).
+    pending_blindfolder: Option<PathBuf>,
+    /// Active Blindfolder session: (work_id, sync source path).
+    blindfolder: Option<(String, PathBuf)>,
+    /// E2 resume dialog candidates.
+    resume_orphans: Vec<(String, PathBuf, PathBuf, WorkPhase)>,
+    /// Which orphan resume dialog is open (`Some(index)`).
+    resume_dialog: Option<usize>,
 }
 
 impl Default for VolumeGui {
@@ -268,7 +312,7 @@ impl Default for VolumeGui {
 
 impl VolumeGui {
     pub fn new() -> Self {
-        Self {
+        let mut gui = Self {
             create_dialog: None,
             mount_dialog: None,
             worker: None,
@@ -279,8 +323,41 @@ impl VolumeGui {
             active_path: None,
             session: VolumeSessionKind::Locked,
             mount_path: None,
+            live_mount: None,
+            mount_handoff: None,
             seal_request: false,
             sync_refuse_cta: None,
+            pending_blindfolder: None,
+            blindfolder: None,
+            resume_orphans: Vec::new(),
+            resume_dialog: None,
+        };
+        gui.scan_resume_orphans();
+        gui
+    }
+
+    fn scan_resume_orphans(&mut self) {
+        self.resume_orphans.clear();
+        let mut seen = std::collections::BTreeSet::new();
+        let mut push = |o: blindkey_core::WorkSessionInfo| {
+            if seen.insert(o.id.clone()) {
+                self.resume_orphans
+                    .push((o.id, o.source_path, o.work_path, o.phase));
+            }
+        };
+        if let Ok(orphans) = orphan_work_sessions(None) {
+            for o in orphans {
+                push(o);
+            }
+        }
+        // kill-9 leftover cleartext: surface even if phase/pid heuristics differed.
+        if let Ok(clear) = orphaned_cleartext_sessions(None) {
+            for o in clear {
+                push(o);
+            }
+        }
+        if !self.resume_orphans.is_empty() {
+            self.resume_dialog = Some(0);
         }
     }
 
@@ -332,12 +409,96 @@ impl VolumeGui {
         if let Some(cta) = sync_root_seal_cta(&path) {
             self.sync_refuse_cta = Some(cta.clone());
             self.error = Some(cta);
+            self.pending_blindfolder = Some(path);
             return;
         }
         if self.banner_acknowledged {
             self.mount_dialog = Some(MountDialog::new(path));
         } else {
             self.pending_mount = Some(path);
+        }
+    }
+
+    /// UC-30 Open Blindfolder: checkout sync-path brick → unlock work copy.
+    pub fn open_blindfolder(&mut self, path: PathBuf) {
+        if self.job_running() {
+            return;
+        }
+        if has_unresolved_conflicts(&path) {
+            self.error = Some(
+                "This cloud file has unresolved conflict versions. Resolve them in Finder, then try again."
+                    .into(),
+            );
+            return;
+        }
+        let cancel = Arc::new(AtomicBool::new(false));
+        let (tx, rx) = mpsc::channel();
+        let c_cancel = cancel.clone();
+        let path_job = path.clone();
+        let handle = thread::spawn(move || {
+            let mut progress_cb = |done: u64, total: u64| {
+                let _ = tx.send(JobUpdate::Progress { done, total });
+            };
+            let result = WorkingCopySession::checkout(CheckoutOpts {
+                source: &path_job,
+                work_root: None,
+                skip_idle_probe: false,
+                cancel: Some(&c_cancel),
+                progress: Some(&mut progress_cb),
+            });
+            match result {
+                Ok(mut session) => {
+                    let _ = session.set_phase(WorkPhase::Copied);
+                    let msg = format!(
+                        "BLINDFOLDER\t{}\t{}\t{}",
+                        session.id,
+                        session.work_path.display(),
+                        session.source_path.display()
+                    );
+                    let _ = tx.send(JobUpdate::Finished(Ok(msg)));
+                }
+                Err(e) => {
+                    let msg = match e {
+                        Error::WorkingCopyHydration | Error::WorkingCopyFailed => {
+                            WORKING_COPY_ERROR.to_string()
+                        }
+                        Error::WorkingCopyWorkSyncRoot => WORKING_COPY_ERROR.to_string(),
+                        Error::WorkingCopyUnresolvedConflicts => e.to_string(),
+                        other => other.to_string(),
+                    };
+                    let _ = tx.send(JobUpdate::Finished(Err(msg)));
+                }
+            }
+        });
+        self.worker = Some(VolumeWorker {
+            cancel,
+            rx,
+            handle: Some(handle),
+            label: "Opening Blindfolder…".into(),
+            started: Instant::now(),
+            done: 0,
+            total: 1,
+        });
+        self.pending_blindfolder = None;
+        self.sync_refuse_cta = None;
+        self.error = None;
+    }
+
+    /// Begin Blindfolder from the last refused sync-path (or file picker).
+    pub fn choose_and_open_blindfolder(&mut self) {
+        if self.job_running() {
+            return;
+        }
+        if let Some(p) = self.pending_blindfolder.take() {
+            self.open_blindfolder(p);
+            return;
+        }
+        if let Some(p) = rfd::FileDialog::new()
+            .set_title("Open Blindfolder (sync-folder .vltd)")
+            .add_filter("Blindkey volume", &["vltd"])
+            .pick_file()
+        {
+            self.open_blindfolder(p);
         }
     }
 
@@ -364,14 +525,60 @@ impl VolumeGui {
         if let Some(result) = worker.poll() {
             self.worker = None;
             match result {
+                Ok(msg) if msg.starts_with("BLINDFOLDER\t") => {
+                    let parts: Vec<&str> = msg.splitn(4, '\t').collect();
+                    if parts.len() == 4 {
+                        let id = parts[1].to_string();
+                        let work = PathBuf::from(parts[2]);
+                        let source = PathBuf::from(parts[3]);
+                        self.blindfolder.replace((id, source));
+                        self.status = Some(
+                            "Blindfolder ready — unlock the local working copy.".into(),
+                        );
+                        self.request_mount(work);
+                    } else {
+                        self.error =
+                            Some("Blindfolder checkout returned a malformed result.".into());
+                    }
+                }
+                Ok(msg) if msg.starts_with("MOUNTED\t") => {
+                    let parts: Vec<&str> = msg.splitn(3, '\t').collect();
+                    if let Some(slot) = self.mount_handoff.take() {
+                        self.live_mount = slot.lock().ok().and_then(|mut g| g.take());
+                    }
+                    if let Some(mp) = parts.get(1).map(PathBuf::from) {
+                        self.mount_path = Some(mp.clone());
+                        self.session = VolumeSessionKind::Unlocked;
+                        if let Some((id, _)) = &self.blindfolder {
+                            if let Ok(mut s) = WorkingCopySession::resume(id) {
+                                let _ = s.set_phase(WorkPhase::Mounted);
+                            }
+                        }
+                        reveal_in_file_manager(&mp);
+                        self.status = Some(if parts.len() >= 3 {
+                            parts[2].to_string()
+                        } else {
+                            format!("Folder open at {}.", mp.display())
+                        });
+                    } else {
+                        self.error = Some("Mount handoff returned a malformed result.".into());
+                    }
+                }
                 Ok(msg) => {
                     if msg.contains("unlocked (validated") || msg.starts_with("Volume created:") {
                         self.session = VolumeSessionKind::Unlocked;
-                        self.mount_path = None; // validate path — no OS mount yet (C79)
+                        // Validate-only fallback (materialize failed) — C79: no mount_path.
+                        if !msg.starts_with("Volume created:") {
+                            self.mount_path = None;
+                            self.live_mount = None;
+                        }
                     }
                     self.status = Some(msg);
                 }
-                Err(e) => self.error = Some(e),
+                Err(e) => {
+                    self.mount_handoff = None;
+                    self.error = Some(e);
+                }
             }
         } else if worker.running() {
             ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -457,8 +664,10 @@ impl VolumeGui {
         drop(dlg);
 
         self.active_path = Some(path.clone());
-        self.start_worker("Unlocking volume…".into(), move |cancel, tx| {
-            run_mount_job(cancel, tx, path, password, keyfile_path);
+        let slot = Arc::new(Mutex::new(None));
+        self.mount_handoff = Some(slot.clone());
+        self.start_worker("Opening folder…".into(), move |cancel, tx| {
+            run_mount_job(cancel, tx, path, password, keyfile_path, slot);
         });
     }
 
@@ -472,12 +681,93 @@ impl VolumeGui {
         }
     }
 
-    /// Clear validated session (UC-26 IA-01 / IA-12).
+    /// Clear validated session (UC-26 IA-01 / IA-12). Blindfolder: close folder → checkin.
     pub fn eject(&mut self) {
-        self.session = VolumeSessionKind::Locked;
+        // Flush cleartext folder / FUSE back into the work `.vltd` before checkin.
+        if let Some(live) = self.live_mount.take() {
+            if let Err((err, remount)) = live.seal() {
+                self.live_mount = remount;
+                self.error = Some(format!(
+                    "Could not seal open folder: {err}. Edits are still in the open folder — retry Eject."
+                ));
+                return;
+            }
+        }
         self.mount_path = None;
-        self.status = Some("Ejected — files locked.".into());
-        self.error = None;
+        self.mount_handoff = None;
+
+        if let Some((id, source)) = self.blindfolder.take() {
+            if let Ok(mut s) = WorkingCopySession::resume(&id) {
+                let _ = s.set_phase(WorkPhase::Unmounted);
+            }
+            match WorkingCopySession::resume(&id) {
+                Ok(session) => {
+                    let work = session.work_path.clone();
+                    if cleartext_mnt_beside(&work).is_some() {
+                        self.error = Some(
+                            "A cleartext working folder is still on disk beside the brick. \
+                             Unlock that working copy again so Blindkey can import it, then Eject — \
+                             or Discard Blindfolder (loses unsynced folder edits)."
+                                .into(),
+                        );
+                        self.blindfolder = Some((id, source));
+                        self.session = VolumeSessionKind::Locked;
+                        return;
+                    }
+                    let opts = CheckinOpts {
+                        coordinated: cfg!(target_os = "macos"),
+                    };
+                    match session.checkin_with(opts) {
+                        Ok(()) => {
+                            self.status = Some(format!(
+                                "Blindfolder sealed back to {}.",
+                                source.display()
+                            ));
+                        }
+                        Err(Error::WorkingCopyRemoteChanged) => {
+                            self.error = Some(format!(
+                                "Sync-folder brick changed since checkout; refusing overwrite.\n\
+                                 sync: {}\n\
+                                 work: {}\n\
+                                 Use Discard Blindfolder or resolve manually.",
+                                source.display(),
+                                work.display()
+                            ));
+                            self.blindfolder = Some((id, source));
+                        }
+                        Err(Error::WorkingCopyUnresolvedConflicts) => {
+                            self.error = Some(
+                                "Cloud file has unresolved conflict versions. Resolve them in Finder, then try again."
+                                    .into(),
+                            );
+                            self.blindfolder = Some((id, source));
+                        }
+                        Err(e) => {
+                            self.error = Some(e.to_string());
+                            self.blindfolder = Some((id, source));
+                        }
+                    }
+                }
+                Err(e) => {
+                    self.error = Some(format!("Could not resume Blindfolder session: {e}"));
+                }
+            }
+        } else {
+            self.status = Some("Ejected — files locked.".into());
+        }
+        self.session = VolumeSessionKind::Locked;
+    }
+
+    /// Called when the app is about to quit — same chain as Eject.
+    pub fn prepare_quit(&mut self) {
+        if self.live_mount.is_some() || self.blindfolder.is_some() || self.mount_path.is_some() {
+            self.eject();
+        }
+    }
+
+    /// True while a cleartext folder is still held (quit should cancel close).
+    pub fn live_mount_open(&self) -> bool {
+        self.live_mount.is_some()
     }
 
     /// Cryptomator-class Workspace home (UC-26 Phase D / UC-27 CRAFT-12).
@@ -513,6 +803,11 @@ impl VolumeGui {
             if let Some(cta) = seal_recovery {
                 ui.colored_label(theme::WARN, cta);
                 ui.add_space(SPACE_S);
+                if theme::primary_button(ui, "Open Blindfolder", HOME_CTA_W).clicked() {
+                    self.choose_and_open_blindfolder();
+                    acted = true;
+                }
+                ui.add_space(SPACE_S);
                 if theme::secondary_button(ui, "Seal files…", HOME_CTA_W).clicked() {
                     self.seal_request = true;
                     self.sync_refuse_cta = None;
@@ -539,7 +834,11 @@ impl VolumeGui {
                     }
                 }
                 VolumeSessionKind::Unlocked => {
-                    ui.label("Volume unlocked (validated).");
+                    if can_reveal {
+                        ui.label("Folder open — cleartext until Eject.");
+                    } else {
+                        ui.label("Volume unlocked (validated).");
+                    }
                     ui.add_space(SPACE_M);
                     if can_reveal {
                         let reveal_label = {
@@ -566,7 +865,7 @@ impl VolumeGui {
                     } else {
                         theme::muted_label(
                             ui,
-                            "Reveal in Finder appears only when an OS mount path exists.",
+                            "Reveal appears when the cleartext working folder is open.",
                         );
                         ui.add_space(SPACE_S);
                     }
@@ -586,10 +885,104 @@ impl VolumeGui {
     }
 
     pub fn windows(&mut self, ctx: &egui::Context) {
+        self.resume_window(ctx);
         self.residual_banner_window(ctx);
         self.create_window(ctx);
         self.mount_window(ctx);
         self.progress_window(ctx);
+    }
+
+    /// E2: orphan working-copy resume / discard / reveal.
+    fn resume_window(&mut self, ctx: &egui::Context) {
+        let Some(idx) = self.resume_dialog else {
+            return;
+        };
+        if idx >= self.resume_orphans.len() {
+            self.resume_dialog = None;
+            return;
+        }
+        let (id, source, work, phase) = self.resume_orphans[idx].clone();
+        let mut resume = false;
+        let mut discard = false;
+        let mut reveal = false;
+        let mut skip = false;
+        egui::Window::new("Resume Blindfolder?")
+            .order(egui::Order::Foreground)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.set_max_width(480.0);
+                ui.label(format!(
+                    "A previous Blindfolder session ({id}, phase={phase:?}) was left open."
+                ));
+                ui.add_space(crate::theme::SPACE_S);
+                ui.monospace(format!("sync: {}", source.display()));
+                ui.monospace(format!("work: {}", work.display()));
+                ui.add_space(crate::theme::SPACE_M);
+                ui.horizontal(|ui| {
+                    if crate::theme::primary_button(ui, "Resume checkin", 140.0).clicked() {
+                        resume = true;
+                    }
+                    if crate::theme::secondary_button(ui, "Discard", 100.0).clicked() {
+                        discard = true;
+                    }
+                    if crate::theme::quiet_button(ui, "Reveal work", 110.0).clicked() {
+                        reveal = true;
+                    }
+                    if crate::theme::quiet_button(ui, "Later", 80.0).clicked() {
+                        skip = true;
+                    }
+                });
+            });
+        if reveal {
+            reveal_in_file_manager(&work);
+        }
+        if resume {
+            self.blindfolder = Some((id.clone(), source.clone()));
+            match WorkingCopySession::resume(&id) {
+                Ok(session) => {
+                    let opts = CheckinOpts {
+                        coordinated: cfg!(target_os = "macos"),
+                    };
+                    match session.checkin_with(opts) {
+                        Ok(()) => {
+                            self.status =
+                                Some(format!("Resumed checkin — sealed to {}.", source.display()));
+                            self.resume_orphans.remove(idx);
+                        }
+                        Err(Error::WorkingCopyRemoteChanged) => {
+                            self.error = Some(format!(
+                                "Sync-folder brick changed; refusing overwrite.\n\
+                                 sync: {}\nwork: {}",
+                                source.display(),
+                                work.display()
+                            ));
+                        }
+                        Err(e) => self.error = Some(e.to_string()),
+                    }
+                }
+                Err(e) => self.error = Some(e.to_string()),
+            }
+            self.resume_dialog = if self.resume_orphans.is_empty() {
+                None
+            } else {
+                Some(idx.min(self.resume_orphans.len().saturating_sub(1)))
+            };
+        } else if discard {
+            if let Ok(s) = WorkingCopySession::resume(&id) {
+                let _ = s.discard();
+            }
+            self.resume_orphans.remove(idx);
+            self.resume_dialog = if self.resume_orphans.is_empty() {
+                None
+            } else {
+                Some(0)
+            };
+            self.status = Some("Discarded orphan Blindfolder session.".into());
+        } else if skip {
+            self.resume_dialog = None;
+        }
     }
 
     /// Once-per-session residual-risk banner (C72 / SC10). Acknowledging proceeds to the mount
@@ -903,6 +1296,7 @@ fn run_mount_job(
     path: PathBuf,
     password: Zeroizing<String>,
     keyfile_path: String,
+    handoff: Arc<Mutex<Option<LiveMount>>>,
 ) {
     let finish = |r: Result<String, String>| {
         let _ = tx.send(JobUpdate::Finished(r));
@@ -939,20 +1333,133 @@ fn run_mount_job(
         }
     };
     let count = vol.list("").map(|v| v.len()).unwrap_or(0);
-    // UC-26 C79 / Expected Ability: this GUI path validates unlock only — it does **not**
-    // create an OS mount. Never claim "Mounted" here. Live Finder mount needs Fuse packaging
-    // (macOS) or `blindkey volume mount` / blindkey-fuse (Linux).
-    let _ = vol.close();
-    finish(Ok(unlock_success_message(count)));
+    let mnt_root = path
+        .parent()
+        .map(|p| p.join("mnt"))
+        .unwrap_or_else(|| PathBuf::from("mnt"));
+
+    // Prefer FUSE when this build can (Linux `volume-mount`; macOS `macos-fuse` + macFUSE).
+    #[cfg(any(
+        all(feature = "volume-mount", target_os = "linux"),
+        all(feature = "macos-fuse", target_os = "macos")
+    ))]
+    {
+        // Leftover cleartext from a prior MaterializedMount session: adopt that, don't FUSE-over it.
+        if mnt_root.is_dir()
+            && std::fs::read_dir(&mnt_root)
+                .ok()
+                .and_then(|mut d| d.next())
+                .is_some()
+        {
+            match MaterializedMount::adopt(vol, &mnt_root) {
+                Ok(mat) => {
+                    return handoff_live(finish, handoff, LiveMount::Materialized(mat), count);
+                }
+                Err(e) => {
+                    finish(Ok(format!(
+                        "{} (folder recover failed: {e})",
+                        unlock_success_message(count)
+                    )));
+                    return;
+                }
+            }
+        }
+        let _ = std::fs::create_dir_all(&mnt_root);
+        match blindkey_fuse::mount_volume(vol, &mnt_root) {
+            Ok(guard) => {
+                return handoff_live(finish, handoff, LiveMount::Fuse(guard), count);
+            }
+            Err(_e) => {
+                // Fall through: reopen volume for MaterializedMount (fuse consumed/closed on err).
+                let vol = match Volume::open(&path, &unlock) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        finish(Err(map_volume_err(e)));
+                        return;
+                    }
+                };
+                match MaterializedMount::open_or_adopt(vol, &mnt_root) {
+                    Ok(mat) => {
+                        return handoff_live(finish, handoff, LiveMount::Materialized(mat), count);
+                    }
+                    Err(e) => {
+                        finish(Ok(format!(
+                            "{} (folder open failed: {e})",
+                            unlock_success_message(count)
+                        )));
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(not(any(
+        all(feature = "volume-mount", target_os = "linux"),
+        all(feature = "macos-fuse", target_os = "macos")
+    )))]
+    {
+        match MaterializedMount::open_or_adopt(vol, &mnt_root) {
+            Ok(mat) => handoff_live(finish, handoff, LiveMount::Materialized(mat), count),
+            Err(e) => {
+                // C79 fallback: credentials were valid; folder materialize failed.
+                finish(Ok(format!(
+                    "{} (folder open failed: {e})",
+                    unlock_success_message(count)
+                )));
+            }
+        }
+    }
 }
 
-/// Honest unlock closure (UC-26 C79) — validated open, not Finder mount.
+fn handoff_live(
+    finish: impl FnOnce(Result<String, String>),
+    handoff: Arc<Mutex<Option<LiveMount>>>,
+    live: LiveMount,
+    count: usize,
+) {
+    let mp = live.mountpoint().to_path_buf();
+    if let Ok(mut slot) = handoff.lock() {
+        *slot = Some(live);
+    } else {
+        drop(live);
+        finish(Err("Could not hand off open folder.".into()));
+        return;
+    }
+    finish(Ok(format!(
+        "MOUNTED\t{}\t{}",
+        mp.display(),
+        mount_folder_success_message(&mp, count)
+    )));
+}
+
+/// Honest unlock closure (UC-26 C79) — validated open, not a live folder.
 pub fn unlock_success_message(top_level_count: usize) -> String {
-    #[cfg(target_os = "macos")]
+    #[cfg(all(feature = "macos-fuse", target_os = "macos"))]
     {
+        if blindkey_sys::macfuse_available() {
+            format!(
+                "Volume unlocked (validated, {top_level_count} top-level item(s)). \
+                 Live FUSE mount failed; opened a cleartext working folder instead."
+            )
+        } else {
+            format!(
+                "Volume unlocked (validated, {top_level_count} top-level item(s)). \
+                 Install macFUSE from https://macfuse.io for live Finder mounts, or use the \
+                 cleartext working folder Blindfolder already opens."
+            )
+        }
+    }
+    #[cfg(all(not(feature = "macos-fuse"), target_os = "macos"))]
+    {
+        let fuse_hint = if blindkey_sys::macfuse_available() {
+            "macFUSE is installed — rebuild Blindkey with `--features macos-fuse` for live Finder mounts."
+        } else {
+            "For live Finder mounts, install macFUSE (https://macfuse.io) and rebuild with \
+             `--features macos-fuse`. Blindkey does not bundle macFUSE/Fuse-T."
+        };
         format!(
-            "Volume unlocked (validated, {top_level_count} top-level item(s)). \
-             Finder mount needs Fuse packaging on this Mac."
+            "Volume unlocked (validated, {top_level_count} top-level item(s)). {fuse_hint}"
         )
     }
     #[cfg(not(target_os = "macos"))]
@@ -962,6 +1469,15 @@ pub fn unlock_success_message(top_level_count: usize) -> String {
              Live folder mount runs through `blindkey volume mount` / blindkey-fuse."
         )
     }
+}
+
+/// Success when a cleartext working folder is open (MaterializedMount / degraded ADR-0010).
+pub fn mount_folder_success_message(mount_path: &Path, top_level_count: usize) -> String {
+    format!(
+        "Folder open at {} ({top_level_count} top-level item(s)). \
+         Files are cleartext until Eject (C72).",
+        mount_path.display()
+    )
 }
 
 #[cfg(test)]
@@ -1055,7 +1571,7 @@ mod tests {
     fn sync_cta_preferred_prefix() {
         let cta = sync_root_seal_cta(Path::new("/Users/x/Dropbox/w.vltd")).unwrap();
         assert!(
-            cta.starts_with("Dropbox sync of a live volume is unsupported. Seal files instead."),
+            cta.contains("unsupported") && (cta.contains("Seal") || cta.contains("Blindfolder")),
             "CTA={cta}"
         );
     }
@@ -1067,7 +1583,10 @@ mod tests {
         assert!(!msg.contains("Mounted"));
         assert!(!msg.to_lowercase().contains("are cleartext while mounted"));
         #[cfg(target_os = "macos")]
-        assert!(msg.contains("Finder mount needs Fuse packaging on this Mac."));
+        assert!(
+            msg.contains("macfuse.io") || msg.contains("macos-fuse") || msg.contains("macFUSE"),
+            "macOS unlock copy must be honest about macFUSE packaging: {msg}"
+        );
     }
 
     #[test]

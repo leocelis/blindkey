@@ -20,6 +20,8 @@
 > [`encrypted_volume_mount_research.md`](encrypted_volume_mount_research.md) ·
 > [`encrypted_volume_maximum_security_research.md`](encrypted_volume_maximum_security_research.md)
 > (algorithm study + MSV crypto profile).
+> **Working copy / checkout (UC-30, 2026-09-06):**
+> [`volume_working_copy_research.md`](volume_working_copy_research.md).
 
 ---
 

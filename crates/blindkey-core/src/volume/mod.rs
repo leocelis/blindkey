@@ -12,7 +12,17 @@ mod anchor;
 mod block;
 mod fs;
 mod inner;
+mod materialize;
 mod merkle;
+mod working_copy;
+
+pub use materialize::{cleartext_mnt_beside, CloseMountError, MaterializedMount};
+pub use working_copy::{
+    assert_hydrated_for_checkout, default_work_root, hash_outer_logical, has_unresolved_conflicts,
+    is_under_sync_root, list_work_sessions, orphan_work_sessions, orphaned_cleartext_sessions,
+    CheckinOpts, CheckoutOpts, OuterFingerprint, WorkPhase, WorkSessionInfo, WorkingCopySession,
+    WORKING_COPY_ERROR,
+};
 
 use std::path::{Path, PathBuf};
 

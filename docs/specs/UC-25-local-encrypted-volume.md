@@ -365,8 +365,11 @@ umount ──▶ end FUSE; Volume.sync?; Volume.close (zeroize)
 | Sleep / screen-lock | UX policy may auto-umount (MNT-04b); not crypto theater |
 
 **Cloud policy (C73 / MNT-02):** Live RW mount + Dropbox/Drive/iCloud/Syncthing on the **same**
-`.vltd` is **UNSUPPORTED**. If path under known sync root → warn/refuse; always point to
-`blindkey seal`. Do not market live sync.
+`.vltd` is **UNSUPPORTED**. If path under known sync root → warn/refuse; point to
+`blindkey seal` (UC-23 snapshot) and [UC-30](UC-30-volume-working-copy.md) checkout
+(working copy). **Shipped today:** CLI/GUI refuse + Seal CTA; CLI also has unsupported
+`--force-local`. Checkout verbs land with UC-30 W1/W3. Do not market live sync of a
+mounted brick.
 
 ---
 
@@ -374,11 +377,12 @@ umount ──▶ end FUSE; Volume.sync?; Volume.close (zeroize)
 
 ```
 blindkey volume create PATH.vltd --size SIZE [--max-size SIZE] [--block-size-kib 32]
-blindkey volume mount  PATH.vltd [MOUNTPOINT]
+blindkey volume mount  PATH.vltd [MOUNTPOINT] [--force-local]  # C73 refuse unless --force-local
 blindkey volume umount PATH.vltd|MOUNTPOINT
 blindkey volume resize PATH.vltd --size SIZE
 blindkey volume status PATH.vltd|MOUNTPOINT
-blindkey volume trust-anchor PATH.vltd     # MSV-19 explicit trust on new device
+blindkey volume trust-anchor PATH.vltd     # MSV-19 explicit trust on this device
+# UC-30 (FORWARD): volume checkout / checkin / work-status / work-discard
 blindkey peek PATH.vltd                    # kind-dispatch: .vltf archive | .vltd tree
 blindkey --vault PATH.vltd upgrade-kdf …
 blindkey stanzas … PATH.vltd

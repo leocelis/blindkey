@@ -69,8 +69,15 @@ C67–C74 are the UC-25 local encrypted volume, intent v1.9.1).
 - **Live cloud sync of a mounted `.vltd` is unsupported (UC-25 / C73).** Running a read-write volume
   file on Dropbox/Google Drive/iCloud/Syncthing can corrupt it (partial-block writes across the sync
   boundary) and is out of scope. The CLI/GUI warn or refuse when the path is under a detectable sync
-  root and point to `blindkey seal` → a `.vltf` snapshot for cloud. Blindkey does **not** claim
-  malicious-sync-backend protection for live volumes — that remains the sealed-archive (`.vltf`) story.
+  root and point to `blindkey seal` → a `.vltf` snapshot for cloud, or UC-30 **Blindfolder /
+  checkout** (copy to a local working path, open that copy as a folder, atomic checkin). Blindkey
+  does **not** claim malicious-sync-backend protection for live volumes — that remains the
+  sealed-archive (`.vltf`) story. A `.vltd` *stored* in a sync folder is UC-30, not a mounted
+  sync-path file.
+- **UC-30 two-writer residual (C101).** Checkin refuses if the sync-folder brick’s outer fingerprint
+  changed since checkout (another device or a sync conflict). Blindkey does **not** merge two
+  writers; resolve in Finder / discard the working copy. Upload class after checkin is the **sync
+  client’s** (full brick replace) — not Blindkey delta sync (C102).
 - **Clipboard managers that ignore concealment hints** (C33 limitation) — on X11 especially, any
   client can read the clipboard during the window before the timed clear.
 - **YubiKey stale-challenge replay window** (C5 graceful staleness) — if body-writing saves happen

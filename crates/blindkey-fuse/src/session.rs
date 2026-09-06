@@ -1,6 +1,7 @@
-//! Linux `fuser` backend for [`crate::mount_volume`] (ADR-0009).
+//! Shared `fuser` backend for [`crate::mount_volume`] (ADR-0009 / ADR-0010).
 //!
-//! Translates the FUSE lowlevel `Filesystem` trait onto the path-addressed
+//! Used on Linux always, and on macOS when built with the `macos-fuse` feature against a
+//! user-installed macFUSE. Translates the FUSE `Filesystem` trait onto the path-addressed
 //! [`blindkey_core::Volume`] virtual FS. No cryptography lives here — the `Volume` owns all keys.
 
 use std::collections::HashMap;

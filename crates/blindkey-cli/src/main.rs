@@ -309,12 +309,24 @@ fn main() -> std::process::ExitCode {
                 7
             } else if e.starts_with(unlock_secret::AUTH_ERROR_PREFIX) {
                 5
+            } else if e.starts_with(commands::volume::WORK_E1_PREFIX) {
+                10
+            } else if e.starts_with(commands::volume::WORK_E5_PREFIX) {
+                11
+            } else if e.starts_with(commands::volume::WORK_E6_PREFIX) {
+                12
+            } else if e.starts_with(commands::volume::WORK_E8_PREFIX) {
+                13
             } else {
                 1
             };
             let msg = e
                 .strip_prefix(commands::USAGE_ERROR_PREFIX)
                 .or_else(|| e.strip_prefix(commands::CLIPBOARD_UNAVAILABLE_PREFIX))
+                .or_else(|| e.strip_prefix(commands::volume::WORK_E1_PREFIX))
+                .or_else(|| e.strip_prefix(commands::volume::WORK_E5_PREFIX))
+                .or_else(|| e.strip_prefix(commands::volume::WORK_E6_PREFIX))
+                .or_else(|| e.strip_prefix(commands::volume::WORK_E8_PREFIX))
                 .map(|s| s.trim_start())
                 .unwrap_or(&e);
             eprintln!("vault: {msg}");

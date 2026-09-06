@@ -41,12 +41,12 @@ meta:
   intent_type: "feature"        # scope: single deliverable, not system-level
   name: vault
   tagline: "Zero-plaintext · local-first · open-source credential vault"
-  version: "1.9.6"   # 1.9.6: UC-29 desktop UI contrast/typography/polarity — G21 C94–C98 PASS. 1.9.5: UC-28 desktop UI component kit — G20 C88–C93 PASS. 1.9.4: UC-27 desktop UI visual craft — G19 C82–C87 PASS. 1.9.3: UC-26 desktop UI IA — G18 C75–C81 PASS (fonts, modes, honesty, AA theme). 1.9.2: UC-25 shipped — G17 C67–C74 tests now PASS (volume core + CLI + Linux fuse + GUI); macOS FUSE packaging remains ADR-0010. 1.9.1: G17 enriched to match UC-25 tech spec; Accepted 2026-07-21. 1.9.0: first landing of UC-25 FORWARD constraints. Prior: 1.8.0 UC-23 C61–C66 G16. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
+  version: "1.9.11"   # 1.9.11: optional macOS FUSE (user macFUSE + macos-fuse feature). 1.9.10: UC-30 residual (NSFileCoordinator/objc2, kill-9 adopt, Drive probes, Linux volume-mount FUSE). 1.9.9: UC-30 GUI Blindfolder + MaterializedMount complete — G22 C99–C102 PASS. 1.9.8: UC-30 core+CLI shipped — G22 C99–C102 PASS (GUI Blindfolder deferred). 1.9.7: UC-30 volume working copy — G22 C99–C102 FORWARD; C73 amended (checkout ≠ live mount). 1.9.6: UC-29 desktop UI contrast/typography/polarity — G21 C94–C98 PASS. 1.9.5: UC-28 desktop UI component kit — G20 C88–C93 PASS. 1.9.4: UC-27 desktop UI visual craft — G19 C82–C87 PASS. 1.9.3: UC-26 desktop UI IA — G18 C75–C81 PASS (fonts, modes, honesty, AA theme). 1.9.2: UC-25 shipped — G17 C67–C74 tests now PASS (volume core + CLI + Linux fuse + GUI); macOS FUSE packaging remains ADR-0010. 1.9.1: G17 enriched to match UC-25 tech spec; Accepted 2026-07-21. 1.9.0: first landing of UC-25 FORWARD constraints. Prior: 1.8.0 UC-23 C61–C66 G16. NOTE: 1.4.0 jumped straight to 1.7.0 in one commit (f22e9cb), covering C35-C60 in a single bump — no 1.5.0/1.6.0 ever existed as distinct tags. Constraint ranges within that jump, in landing order: C35-C39 (UC-19 omni-search) · C40-C45 (UC-20 desktop-gui-hardening) · C46-C54 (UC-21 desktop-gaps-closure) · C55-C60 (UC-22 enterprise readiness). Corrected 2026-07-04 — the prior comment only credited the last two ranges.
   license: "MIT OR Apache-2.0"
   language: rust
-  ifscale_density: high         # IVD Rule 1: 74 constraints → segmented implementation
-  constraint_count: 74
-  constraint_groups: 17
+  ifscale_density: high         # IVD Rule 1: 102 constraints → segmented implementation
+  constraint_count: 102
+  constraint_groups: 22
   target_platforms:
     - x86_64-unknown-linux-musl
     - aarch64-apple-darwin
@@ -85,8 +85,9 @@ intent:
     - Custom KDF or cipher implementation (all crypto from audited libraries)
     - "LLM / AI agent inside the vault trust boundary (v1 ships none; any future agentic
        interface is bound by C27's model-blind delivery rule)"
-    - "Live RW mount of a UC-25 volume file on Dropbox/Drive/iCloud/Syncthing (C73) —
-       use UC-23 seal for untrusted cloud; local encrypted workspace only"
+    - "Live RW mount of a UC-25 volume file that sits on Dropbox/Drive/iCloud/Syncthing (C73).
+       Storing that brick in a sync folder is UC-30: checkout to a local working copy, mount
+       that copy, atomic checkin. UC-23 seal remains the snapshot-archive cloud path."
     - "VeraCrypt/TrueCrypt format compatibility; naked AES-XTS or XCB as sole volume data plane (C68)"
     - "Plausible deniability / hidden volumes / interactive ORAM as UC-25 v1 claims (MSV non-goals)"
 
@@ -152,6 +153,7 @@ constraint_groups:
   G19: "Desktop UI visual craft polish (UC-27; C82–C87 PASS)"
   G20: "Desktop UI component kit & surfaces (UC-28; C88–C93 PASS)"
   G21: "Desktop UI contrast, typography & theme polarity (UC-29; C94–C98 PASS)"
+  G22: "Volume working copy — checkout/checkin from untrusted sync (UC-30; C99–C102 PASS)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 constraints:
@@ -2207,9 +2209,11 @@ constraints:
     description: |
       Blindkey MUST document that placing a live-mounted (or concurrently synced)
       volume file on Dropbox/Drive/iCloud/Syncthing-class backends is unsupported.
-      CLI and GUI MUST point users to UC-23 `seal` for untrusted cloud storage
-      (Seal CTA when a cloud folder is chosen). The product MUST NOT market live
-      sync of `.vltd` as a supported workflow.
+      CLI and GUI MUST refuse `volume mount` on a detectable sync-root path.
+      Recovery CTAs: UC-23 `seal` (snapshot archive) and, when implemented, UC-30
+      checkout (working copy). The product MUST NOT market live sync of a *mounted*
+      `.vltd` as a supported workflow. Storing a closed `.vltd` in a sync folder
+      and opening it via UC-30 is not a C73 violation.
     test: |
       UNIT — `c73_*` THREAT_MODEL/CLI docs; CLI — `commands/volume.rs` sync-root
       refuse + Seal CTA; GUI — `uc25_constraints.rs` cloud Seal CTA.
@@ -2480,14 +2484,81 @@ constraints:
     test: |
       UNIT — `uc29_constraints.rs` `c98_nontext_strokes`; `theme::tests::uc29_nontext_stroke_contrast`.
 
+  # ── G22: Volume working copy (UC-30) — PASS (core/CLI/GUI Blindfolder) ─
+  - id: C99
+    group: G22
+    title: "Volume checkout mounts only a local non-sync working copy"
+    conflict_prone: true
+    anti_pattern: "Do not mount the .vltd path that sits inside Dropbox/Drive/iCloud/Syncthing."
+    assumption_status: KNOWN
+    description: |
+      Opening a `.vltd` that lives under a detectable sync root MUST copy the file
+      to a local working path that is not a sync root, then open that copy (UC-25 FUSE
+      or MaterializedMount cleartext folder). It MUST NOT mount the sync-folder path.
+      Checkout MUST fail closed if the source is not fully hydrated or the working
+      path would itself be a sync root.
+    test: |
+      UNIT — `uc30_constraints.rs` `c99_checkout_not_sync_path` (PASS);
+      GUI Blindfolder chains MaterializedMount (`blindkey-gui` `uc30_constraints`).
+    test_provenance: execution_derived
+    execution_oracle:
+      kind: property_test
+      note: "Checkout work path is outside sync roots; Dropbox-named work root refused."
+
+  - id: C100
+    group: G22
+    title: "Volume checkin replaces the sync brick atomically"
+    assumption_status: KNOWN
+    description: |
+      After unmount, writing the working copy back to the sync-folder path MUST use
+      write-to-temp + rename (or equivalent atomic replace). In-place truncate of
+      the sync-folder brick is forbidden.
+    test: |
+      UNIT — `uc30_constraints.rs` `c100_atomic_replace` (PASS).
+    test_provenance: execution_derived
+    execution_oracle:
+      kind: property_test
+      note: "Checkin replaces brick bytes; no bk-checkin.tmp leftovers."
+
+  - id: C101
+    group: G22
+    title: "Volume checkin refuses if the remote brick changed"
+    assumption_status: KNOWN
+    description: |
+      At checkout Blindkey MUST record a fingerprint (size + content hash) of the
+      sync-folder brick. At checkin, if that file's fingerprint differs, checkin
+      MUST fail closed and MUST NOT overwrite. No silent last-write-wins.
+    test: |
+      UNIT — `uc30_constraints.rs` `c101_stale_remote_no_overwrite`;
+      `uc30_joint_satisfaction.rs` (PASS).
+    test_provenance: execution_derived
+    execution_oracle:
+      kind: property_test
+      note: "Mutated remote → WorkingCopyRemoteChanged; remote bytes unchanged."
+
+  - id: C102
+    group: G22
+    title: "Working-copy docs do not market live sync-path mount"
+    assumption_status: KNOWN
+    description: |
+      CLI, GUI, PRD, and THREAT_MODEL MUST describe UC-30 as checkout/checkin.
+      They MUST NOT present `volume mount` of a sync-root `.vltd` as supported.
+      Existing C73 refuse tests MUST remain green.
+    test: |
+      UNIT — `c102_*`; CLI `detects_and_refuses_sync_roots`; C73 refuse names checkout (PASS).
+    test_provenance: execution_derived
+    execution_oracle:
+      kind: property_test
+      note: "is_under_sync_root flags CloudStorage/Dropbox; mount refuse mentions checkout."
+
 # ──────────────────────────────────────────────────────────────────────────────
 constraint_satisfiability:
   # IVD Rule 6 — SATISFIABILITY CHECK
   # Required when 3 or more constraints exist. Documents every identified conflict,
   # its resolution, and binding priority ordering.
   # No constraint may be silently violated when it conflicts with another.
-  density: high  # 98 constraints, 21 groups (C61–C66 UC-23 PASS; C67–C74 UC-25 PASS; C75–C81 UC-26 PASS; C82–C87 UC-27 PASS; C88–C93 UC-28 PASS; C94–C98 UC-29 PASS / intent v1.9.6)
-  conflicts_identified: 11
+  density: high  # 102 constraints, 22 groups (… C94–C98 UC-29 PASS; C99–C102 UC-30 PASS core/CLI / intent v1.9.8)
+  conflicts_identified: 12
   conflicts:
 
     - id: SC1
@@ -2657,12 +2728,28 @@ constraint_satisfiability:
         an unaudited cipher. C61 regression tests remain green when volume code lands.
       priority: C61_sealed_path_unchanged ∧ C68_volume_aead_blocks  # both bind; different kinds
 
+    - id: SC12
+      between: [C73, C99]
+      description: |
+        C73 forbids live RW mount of a `.vltd` that lives on a sync-class backend.
+        C99 requires opening that same brick via checkout. Does checkout violate C73?
+      resolution: |
+        No. C73 binds `volume mount` of the *sync-folder path* and concurrent upload of
+        a *mounted* brick. C99 copies the closed file to a local non-sync working path
+        and mounts that copy. Checkin (C100) writes a closed brick back atomically.
+        C102 keeps the C73 refuse path green. A closed `.vltd` sitting in Dropbox is
+        not a live mount.
+      priority: C73_no_sync_path_mount ∧ C99_checkout_copy  # both bind; different paths
+
   joint_satisfaction_test: |
     Phase A (UC-23): `crates/blindkey-core/tests/uc23_joint_satisfaction.rs` — seal one
     hostile+large corpus once; assert C61–C66 on that single artifact (docs/specs/UC-23-sealed-file-storage.md §5).
     Phase A (UC-25, when implemented): `crates/blindkey-core/tests/uc25_joint_satisfaction.rs` —
     create+mount+tamper+umount matrix on one `.vltd`; assert C67–C74 on that single artifact
     (docs/specs/UC-25-local-encrypted-volume.md §11).
+    Phase A (UC-30, when implemented): `crates/blindkey-core/tests/uc30_joint_satisfaction.rs` —
+    checkout a sync-path brick, mutate the remote copy, assert checkin refuses (C99–C102)
+    on that single fixture (docs/specs/UC-30-volume-working-copy.md §13 / §20).
 
   all_constraints_simultaneously_satisfiable: true
   note: |

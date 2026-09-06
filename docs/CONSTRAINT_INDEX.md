@@ -1,7 +1,7 @@
 # Constraint test index (IVD Rule 3)
 
-Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **98 constraints**, **21 groups**, intent **v1.9.6**
-(extends the v1.9.5 / C1–C93 set with UC-29 C94–C98).
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **102 constraints**, **22 groups**, intent **v1.9.7**
+(extends the v1.9.6 / C1–C98 set with UC-30 C99–C102 FORWARD).
 C61–C66 (G16, [UC-23 sealed file storage](specs/UC-23-sealed-file-storage.md)) ship in **S-22**
 (implemented). C67–C74 (G17, [UC-25 local encrypted volume](specs/UC-25-local-encrypted-volume.md))
 are **PASS**. C75–C81 (G18, [UC-26 desktop UI IA](specs/UC-26-desktop-ui-information-architecture.md))
@@ -11,11 +11,14 @@ are **PASS** via `uc26_constraints.rs` + theme/mode modules. C82–C87 (G19,
 [UC-28 desktop UI component kit](specs/UC-28-desktop-ui-component-kit.md)) are **PASS** via
 `uc28_constraints.rs` + surface/quiet/list helpers. C94–C98 (G21,
 [UC-29 contrast/typography/polarity](specs/UC-29-desktop-ui-contrast-typography.md)) are **PASS** via
-`uc29_constraints.rs` + Dark theme force + token retune.
+`uc29_constraints.rs` + Dark theme force + token retune. C99–C102 (G22,
+[UC-30 volume working copy](specs/UC-30-volume-working-copy.md)) are **FORWARD / UNVERIFIED**
+until checkout/checkin ships (ROADMAP S-29; blocked on macOS mount).
 The CP-7 sweep below is **66/66 PASS** at the automated gate for the original **66 constraints**
 through C66; C67–C74 are **PASS** at the core+CLI+GUI+fuzz level; C75–C81 are **PASS** at the
 GUI presentation level; C82–C87 are **PASS** at the GUI craft level; C88–C93 are **PASS** at the
-GUI component-kit level; C94–C98 are **PASS** at the GUI contrast/polarity level (see the C94–C98 rows).
+GUI component-kit level; C94–C98 are **PASS** at the GUI contrast/polarity level (see the C94–C98 rows);
+C99–C102 are **FORWARD** (see those rows).
 
 Tests are **distributed** across crate suites (not a single monolithic file). Run everything with:
 
@@ -108,7 +111,7 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C76 | GUI lock/mount status every frame | PASS | `uc26_constraints.rs` (`c76_*`); `gui_mode::SessionStatus` |
 | C77 | GUI Credentials \| Workspace modes (Seal secondary) | PASS | `uc26_constraints.rs` (`c77_*`); `gui_mode::GuiMode` |
 | C78 | GUI human primary labels | PASS | `uc26_constraints.rs` (`c78_*`) |
-| C79 | GUI mount honesty (no false Mounted) | PASS | `uc26_constraints.rs` (`c79_*`); `volume_gui::unlock_success_message` |
+| C79 | GUI mount honesty (no false Mounted) | PASS | `uc26_constraints.rs` (`c79_*`); validate-only `unlock_success_message`; folder open via `MaterializedMount` sets `mount_path` honestly |
 | C80 | GUI progressive disclosure (Advanced…) | PASS | `uc26_constraints.rs` (`c80_*`) |
 | C81 | GUI WCAG AA theme + target size | PASS | `uc26_constraints.rs` (`c81_*`); `theme.rs` |
 | C88 | GUI surface_card on locked form | PASS | `uc28_constraints.rs` (`c88_*`); `theme::surface_card` |
@@ -122,10 +125,15 @@ just audit-ready    # release search benches + workspace tests + fmt + clippy (C
 | C96 | GUI muted captions ≥4.5:1 | PASS | `uc29_constraints.rs` (`c96_*`); `AA_MUTED` / `muted_label` (no `ui.weak`) |
 | C97 | GUI white primary; dark danger label | PASS | `uc29_constraints.rs` (`c97_*`); `PRIMARY_LABEL` / `DANGER_LABEL` |
 | C98 | GUI field/card stroke ≥3:1 + AA_BG panel | PASS | `uc29_constraints.rs` (`c98_*`); contrast unit tests |
+| C99 | Volume checkout opens only a local non-sync copy | PASS | `uc30_constraints.rs` `c99_*`; GUI Blindfolder `MaterializedMount` |
+| C100 | Volume checkin atomic replace of sync brick | PASS | `uc30_constraints.rs` `c100_*` |
+| C101 | Checkin fails closed if remote brick changed | PASS | `uc30_constraints.rs` `c101_*`; `uc30_joint_satisfaction.rs` (size+sha256+dev+ino) |
+| C102 | Docs/CLI do not market live sync-path mount | PASS | C73 refuse + checkout hint; `c102_*`; README Blindfolder |
 
 **1.0.0 tag:** all implemented constraints through C66 PASS at automated gate; C67–C74 PASS with
 UC-25 (macOS FUSE provider packaging remains a Phase-C platform note); C75–C81 PASS with UC-26;
 C82–C87 PASS with UC-27; C88–C93 PASS with UC-28; C94–C98 PASS with UC-29;
+C99–C102 PASS (core/CLI/GUI Blindfolder + MaterializedMount);
 libfido2/TPM FFI optional M7; tag after first CP-6 release run.
 
 ## Where constraints are verified
@@ -155,6 +163,7 @@ libfido2/TPM FFI optional M7; tag after first CP-6 release run.
 | C82–C87 | `crates/blindkey-gui/tests/uc27_constraints.rs`, `theme.rs` (`form_card` / `primary_button` / `apply_craft_style`), `main.rs` Settings | UC-27 desktop UI visual craft per [spec](specs/UC-27-desktop-ui-visual-craft.md) |
 | C88–C93 | `crates/blindkey-gui/tests/uc28_constraints.rs`, `theme.rs` (`surface_card` / `quiet_button` / `list_select_row` / `focus_search`), `main.rs` / `volume_gui.rs` / `sealed_gui.rs` | UC-28 desktop UI component kit per [spec](specs/UC-28-desktop-ui-component-kit.md) |
 | C94–C98 | `crates/blindkey-gui/tests/uc29_constraints.rs`, `theme.rs` (`ThemePreference::Dark` / `AA_MUTED` / `PRIMARY_LABEL` / contrast unit tests) | UC-29 contrast/typography/polarity per [spec](specs/UC-29-desktop-ui-contrast-typography.md) |
+| C99–C102 | `uc30_constraints.rs` / `uc30_joint_satisfaction.rs` / GUI `uc30_constraints` | UC-30 working copy per [spec §13 / §20](specs/UC-30-volume-working-copy.md). Core+CLI+GUI Blindfolder PASS |
 
 ## Manual review
 

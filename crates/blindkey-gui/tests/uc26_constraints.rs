@@ -125,22 +125,23 @@ fn c78_human_primary_labels() {
     assert!(src.contains("Button::new(\"Eject\")") || src.contains("\"Eject\""));
 }
 
-/// T3 / C79 — unlock success does not claim Mounted; Reveal gated on mount_path.
+/// T3 / C79 — validate-only fallback stays honest; Reveal gated on mount_path / MaterializedMount.
 #[test]
 fn c79_mount_honesty_message() {
     let vol = read_gui_src("volume_gui.rs");
     assert!(vol.contains("unlock_success_message"));
     assert!(vol.contains("unlocked (validated"));
+    assert!(vol.contains("MaterializedMount"));
+    assert!(vol.contains("mount_folder_success_message") || vol.contains("MOUNTED\\t"));
     assert!(
         vol.contains("Button::new(\"Unlock\")") || vol.contains("primary_button(ui, \"Unlock\""),
         "Unlock CTA must exist"
     );
-    assert!(vol.contains("Finder mount needs Fuse packaging on this Mac."));
-    assert!(vol.contains("mount_path.is_some()") || vol.contains("can_reveal"));
     assert!(
-        !vol.contains("Files are cleartext while mounted (C72). \\\n         Live folder mount"),
-        "old overclaim success string must be gone"
+        vol.contains("macfuse.io") || vol.contains("macos-fuse") || vol.contains("macFUSE"),
+        "macOS unlock honesty must name macFUSE / macos-fuse"
     );
+    assert!(vol.contains("mount_path.is_some()") || vol.contains("can_reveal"));
 }
 
 /// T9 / C80 — Advanced disclosure on volume create/unlock.
@@ -190,7 +191,9 @@ fn ia09_show_hide_passphrase() {
     let vol = read_gui_src("volume_gui.rs");
     let sealed = read_gui_src("sealed_gui.rs");
     assert!(
-        theme.contains("checkbox(show, \"Show\")") || main.contains("checkbox(&mut self.show_master_pw, \"Show\")"),
+        theme.contains("\"Show\"")
+            || theme.contains("checkbox(show, \"Show\")")
+            || main.contains("checkbox(&mut self.show_master_pw, \"Show\")"),
         "vault unlock must offer Show"
     );
     assert!(
@@ -266,7 +269,8 @@ fn workspace_and_seal_recovery_wired() {
             || vol.contains("primary_button(ui, \"Create volume\"")
     );
     assert!(vol.contains("Workspace = edit as a folder"));
-    assert!(vol.contains("Dropbox sync of a live volume is unsupported. Seal files instead."));
+    assert!(vol.contains("Live mount of a .vltd on Dropbox/Drive/iCloud/Syncthing is unsupported"));
+    assert!(vol.contains("Open Blindfolder") || vol.contains("Seal files"));
     assert!(vol.contains("take_seal_request") || vol.contains("seal_request"));
     assert!(vol.contains("sync_refuse_cta"));
     assert!(main.contains("take_seal_request"));

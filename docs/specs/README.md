@@ -39,6 +39,7 @@ plan and open questions.
 | [UC-27](UC-27-desktop-ui-visual-craft.md) | Desktop UI visual craft polish (`blindkey-gui`) *(Implemented v1.0)* | C82–C87; C20, C27, C40–C54, C75–C81 |
 | [UC-28](UC-28-desktop-ui-component-kit.md) | Desktop UI component kit & surfaces (`blindkey-gui`) *(Implemented v1.0)* | C88–C93 (G20); C20, C27, C40–C54, C75–C87 |
 | [UC-29](UC-29-desktop-ui-contrast-typography.md) | Desktop UI contrast, typography & theme polarity (`blindkey-gui`) *(Implemented v1.0)* | C94–C98 (G21); C20, C27, C40–C54, C75–C93 |
+| [UC-30](UC-30-volume-working-copy.md) | Volume working copy — checkout / checkin from untrusted sync *(Accepted v0.3 · core+CLI)* | C99–C102 (G22); amends C73; C67–C74 |
 
 ## Spec lifecycle
 
@@ -62,6 +63,9 @@ rows, vertical balance, list/search/dialog contracts; **C88–C93** / ROADMAP **
 Research cross-check closed (§14).
 **UC-29** (contrast / typography / theme polarity) is **Implemented v1.0** — force Dark theme, WCAG AA
 token retune, NIST type scale; **C94–C98** / ROADMAP **S-28** ✅.
+**UC-30** (volume working copy / Blindfolder) is **Accepted v0.3** — core + CLI checkout/checkin
+shipped (C99–C102 PASS); GUI Blindfolder auto-chain and macOS end-to-end remain
+(ROADMAP **S-29**). Live mount of a sync-path `.vltd` stays forbidden (C73).
 
 New constraints discovered while spec-writing are proposed as Part-2 candidates — the
 2026-06-10 pass promoted the first batch as C28–C34 (see

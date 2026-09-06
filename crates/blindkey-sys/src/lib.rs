@@ -12,6 +12,21 @@
 
 #![deny(missing_docs)]
 
+#[cfg(target_os = "linux")]
+mod fs_linux;
+#[cfg(target_os = "macos")]
+mod fs_macos;
+
+#[cfg(target_os = "linux")]
+pub use fs_linux::{copy_seek_hole, list_xattr_names, try_ficlone};
+
+#[cfg(target_os = "macos")]
+pub use fs_macos::{
+    coordinated_replace, exclude_from_backup, has_unresolved_conflicts, is_dataless,
+    list_xattr_names, macfuse_available, posix_replace, ubiquitous_download_status,
+    UbiquitousStatus,
+};
+
 /// Disable core dumps so a crash cannot leave secrets in a core file (constraint C25).
 ///
 /// On Unix: `setrlimit(RLIMIT_CORE, 0)`. On Linux, also `prctl(PR_SET_DUMPABLE, 0)` (blocks
@@ -223,5 +238,25 @@ mod tests {
             "0",
             "coredump_filter should be cleared when writable (C25)"
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_coordinated_replace_roundtrip() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("bk-coord-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let src = dir.join("src.bin");
+        let dest = dir.join("dest.bin");
+        {
+            let mut f = std::fs::File::create(&src).unwrap();
+            f.write_all(b"coordinated-payload").unwrap();
+            f.sync_all().unwrap();
+        }
+        std::fs::write(&dest, b"old").unwrap();
+        crate::coordinated_replace(&src, &dest).expect("NSFileCoordinator replace");
+        assert_eq!(std::fs::read(&dest).unwrap(), b"coordinated-payload");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

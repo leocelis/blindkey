@@ -15,3 +15,4 @@ Each ADR is immutable once accepted; supersede rather than edit.
 | [0008](0008-volume-merkle-hmac-sha256.md) | UC-25 Merkle tree = HMAC-SHA-256 (v1) | Accepted (2026-07-21) |
 | [0009](0009-volume-mount-blindkey-fuse.md) | Mount adapter in `blindkey-fuse` crate | Accepted (2026-07-21) |
 | [0010](0010-volume-macos-mount-matrix.md) | macOS mount provider matrix | Accepted (2026-07-21) |
+| [0011](0011-volume-working-copy-checkout.md) | Volume cloud story = checkout / checkin, not live mount | Accepted (2026-09-06) |

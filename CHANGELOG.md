@@ -7,11 +7,21 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **UC-30 Blindfolder (volume working copy)** — checkout a sync-folder `.vltd` to a local
+  non-sync work path, open a cleartext working folder (`MaterializedMount`) or optional FUSE
+  mount, atomic checkin with fingerprint refuse (C99–C102). CLI `volume work-*`, GUI Open
+  Blindfolder / Eject / resume, macOS `NSFileCoordinator` replace, kill-9 cleartext adopt,
+  Drive/iCloud hydration probes. Spec [UC-30](docs/specs/UC-30-volume-working-copy.md) ·
+  [ADR-0011](docs/adr/0011-volume-working-copy-checkout.md).
+- **Optional macOS FUSE** — `--features macos-fuse` links against **user-installed**
+  [macFUSE](https://macfuse.io) (no bundled Fuse-T/macFUSE; ADR-0010). Default builds keep
+  Blindfolder's cleartext folder and compile without a FUSE SDK.
+
+### Added (prior unreleased desktop craft)
 - **UC-25 local encrypted volume** — `.vltd` workspace container (`blindkey-core::volume`: AEAD
   blocks, Kcom, HMAC-SHA-256 Merkle, local authenticity anchor, Padmé); `blindkey volume` CLI;
   Linux `blindkey-fuse`; GUI Create/Unlock/Eject + Seal secondary; ADRs 0007–0010; fuzz +
-  constraint/joint tests; intent **C67–C74** (ROADMAP **S-23**). macOS FUSE provider remains
-  packaging follow-up.
+  constraint/joint tests; intent **C67–C74** (ROADMAP **S-23**).
 - **UC-26 desktop UI IA & usability** (`blindkey-gui`) — `default_fonts` + AA theme; Credentials |
   Workspace mode switch with Seal as secondary CTA; mount-honesty unlock copy (no false
   “Mounted”); Advanced progressive disclosure on volume create/unlock; first-run + next-beat

@@ -10,3 +10,9 @@ repository.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
+
+# UC-30 / C100 — real NSFileCoordinator + NSURL resource values (macOS only).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { workspace = true }
+objc2-foundation = { workspace = true }
+block2 = { workspace = true }

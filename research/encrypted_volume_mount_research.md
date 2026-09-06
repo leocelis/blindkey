@@ -12,6 +12,8 @@
 >
 > **Companion docs:** [`encrypted_cloud_storage_research.md`](encrypted_cloud_storage_research.md)
 > (seal-vs-live cloud survey),
+> [`volume_working_copy_research.md`](volume_working_copy_research.md)
+> (checkout / checkin on a sync-folder brick — UC-30),
 > [`encrypted_volume_maximum_security_research.md`](encrypted_volume_maximum_security_research.md)
 > (**security-maximal crypto / algorithm study — read that for “most secure ever”**),
 > [`docs/specs/UC-23-sealed-file-storage.md`](../docs/specs/UC-23-sealed-file-storage.md)

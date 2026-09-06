@@ -223,8 +223,22 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 - ✅ CLI, TUI, desktop GUI on shared `blindkey-core`
 - ✅ Quality gate: local `just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml) on push
 - ✅ **v1.0.0** — first stable release; format v1 frozen ([ADR-0005](docs/adr/0005-format-v1-freeze.md))
+- ✅ **Blindfolder** — keep a `.vltd` in Dropbox/Drive/iCloud/Syncthing; Blindkey copies it locally, opens a normal folder, and atomically checks it back in. It does **not** live-mount the sync-path file ([UC-30](docs/specs/UC-30-volume-working-copy.md)).
+- ✅ **Volume live mount** — Linux FUSE via `blindkey-fuse` (`--features volume-mount`). macOS live Finder mount is **optional**: install [macFUSE](https://macfuse.io) yourself, then build with `--features macos-fuse`. Blindkey does **not** bundle or redistribute macFUSE/Fuse-T ([ADR-0010](docs/adr/0010-volume-macos-mount-matrix.md)). Without that feature, Blindfolder still opens a cleartext working folder.
 - 🟡 `blindkey mcp` — initial MCP server (status-only `list_handles` + `use_handle`); headless-approval delivery is the tracked next step ([UC-24](docs/specs/UC-24-mcp-broker.md))
 - ⏳ Hardware FFI polish, sync/merge, optional third-party audit — [ROADMAP.md](ROADMAP.md)
+
+### macOS live mount (optional)
+
+```bash
+# 1. Install macFUSE from https://macfuse.io (official package — not redistributed by Blindkey)
+# 2. Ensure pkg-config can see fuse.pc (macFUSE installer usually places it)
+# 3. Build GUI or CLI with the feature:
+cargo build -p blindkey-gui --features macos-fuse --release
+cargo build -p blindkey-cli --features macos-fuse --release
+```
+
+Default desktop builds keep Blindfolder's cleartext working folder (no macFUSE required).
 
 ## Repository layout
 

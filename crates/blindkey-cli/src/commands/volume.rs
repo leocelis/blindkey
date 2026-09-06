@@ -8,13 +8,25 @@
 use std::path::{Path, PathBuf};
 
 use blindkey_core::pad::PadMode;
-use blindkey_core::{Error, Volume, VolumeCreateOpts, VolumeUnlock, VOLUME_OPEN_ERROR};
+use blindkey_core::{
+    is_under_sync_root, orphan_work_sessions, CheckoutOpts, Error, Volume, VolumeCreateOpts,
+    VolumeUnlock, WorkPhase, WorkingCopySession, VOLUME_OPEN_ERROR, WORKING_COPY_ERROR,
+};
 use zeroize::Zeroizing;
 
 use super::{pre_release_notice, OpenOpts, USAGE_ERROR_PREFIX};
 use crate::unlock_secret;
 
 type CmdResult = Result<(), String>;
+
+/// UC-30 E1 fingerprint mismatch (exit 10).
+pub const WORK_E1_PREFIX: &str = "work-e1:";
+/// UC-30 E5 hydration refuse (exit 11).
+pub const WORK_E5_PREFIX: &str = "work-e5:";
+/// UC-30 E6 work path under sync root (exit 12).
+pub const WORK_E6_PREFIX: &str = "work-e6:";
+/// UC-30 E8 rename/replace fail (exit 13).
+pub const WORK_E8_PREFIX: &str = "work-e8:";
 
 /// `blindkey volume <action>` subcommands (clap).
 #[derive(Debug, clap::Subcommand)]
@@ -72,6 +84,39 @@ pub enum VolumeAction {
         /// Volume path (`.vltd`).
         path: PathBuf,
     },
+    /// UC-30: copy a sync-folder `.vltd` to a local working path (does not mount unless `--mount`).
+    Checkout {
+        /// Sync-folder (or any) volume path (`.vltd`).
+        path: PathBuf,
+        /// Override work root (default: platform `…/blindkey/volumes/work`).
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
+        /// After checkout, unlock + mount the **work** copy at this directory (W2 chain).
+        #[arg(long)]
+        mount: Option<PathBuf>,
+    },
+    /// UC-30: atomically replace the sync-folder brick from the working copy.
+    Checkin {
+        /// Working-copy session id (from checkout). Default: sole active session.
+        work_id: Option<String>,
+        /// Override work root (must match checkout).
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
+    },
+    /// UC-30: show working-copy session status.
+    WorkStatus {
+        /// Session id (default: list all under work root).
+        work_id: Option<String>,
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
+    },
+    /// UC-30: discard a working copy without writing the sync path.
+    WorkDiscard {
+        /// Session id to discard.
+        work_id: String,
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
+    },
     /// Re-wrap the volume header under new Argon2id parameters (block data unchanged).
     UpgradeKdf {
         /// Volume path (`.vltd`).
@@ -103,45 +148,27 @@ fn map_open_err(e: Error) -> String {
     }
 }
 
-/// Cloud-sync folder markers checked with a simple case-sensitive path substring test (C73). This
-/// is deliberately conservative: a live read-write `.vltd` inside a syncing folder is UNSUPPORTED.
-const SYNC_ROOT_MARKERS: &[&str] = &[
-    "Dropbox",
-    ".dropbox",
-    "Google Drive",
-    "GoogleDrive",
-    "CloudStorage", // macOS ~/Library/CloudStorage/{OneDrive,GoogleDrive,Dropbox}-…
-    "OneDrive",
-    "iCloud",
-    "Mobile Documents",     // iCloud Drive container
-    "com~apple~CloudDocs",  // iCloud Drive documents
-];
-
-/// Return the sync-root marker matched by `path`, if any.
-fn detect_sync_root(path: &Path) -> Option<&'static str> {
-    let s = path.to_string_lossy();
-    SYNC_ROOT_MARKERS.iter().copied().find(|m| s.contains(m))
-}
+/// Cloud-sync folder detection is centralized in `blindkey_core::is_under_sync_root` (UC-30 W0).
 
 /// Refuse (or, with `--force-local`, warn about) mounting a live volume under a cloud-sync folder.
-/// Always points to `blindkey seal` as the cloud-safe alternative (C73 / MNT-02).
+/// Points to `volume checkout` (UC-30) and `blindkey seal` (UC-23).
 fn sync_root_guard(path: &Path, force_local: bool) -> CmdResult {
-    match detect_sync_root(path) {
-        Some(marker) if !force_local => Err(usage_err(format!(
-            "refusing to mount a live read-write volume under a cloud-sync folder ({marker}). \
-             Syncing a mounted volume is UNSUPPORTED and can corrupt it (C73). Use \
-             `blindkey seal <PATH>` for a cloud-safe encrypted archive, or pass --force-local to \
-             override (unsupported)."
-        ))),
-        Some(marker) => {
-            eprintln!(
-                "warning: --force-local — mounting under a cloud-sync folder ({marker}) is \
-                 UNSUPPORTED; do not let the backend sync the volume while it is mounted."
-            );
-            Ok(())
-        }
-        None => Ok(()),
+    if !is_under_sync_root(path) {
+        return Ok(());
     }
+    if !force_local {
+        return Err(usage_err(
+            "refusing to mount a live read-write volume under a cloud-sync folder. \
+             Syncing a mounted volume is UNSUPPORTED and can corrupt it (C73). Use \
+             `blindkey volume checkout` (UC-30 working copy) or `blindkey seal <PATH>` \
+             for a cloud-safe archive, or pass --force-local to override (unsupported).",
+        ));
+    }
+    eprintln!(
+        "warning: --force-local — mounting under a cloud-sync folder is UNSUPPORTED; \
+         do not let the backend sync the volume while it is mounted."
+    );
+    Ok(())
 }
 
 /// Parse a human size like `64M`, `1G`, `512K`, `1048576` into bytes (K/M/G/T = powers of 1024).
@@ -218,6 +245,7 @@ fn build_unlock<'a>(
 
 /// Route a `volume` subcommand to its handler.
 pub fn dispatch(opts: &OpenOpts, action: VolumeAction) -> CmdResult {
+    warn_orphan_sessions();
     match action {
         VolumeAction::Create {
             path,
@@ -244,12 +272,54 @@ pub fn dispatch(opts: &OpenOpts, action: VolumeAction) -> CmdResult {
         VolumeAction::Resize { path, size } => cmd_resize(&path, &size, opts),
         VolumeAction::Status { path } => cmd_status(&path, opts),
         VolumeAction::TrustAnchor { path } => cmd_trust_anchor(&path, opts),
+        VolumeAction::Checkout {
+            path,
+            work_dir,
+            mount,
+        } => cmd_checkout(&path, work_dir.as_deref(), mount.as_deref(), opts),
+        VolumeAction::Checkin { work_id, work_dir } => {
+            cmd_checkin(work_id.as_deref(), work_dir.as_deref())
+        }
+        VolumeAction::WorkStatus { work_id, work_dir } => {
+            cmd_work_status(work_id.as_deref(), work_dir.as_deref())
+        }
+        VolumeAction::WorkDiscard { work_id, work_dir } => {
+            cmd_work_discard(&work_id, work_dir.as_deref())
+        }
         VolumeAction::UpgradeKdf {
             path,
             kdf_m_cost,
             kdf_t_cost,
             kdf_p_cost,
         } => cmd_upgrade_kdf(&path, kdf_m_cost, kdf_t_cost, kdf_p_cost, opts),
+    }
+}
+
+fn warn_orphan_sessions() {
+    let Ok(orphans) = orphan_work_sessions(None) else {
+        return;
+    };
+    if orphans.is_empty() {
+        return;
+    }
+    let interactive = std::io::IsTerminal::is_terminal(&std::io::stdin());
+    for o in &orphans {
+        eprintln!(
+            "note: orphan working-copy session {} (phase={:?})\n\
+             source: {}\n\
+             work:   {}\n\
+             Resume: `blindkey volume checkin {}`  or discard: `blindkey volume work-discard {}`",
+            o.id,
+            o.phase,
+            o.source_path.display(),
+            o.work_path.display(),
+            o.id,
+            o.id
+        );
+    }
+    if !interactive {
+        // Non-interactive: surface on stderr only; commands still run (checkin/discard handle).
+        let _ = interactive;
     }
 }
 
@@ -346,18 +416,20 @@ fn run_mount(vol: Volume, _mountpoint: &Path) -> CmdResult {
     let _ = vol.close();
     Err(
         "this build has no mount support — reinstall with `cargo install blindkey-cli --features \
-         volume-mount` (Linux; macOS needs a Fuse-T/macFUSE packaging build). Use `blindkey seal` \
-         for a portable encrypted archive."
+         volume-mount` (Linux). On macOS add `--features macos-fuse` after installing macFUSE \
+         from https://macfuse.io (Blindkey does not bundle it). Use Blindfolder or `blindkey seal` \
+         for sync-folder workflows."
             .to_string(),
     )
 }
 
 fn cmd_umount(mountpoint: &Path) -> CmdResult {
-    // Try the userspace helpers first (Linux), then a plain umount. No secrets involved.
+    // Try the userspace helpers first (Linux / macFUSE), then a plain umount. No secrets involved.
     let attempts: &[(&str, &[&str])] = &[
         ("fusermount", &["-u"]),
         ("fusermount3", &["-u"]),
         ("umount", &[]),
+        ("diskutil", &["unmount"]),
     ];
     for (bin, args) in attempts {
         let mut cmd = std::process::Command::new(bin);
@@ -493,27 +565,198 @@ pub fn cmd_peek(path: &Path, opts: &OpenOpts) -> CmdResult {
     Ok(())
 }
 
+fn map_work_err(e: Error) -> String {
+    match e {
+        Error::WorkingCopyRemoteChanged => format!("{WORK_E1_PREFIX} {e}"),
+        Error::WorkingCopyHydration => format!("{WORK_E5_PREFIX} {WORKING_COPY_ERROR}"),
+        Error::WorkingCopyWorkSyncRoot => format!("{WORK_E6_PREFIX} {WORKING_COPY_ERROR}"),
+        Error::WorkingCopyRenameFailed => format!("{WORK_E8_PREFIX} {e}"),
+        Error::WorkingCopyUnresolvedConflicts => e.to_string(),
+        Error::WorkingCopyStillMounted => e.to_string(),
+        Error::WorkingCopyFailed => WORKING_COPY_ERROR.to_string(),
+        Error::Io(e) => format!("{WORK_E8_PREFIX} {e}"),
+        _ => WORKING_COPY_ERROR.to_string(),
+    }
+}
+
+fn resolve_work_root(work_dir: Option<&Path>) -> Result<PathBuf, String> {
+    match work_dir {
+        Some(p) => Ok(p.to_path_buf()),
+        None => blindkey_core::default_work_root().map_err(|e| e.to_string()),
+    }
+}
+
+fn find_sole_session(work_root: &Path) -> Result<String, String> {
+    let mut ids = Vec::new();
+    if work_root.is_dir() {
+        for ent in std::fs::read_dir(work_root).map_err(|e| e.to_string())? {
+            let ent = ent.map_err(|e| e.to_string())?;
+            if ent.path().join("state.json").is_file() {
+                ids.push(ent.file_name().to_string_lossy().into_owned());
+            }
+        }
+    }
+    match ids.len() {
+        1 => Ok(ids.remove(0)),
+        0 => Err("no active working-copy session — run `blindkey volume checkout` first".into()),
+        _ => Err(format!(
+            "multiple working-copy sessions ({}); pass WORK_ID explicitly",
+            ids.join(", ")
+        )),
+    }
+}
+
+fn cmd_checkout(
+    path: &Path,
+    work_dir: Option<&Path>,
+    mountpoint: Option<&Path>,
+    opts: &OpenOpts,
+) -> CmdResult {
+    if !path.is_file() {
+        return Err(format!("{}: not a volume file", path.display()));
+    }
+    let work_root = resolve_work_root(work_dir)?;
+    let session = WorkingCopySession::checkout(CheckoutOpts {
+        source: path,
+        work_root: Some(&work_root),
+        skip_idle_probe: false,
+        cancel: None,
+        progress: None,
+    })
+    .map_err(map_work_err)?;
+    let work_path = session.work_path.clone();
+    let id = session.id.clone();
+    eprintln!(
+        "Checked out working copy {} (session {}).",
+        work_path.display(),
+        id
+    );
+    if let Some(mp) = mountpoint {
+        // W2: chain unlock+mount of the work brick (never the sync path).
+        let mut session = session;
+        session
+            .set_phase(WorkPhase::Mounted)
+            .map_err(map_work_err)?;
+        eprintln!(
+            "Mounting work copy at {}…",
+            mp.display()
+        );
+        // Drop session handle before mount keeps process alive; sidecar already Mounted.
+        drop(session);
+        cmd_mount(&work_path, mp, false, opts)?;
+        // After mount returns (umount/signal), mark unmounted for checkin.
+        if let Ok(mut s) = WorkingCopySession::resume_in(&id, &work_root) {
+            let _ = s.set_phase(WorkPhase::Unmounted);
+        }
+        eprintln!(
+            "When done: blindkey volume checkin {id}"
+        );
+    } else {
+        drop(session);
+        eprintln!(
+            "Mount with: blindkey volume mount {} <MOUNTPOINT>\n\
+             When done:  blindkey volume checkin {}",
+            work_path.display(),
+            id
+        );
+    }
+    println!("{id}");
+    Ok(())
+}
+
+fn cmd_checkin(work_id: Option<&str>, work_dir: Option<&Path>) -> CmdResult {
+    let work_root = resolve_work_root(work_dir)?;
+    let id = match work_id {
+        Some(id) => id.to_string(),
+        None => find_sole_session(&work_root)?,
+    };
+    let session_dir = work_root.join(&id);
+    let session = WorkingCopySession::resume_from_dir(&session_dir).map_err(map_work_err)?;
+    let source = session.source_path.clone();
+    let work = session.work_path.clone();
+    let sid = session.id.clone();
+    session.checkin().map_err(|e| match e {
+        Error::WorkingCopyRemoteChanged => format!(
+            "{WORK_E1_PREFIX} sync-folder brick changed since checkout; refusing overwrite.\n\
+             sync: {}\n\
+             work: {}\n\
+             Resolve manually, or: blindkey volume work-discard {}",
+            source.display(),
+            work.display(),
+            sid
+        ),
+        other => map_work_err(other),
+    })?;
+    eprintln!("Checked in to {}.", source.display());
+    Ok(())
+}
+
+fn cmd_work_status(work_id: Option<&str>, work_dir: Option<&Path>) -> CmdResult {
+    let work_root = resolve_work_root(work_dir)?;
+    if let Some(id) = work_id {
+        let session =
+            WorkingCopySession::resume_from_dir(&work_root.join(id)).map_err(map_work_err)?;
+        println!(
+            "id={}\nphase={:?}\nsource={}\nwork={}\nsize={}",
+            session.id,
+            session.phase,
+            session.source_path.display(),
+            session.work_path.display(),
+            session.fingerprint.size
+        );
+        return Ok(());
+    }
+    if !work_root.is_dir() {
+        eprintln!("No working-copy sessions.");
+        return Ok(());
+    }
+    let mut any = false;
+    for ent in std::fs::read_dir(&work_root).map_err(|e| e.to_string())? {
+        let ent = ent.map_err(|e| e.to_string())?;
+        if !ent.path().join("state.json").is_file() {
+            continue;
+        }
+        any = true;
+        match WorkingCopySession::resume_from_dir(&ent.path()) {
+            Ok(s) => println!("{}\t{:?}\t{}", s.id, s.phase, s.source_path.display()),
+            Err(_) => println!("{}\t(unreadable)", ent.file_name().to_string_lossy()),
+        }
+    }
+    if !any {
+        eprintln!("No working-copy sessions.");
+    }
+    Ok(())
+}
+
+fn cmd_work_discard(work_id: &str, work_dir: Option<&Path>) -> CmdResult {
+    let work_root = resolve_work_root(work_dir)?;
+    let session =
+        WorkingCopySession::resume_from_dir(&work_root.join(work_id)).map_err(map_work_err)?;
+    session.discard().map_err(map_work_err)?;
+    eprintln!("Discarded working-copy session {work_id}.");
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn detects_and_refuses_sync_roots() {
-        // Refuse under common cloud-sync roots without --force-local (C73).
         for p in [
             "/Users/leo/Dropbox/work.vltd",
             "/Users/leo/Library/CloudStorage/OneDrive-Personal/work.vltd",
             "/home/leo/OneDrive/work.vltd",
             "/Users/leo/Google Drive/work.vltd",
             "/Users/leo/Library/Mobile Documents/com~apple~CloudDocs/work.vltd",
+            "/home/leo/syncthing/share/work.vltd",
         ] {
             let path = Path::new(p);
-            assert!(detect_sync_root(path).is_some(), "should detect: {p}");
+            assert!(is_under_sync_root(path), "should detect: {p}");
             assert!(
                 sync_root_guard(path, false).is_err(),
                 "should refuse without --force-local: {p}"
             );
-            // --force-local downgrades the refusal to a warning.
             assert!(
                 sync_root_guard(path, true).is_ok(),
                 "should allow with --force-local: {p}"
@@ -525,7 +768,7 @@ mod tests {
     fn allows_local_paths() {
         for p in ["/tmp/work.vltd", "/home/leo/vaults/work.vltd", "./work.vltd"] {
             let path = Path::new(p);
-            assert!(detect_sync_root(path).is_none(), "should be local: {p}");
+            assert!(!is_under_sync_root(path), "should be local: {p}");
             assert!(sync_root_guard(path, false).is_ok(), "should allow: {p}");
         }
     }

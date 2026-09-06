@@ -99,10 +99,12 @@ live RW mount on a cloud-sync folder is unsupported (C73).
 > **Status:** the volume crypto core (`blindkey-core::volume`), the `blindkey volume` CLI verbs +
 > `peek` magic dispatch, the desktop **GUI** Create / Mount / Eject shell, and the userspace
 > **Linux FUSE** adapter (`blindkey-fuse`, [ADR-0009](specs/../adr/0009-volume-mount-blindkey-fuse.md))
-> are **implemented**. **macOS** live-folder mount (macFUSE FSKit / Fuse-T,
-> [ADR-0010](adr/0010-volume-macos-mount-matrix.md)) compiles to an honest "not supported on this
-> platform" stub — the real provider is the **Phase-C packaging** piece. The surface below is the
-> accepted contract ([spec §7](specs/UC-25-local-encrypted-volume.md#7-cli-surface-clap)).
+> is **implemented** (`--features volume-mount`). **macOS** live-folder mount is optional:
+> install [macFUSE](https://macfuse.io), then build with `--features macos-fuse` (Blindkey does
+> not bundle macFUSE/Fuse-T — [ADR-0010](specs/../adr/0010-volume-macos-mount-matrix.md)).
+> Without that feature, GUI Blindfolder opens a cleartext working folder (`MaterializedMount`).
+> The surface below is the accepted contract
+> ([spec §7](specs/UC-25-local-encrypted-volume.md#7-cli-surface-clap)).
 
 | Command | Description |
 |---------|-------------|
@@ -112,15 +114,23 @@ live RW mount on a cloud-sync folder is unsupported (C73).
 | `blindkey volume resize PATH.vltd --size SIZE` | Grow the sparse volume up to `--max-size`. |
 | `blindkey volume status PATH.vltd\|MOUNTPOINT` | Mount state + version/freshness summary (no secrets). |
 | `blindkey volume trust-anchor PATH.vltd` | Explicitly accept the current on-disk version as fresh on a new device (MSV-19). |
+| `blindkey volume checkout PATH.vltd [--work-dir DIR] [--mount MOUNTPOINT]` | UC-30: copy a sync-folder brick to `…/blindkey/volumes/work/<id>/`. Optional `--mount` unlocks+mounts the **work** copy (never the sync path). |
+| `blindkey volume checkin [WORK_ID] [--work-dir DIR]` | UC-30: atomic replace of the sync-folder brick from the working copy (C100/C101). Exit **10** on E1 fingerprint mismatch. |
+| `blindkey volume work-status [WORK_ID] [--work-dir DIR]` | UC-30: list or show working-copy sessions. |
+| `blindkey volume work-discard WORK_ID [--work-dir DIR]` | UC-30: discard a working copy without writing the sync path. |
+
+UC-30 working-copy exits: **10** E1 remote changed · **11** E5 hydration · **12** E6 work under sync root · **13** E8 rename/replace failed. Orphan sessions print a resume/discard hint on any `volume` command.
 | `blindkey peek PATH.vltd` | List the virtual tree (paths + sizes only, no file bodies). |
 
 **Unlock flags:** same UC-09 paths as vault/`.vltf` (`--password-stdin`, `--password-file`,
 `--keyfile`, `--recovery`). **KDF tuning:** `--allow-weak-kdf`, `--kdf-m-cost`, `--kdf-t-cost`,
-`--kdf-p-cost`. **Cloud policy (C73):** if `PATH.vltd` is under a detectable sync root
-(Dropbox/Drive/iCloud/Syncthing), `mount` warns/refuses and points to `blindkey seal`.
+`--kdf-p-cost`. **Cloud policy (C73 / UC-30):** if `PATH.vltd` is under a detectable sync root
+(Dropbox/Drive/iCloud/Syncthing/…), `mount` refuses and points to `volume checkout` or
+`blindkey seal`. Use `--force-local` only as an unsupported escape hatch.
 **Errors:** auth/parse failures collapse to the uniform `volume could not be opened` (C74).
 
-Spec: [UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md).
+Spec: [UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md) ·
+[UC-30-volume-working-copy.md](specs/UC-30-volume-working-copy.md).
 
 ## Not yet implemented
 
@@ -128,7 +138,7 @@ Spec: [UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md).
 |---------|-------|
 | `blindkey import --format txt\|json` | Structured importers (UC-12). |
 | `blindkey merge OLD NEW` | Conflict merge (UC-08). |
-| `blindkey volume mount` on **macOS** | Linux FUSE implemented; macOS provider (macFUSE/Fuse-T) is Phase-C packaging (stub today). |
+| `blindkey volume mount` on **macOS** | Optional: install macFUSE + build with `--features macos-fuse`. Default GUI Blindfolder uses `MaterializedMount` (cleartext working folder). |
 
 ## `blindkey find` — searchable fields (constraint C35)
 

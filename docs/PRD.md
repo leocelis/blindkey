@@ -358,6 +358,18 @@ measured WCAG 2.2 AA ratios, raises type scale toward NIST ≥12 pt, and uses wh
 [spec UC-29](specs/UC-29-desktop-ui-contrast-typography.md) · research
 [desktop_ui_contrast_typography_research.md](../research/desktop_ui_contrast_typography_research.md).
 
+### UC-30 · Keep a volume brick in a sync folder via working copy (Blindfolder)
+**Persona:** P2 · **Constraints:** C99–C102 (G22, PASS); **amends** C73 · reuses C67–C74, C16 posture · **Status:** Accepted v0.3 — core+CLI+GUI Blindfolder shipped (MaterializedMount folder open) · **Depends on:** UC-25 volume format; optional macOS Fuse packaging (ADR-0010) for FUSE alternate
+
+A local-first operator wants the UC-25 folder UX (unlock → normal directory → eject → brick)
+and also wants that brick to live in an untrusted sync folder (Dropbox, Drive, iCloud,
+Syncthing) so another machine can open the same workspace. **They do not mount the file
+inside the sync folder.** Blindkey copies it to a local working path, mounts **that** copy,
+and on eject writes it back with an atomic replace. If the sync-folder file changed while
+they were working, checkin refuses (no silent overwrite). Live RW of a `.vltd` that the sync
+client is uploading remains **unsupported** (C73). User-facing name: **Blindfolder**.
+See [spec UC-30](specs/UC-30-volume-working-copy.md) · [ADR-0011](adr/0011-volume-working-copy-checkout.md).
+
 ## 6. Out of scope for v1 (non-goals)
 
 From the intent's `non_goals:` — hosted sync service, browser extension, team vaults,
@@ -365,8 +377,10 @@ custom crypto, and any LLM/agent inside the trust boundary. **Native macOS Swift
 post-v1; **egui TUI/GUI shells are shipped** as pre-1.0 beta. UC-25 also excludes: live RW
 mount of a volume file on cloud sync backends (C73), VeraCrypt/TrueCrypt format compat and
 naked AES-XTS/XCB as sole volume data plane (C68), and PD / hidden volumes / interactive
-ORAM as v1 claims. Residual risks accepted and documented in [THREAT_MODEL](THREAT_MODEL.md):
-kernel-level compromise with root, TPM bus attacks, social engineering of the user.
+ORAM as v1 claims. **UC-30** is the supported way to *store* a `.vltd` in a sync folder
+(checkout / checkin); it is not live mount of that path. Residual risks accepted and
+documented in [THREAT_MODEL](THREAT_MODEL.md): kernel-level compromise with root, TPM bus
+attacks, social engineering of the user.
 
 ## 7. Success metrics (v1)
 

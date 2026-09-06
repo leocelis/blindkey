@@ -51,6 +51,20 @@ zeroize          = { version = "1", features = ["derive"] }   # C11
 secrecy          = "0.8"        # C11 secret wrappers
 # --- OS hardening FFI (the only place `unsafe` lives — blindkey-sys) ---
 libc             = "0.2"        # C12/C25 mlock + setrlimit (unix)
+# --- macOS Foundation (UC-30 NSFileCoordinator / NSURL; blindkey-sys only) ---
+objc2            = "0.6.4"
+objc2-foundation = { version = "0.3.2", features = [
+    "NSFileCoordinator",
+    "NSURL",
+    "NSError",
+    "NSString",
+    "NSFileVersion",
+    "NSArray",
+    "NSDictionary",
+    "NSObject",
+    "block2",
+] }
+block2           = "0.6.2"
 # --- UC-25 live mount (blindkey-fuse; ADR-0009) ---
 # default-features off: no libfuse link at build time — pure-Rust userspace mount via the
 # `fusermount` helper at runtime (Linux). Keeps `cargo check` working on macOS without macFUSE.

@@ -15,10 +15,21 @@ publish = false
 name = "blindkey-gui"
 path = "src/main.rs"
 
+[features]
+default = ["volume-mount"]
+# Prefer userspace FUSE when available (Linux always; macOS only with `macos-fuse` + macFUSE).
+# Without a working FUSE session the GUI falls back to MaterializedMount (ADR-0010).
+volume-mount = ["dep:blindkey-fuse"]
+# Optional: link against user-installed macFUSE (https://macfuse.io). Build requires fuse.pc.
+# Does not embed or redistribute macFUSE/Fuse-T (ADR-0010).
+macos-fuse = ["volume-mount", "blindkey-fuse/macos-fuse"]
+
 [dependencies]
 blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
 blindkey-hardware = { path = "../blindkey-hardware", version = "1.0.0" }
 blindkey-clip = { path = "../blindkey-clip", version = "1.0.0" }
+blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
+blindkey-fuse = { path = "../blindkey-fuse", version = "1.0.0", optional = true }
 eframe = { workspace = true }   # UC-20: glow pinned in workspace; no persistence (C41)
 rfd = { workspace = true }
 zeroize = { workspace = true }
