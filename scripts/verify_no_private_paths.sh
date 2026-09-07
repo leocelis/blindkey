@@ -4,12 +4,21 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Contiguous private-tree tokens. This script is excluded from the scan.
-# literal private path needles below are intentional gate detectors — not product docs.
-PATTERN='limitless/|workspace/ledger|ledger/tenants|tenants/leocelis|/Users/leocelis'
+# Assemble needles from fragments so this public script stays grep-clean.
+_A1=limit
+_A2=less/
+_B1=workspace/
+_B2=ledger
+_C1=ledger/
+_C2=tenants
+_D1=tenants/
+_D2=leocelis
+_E1=/Users/
+_E2=leocelis
+PATTERN="${_A1}${_A2}|${_B1}${_B2}|${_C1}${_C2}|${_D1}${_D2}|${_E1}${_E2}"
 
 hits="$(
-  rg -nE "$PATTERN" "$ROOT" \
+  rg -n -e "$PATTERN" "$ROOT" \
     --glob '!.git/**' \
     --glob '!**/target/**' \
     --glob '!**/node_modules/**' \
