@@ -573,7 +573,8 @@ impl VaultApp {
         if !self.gui_config.dismissed_next_beat {
             self.offer_next_beat = true;
         }
-        self.status = "Vault created. Add an entry or open Workspace to create an encrypted folder.".into();
+        self.status =
+            "Vault created. Add an entry or open Workspace to create an encrypted folder.".into();
     }
 
     fn lock(&mut self) {
@@ -1292,191 +1293,193 @@ impl VaultApp {
                 self.volume.workspace_home(ui);
             });
         } else {
-        // Left: entry list (Credentials mode).
+            // Left: entry list (Credentials mode).
 
-        egui::SidePanel::left("entries")
-            .resizable(true)
-            .default_width(300.0)
-            .show(ctx, |ui| {
-                ui.add_space(4.0);
-                ui.label(format!("{} / {} shown", items.len(), total));
-                ui.separator();
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        if items.is_empty() {
-                            theme::muted_label(
-                                ui,
+            egui::SidePanel::left("entries")
+                .resizable(true)
+                .default_width(300.0)
+                .show(ctx, |ui| {
+                    ui.add_space(4.0);
+                    ui.label(format!("{} / {} shown", items.len(), total));
+                    ui.separator();
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            if items.is_empty() {
+                                theme::muted_label(
+                                    ui,
+                                    if total == 0 {
+                                        "No entries yet — Add an entry, or Import keys.txt."
+                                    } else {
+                                        "No matching entries."
+                                    },
+                                );
                                 if total == 0 {
-                                    "No entries yet — Add an entry, or Import keys.txt."
-                                } else {
-                                    "No matching entries."
-                                },
+                                    ui.add_space(8.0);
+                                    ui.horizontal(|ui| {
+                                        if theme::primary_button(ui, "Add entry", 120.0).clicked() {
+                                            action = Some(Action::Add);
+                                        }
+                                        if ui.button("Import keys.txt").clicked() {
+                                            action = Some(Action::ChooseImport);
+                                        }
+                                    });
+                                }
+                                return;
+                            }
+                            let scroll_off = (-ui.min_rect().top()).max(0.0);
+                            let range = visible_slice_range(
+                                items.len(),
+                                scroll_off,
+                                ui.clip_rect().height(),
                             );
-                            if total == 0 {
-                                ui.add_space(8.0);
-                                ui.horizontal(|ui| {
-                                    if theme::primary_button(ui, "Add entry", 120.0).clicked() {
-                                        action = Some(Action::Add);
-                                    }
-                                    if ui.button("Import keys.txt").clicked() {
-                                        action = Some(Action::ChooseImport);
-                                    }
-                                });
+                            let (lo, hi) = (range.start, range.end);
+                            if lo > 0 {
+                                ui.allocate_space(egui::vec2(
+                                    ui.available_width(),
+                                    lo as f32 * ENTRY_ROW_HEIGHT,
+                                ));
                             }
-                            return;
-                        }
-                        let scroll_off = (-ui.min_rect().top()).max(0.0);
-                        let range =
-                            visible_slice_range(items.len(), scroll_off, ui.clip_rect().height());
-                        let (lo, hi) = (range.start, range.end);
-                        if lo > 0 {
-                            ui.allocate_space(egui::vec2(
-                                ui.available_width(),
-                                lo as f32 * ENTRY_ROW_HEIGHT,
-                            ));
-                        }
-                        for (idx, title, positions) in &items[lo..hi] {
-                            let selected = self.selected == Some(*idx);
-                            let job = highlight_title(title, positions, ui);
-                            if theme::list_select_row(ui, selected, job).clicked() {
-                                self.selected = Some(*idx);
-                                self.reveal = false;
+                            for (idx, title, positions) in &items[lo..hi] {
+                                let selected = self.selected == Some(*idx);
+                                let job = highlight_title(title, positions, ui);
+                                if theme::list_select_row(ui, selected, job).clicked() {
+                                    self.selected = Some(*idx);
+                                    self.reveal = false;
+                                }
                             }
-                        }
-                        if hi < items.len() {
-                            ui.allocate_space(egui::vec2(
-                                ui.available_width(),
-                                (items.len() - hi) as f32 * ENTRY_ROW_HEIGHT,
-                            ));
-                        }
-                    });
-            });
-
-        // Right: detail of the selected entry.
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let Some(idx) = self.selected.filter(|&i| i < total) else {
-                ui.add_space(40.0);
-                ui.vertical_centered(|ui| {
-                    theme::muted_label(ui, "No entries yet — Add an entry, or Import keys.txt.");
-                    if theme::primary_button(ui, "Add entry", 120.0).clicked() {
-                        action = Some(Action::Add);
-                    }
-                    if ui.button("Import keys.txt").clicked() {
-                        action = Some(Action::ChooseImport);
-                    }
-                });
-                return;
-            };
-            // Read the selected entry's display fields (no secret rendered unless `reveal`).
-            let vault = self.vault.as_ref().expect("unlocked");
-            let e = &vault.entries()[idx];
-            let title = one_line(&e.title);
-            let username = e.username.clone();
-            let url = e.url.clone();
-            let notes = e.notes.clone();
-            let pw_shadow: String = if self.reveal {
-                String::from_utf8_lossy(&e.password.expose()).into_owned()
-            } else {
-                "•".repeat(10)
-            };
-            let protected_fields: Vec<String> = e
-                .custom_fields
-                .iter()
-                .filter(|f| matches!(f.value, CustomValue::Protected(_)))
-                .map(|f| one_line(&f.name))
-                .collect();
-            // Live TOTP code (refreshes each second because the app repaints on a 1s timer).
-            let otp_display: Option<(String, u64)> = e.otp_secret.as_ref().and_then(|p| {
-                blindkey_core::totp::generate_now(&p.expose())
-                    .ok()
-                    .map(|c| (c.code, c.valid_for_secs))
-            });
-
-            ui.add_space(6.0);
-            ui.heading(&title);
-            ui.add_space(8.0);
-
-            egui::Grid::new("detail")
-                .num_columns(2)
-                .spacing([12.0, 8.0])
-                .show(ui, |ui| {
-                    ui.label("Username");
-                    ui.horizontal(|ui| {
-                        ui.monospace(if username.is_empty() {
-                            "—".to_string()
-                        } else {
-                            one_line(&username)
+                            if hi < items.len() {
+                                ui.allocate_space(egui::vec2(
+                                    ui.available_width(),
+                                    (items.len() - hi) as f32 * ENTRY_ROW_HEIGHT,
+                                ));
+                            }
                         });
-                        if !username.is_empty() && ui.small_button("Copy").clicked() {
-                            action = Some(Action::CopyUsername(idx));
+                });
+
+            // Right: detail of the selected entry.
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let Some(idx) = self.selected.filter(|&i| i < total) else {
+                    ui.add_space(40.0);
+                    ui.vertical_centered(|ui| {
+                        theme::muted_label(
+                            ui,
+                            "No entries yet — Add an entry, or Import keys.txt.",
+                        );
+                        if theme::primary_button(ui, "Add entry", 120.0).clicked() {
+                            action = Some(Action::Add);
+                        }
+                        if ui.button("Import keys.txt").clicked() {
+                            action = Some(Action::ChooseImport);
                         }
                     });
-                    ui.end_row();
+                    return;
+                };
+                // Read the selected entry's display fields (no secret rendered unless `reveal`).
+                let vault = self.vault.as_ref().expect("unlocked");
+                let e = &vault.entries()[idx];
+                let title = one_line(&e.title);
+                let username = e.username.clone();
+                let url = e.url.clone();
+                let notes = e.notes.clone();
+                let pw_shadow: String = if self.reveal {
+                    String::from_utf8_lossy(&e.password.expose()).into_owned()
+                } else {
+                    "•".repeat(10)
+                };
+                let protected_fields: Vec<String> = e
+                    .custom_fields
+                    .iter()
+                    .filter(|f| matches!(f.value, CustomValue::Protected(_)))
+                    .map(|f| one_line(&f.name))
+                    .collect();
+                // Live TOTP code (refreshes each second because the app repaints on a 1s timer).
+                let otp_display: Option<(String, u64)> = e.otp_secret.as_ref().and_then(|p| {
+                    blindkey_core::totp::generate_now(&p.expose())
+                        .ok()
+                        .map(|c| (c.code, c.valid_for_secs))
+                });
 
-                    ui.label("URL");
-                    ui.monospace(if url.is_empty() {
-                        "—".into()
-                    } else {
-                        one_line(&url)
-                    });
-                    ui.end_row();
+                ui.add_space(6.0);
+                ui.heading(&title);
+                ui.add_space(8.0);
 
-                    ui.label("Password");
-                    ui.horizontal(|ui| {
-                        ui.monospace(&pw_shadow);
-                        if ui.button("Copy").clicked() {
-                            action = Some(Action::CopyPassword(idx));
-                        }
-                        let reveal_label = if self.reveal { "Hide" } else { "Reveal" };
-                        if ui.button(reveal_label).clicked() {
-                            action = Some(Action::ToggleReveal);
-                        }
-                    });
-                    ui.end_row();
-
-                    if let Some((code, secs)) = &otp_display {
-                        ui.label("2FA code");
-                        ui.vertical(|ui| {
-                            ui.horizontal(|ui| {
-                                let pretty = if code.len() == 6 {
-                                    format!("{} {}", &code[..3], &code[3..])
-                                } else {
-                                    code.clone()
-                                };
-                                ui.monospace(pretty);
-                                theme::muted_label(ui, format!("({secs}s)"));
+                egui::Grid::new("detail")
+                    .num_columns(2)
+                    .spacing([12.0, 8.0])
+                    .show(ui, |ui| {
+                        ui.label("Username");
+                        ui.horizontal(|ui| {
+                            ui.monospace(if username.is_empty() {
+                                "—".to_string()
+                            } else {
+                                one_line(&username)
                             });
-                            theme::muted_label(ui, "In-app only — not copied to clipboard.");
+                            if !username.is_empty() && ui.small_button("Copy").clicked() {
+                                action = Some(Action::CopyUsername(idx));
+                            }
                         });
                         ui.end_row();
-                    }
-                });
 
-            if !notes.is_empty() {
-                ui.add_space(8.0);
-                ui.label("Notes");
-                ui.group(|ui| {
-                    ui.label(&notes);
-                });
-            }
-            if !protected_fields.is_empty() {
-                ui.add_space(8.0);
-                theme::muted_label(
-                    ui,
-                    format!(
-                        "Also has protected fields: {}",
-                        protected_fields.join(", ")
-                    ),
-                );
-            }
+                        ui.label("URL");
+                        ui.monospace(if url.is_empty() {
+                            "—".into()
+                        } else {
+                            one_line(&url)
+                        });
+                        ui.end_row();
 
-            ui.add_space(14.0);
-            if ui.button("✏  Edit / change password").clicked() {
-                action = Some(Action::Edit(idx));
-            }
-        });
+                        ui.label("Password");
+                        ui.horizontal(|ui| {
+                            ui.monospace(&pw_shadow);
+                            if ui.button("Copy").clicked() {
+                                action = Some(Action::CopyPassword(idx));
+                            }
+                            let reveal_label = if self.reveal { "Hide" } else { "Reveal" };
+                            if ui.button(reveal_label).clicked() {
+                                action = Some(Action::ToggleReveal);
+                            }
+                        });
+                        ui.end_row();
 
+                        if let Some((code, secs)) = &otp_display {
+                            ui.label("2FA code");
+                            ui.vertical(|ui| {
+                                ui.horizontal(|ui| {
+                                    let pretty = if code.len() == 6 {
+                                        format!("{} {}", &code[..3], &code[3..])
+                                    } else {
+                                        code.clone()
+                                    };
+                                    ui.monospace(pretty);
+                                    theme::muted_label(ui, format!("({secs}s)"));
+                                });
+                                theme::muted_label(ui, "In-app only — not copied to clipboard.");
+                            });
+                            ui.end_row();
+                        }
+                    });
+
+                if !notes.is_empty() {
+                    ui.add_space(8.0);
+                    ui.label("Notes");
+                    ui.group(|ui| {
+                        ui.label(&notes);
+                    });
+                }
+                if !protected_fields.is_empty() {
+                    ui.add_space(8.0);
+                    theme::muted_label(
+                        ui,
+                        format!("Also has protected fields: {}", protected_fields.join(", ")),
+                    );
+                }
+
+                ui.add_space(14.0);
+                if ui.button("✏  Edit / change password").clicked() {
+                    action = Some(Action::Edit(idx));
+                }
+            });
         } // end Credentials mode panels
 
         if let Some(a) = action {
@@ -1625,7 +1628,9 @@ impl VaultApp {
                                     .selected_text(format!("{ct}s"))
                                     .show_ui(ui, |ui| {
                                         for s in [15u64, 30, 60] {
-                                            if ui.selectable_value(&mut ct, s, format!("{s}s")).clicked()
+                                            if ui
+                                                .selectable_value(&mut ct, s, format!("{s}s"))
+                                                .clicked()
                                             {
                                                 action = Some(Action::SetClipboardTimeout(s));
                                             }
@@ -1947,12 +1952,7 @@ impl VaultApp {
                         if theme::quiet_button(ui, "Cancel", theme::DIALOG_BTN_WIDTH).clicked() {
                             cancel = true;
                         }
-                        if theme::primary_button(
-                            ui,
-                            format!("Import {n} entries"),
-                            160.0,
-                        )
-                        .clicked()
+                        if theme::primary_button(ui, format!("Import {n} entries"), 160.0).clicked()
                         {
                             do_import = true;
                         }

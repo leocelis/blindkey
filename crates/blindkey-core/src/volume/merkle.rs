@@ -19,7 +19,10 @@ fn hmac(mac_key: &[u8; 32], parts: &[&[u8]]) -> [u8; 32] {
 }
 
 fn leaf(mac_key: &[u8; 32], block_id: u64, version: u64, tag: &[u8; 16]) -> [u8; 32] {
-    hmac(mac_key, &[&block_id.to_le_bytes(), &version.to_le_bytes(), tag])
+    hmac(
+        mac_key,
+        &[&block_id.to_le_bytes(), &version.to_le_bytes(), tag],
+    )
 }
 
 fn empty_leaf(mac_key: &[u8; 32], idx: u64) -> [u8; 32] {

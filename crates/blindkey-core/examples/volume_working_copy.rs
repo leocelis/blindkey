@@ -13,9 +13,7 @@ use std::fs::{self, File};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 
-use blindkey_core::{
-    CheckoutOpts, Error, WorkingCopySession, MAGIC_VLTD,
-};
+use blindkey_core::{CheckoutOpts, Error, WorkingCopySession, MAGIC_VLTD};
 
 fn write_fake_vltd(path: &Path, payload: &[u8]) {
     let mut f = File::create(path).expect("create brick");
@@ -24,10 +22,7 @@ fn write_fake_vltd(path: &Path, payload: &[u8]) {
 }
 
 fn main() {
-    let base = std::env::temp_dir().join(format!(
-        "blindkey-wc-example-{}",
-        std::process::id()
-    ));
+    let base = std::env::temp_dir().join(format!("blindkey-wc-example-{}", std::process::id()));
     let _ = fs::remove_dir_all(&base);
     let sync = base.join("DropboxSim"); // name alone is not enough — path has no sync marker token
     let work = base.join("work");
@@ -63,7 +58,10 @@ fn main() {
     let edited = fs::read(&session.work_path).unwrap();
     session.checkin().expect("checkin");
     assert_eq!(fs::read(&brick).unwrap(), edited);
-    println!("3. checkin ok — sync brick matches edited working copy ({} bytes)", edited.len());
+    println!(
+        "3. checkin ok — sync brick matches edited working copy ({} bytes)",
+        edited.len()
+    );
 
     // C101 demo
     write_fake_vltd(&brick, b"hello-blindfolder");

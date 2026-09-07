@@ -29,6 +29,8 @@ pub struct OuterFingerprint {
     pub dev: u64,
     /// Inode at fingerprint time (0 when unavailable).
     pub ino: u64,
+    /// First four bytes equal `MAGIC_VLTD` at hash time.
+    pub magic_ok: bool,
 }
 
 /// Sidecar phase for crash/resume (UC-30 §5.3).
@@ -334,10 +336,7 @@ impl WorkingCopySession {
         self.write_sidecar()?;
         exclude_work_from_backup(&self.session_dir);
 
-        let parent = self
-            .source_path
-            .parent()
-            .ok_or(Error::WorkingCopyFailed)?;
+        let parent = self.source_path.parent().ok_or(Error::WorkingCopyFailed)?;
         let stem = self
             .source_path
             .file_stem()
@@ -350,13 +349,13 @@ impl WorkingCopySession {
         debug_assert!(!tmp_name.starts_with("~syncthing~"));
         let tmp_path = parent.join(&tmp_name);
 
-        if let Err(e) = copy_brick(&self.work_path, &tmp_path) {
+        if let Err(_e) = copy_brick(&self.work_path, &tmp_path) {
             let _ = fs::remove_file(&tmp_path);
-            return Err(e);
+            return Err(Error::WorkingCopyRenameFailed);
         }
         {
-            let f = File::open(&tmp_path)?;
-            f.sync_all()?;
+            let f = File::open(&tmp_path).map_err(|_| Error::WorkingCopyRenameFailed)?;
+            f.sync_all().map_err(|_| Error::WorkingCopyRenameFailed)?;
         }
 
         // Re-check before rename (TOCTOU window).
@@ -395,6 +394,12 @@ impl WorkingCopySession {
         Ok(())
     }
 
+    /// Test hook: run the E8 out-of-tree replace path alone (KeePassXC-class fallback).
+    #[cfg(test)]
+    pub(crate) fn test_e8_fallback_replace(&self) -> Result<()> {
+        self.e8_fallback_replace()
+    }
+
     /// KeePassXC-class: write temp under data dir, then sibling-rename into sync folder.
     fn e8_fallback_replace(&self) -> Result<()> {
         let staging_root = rollback::platform_data_dir()?
@@ -427,13 +432,10 @@ impl WorkingCopySession {
             .unwrap_or("volume");
         let mut rand2 = [0u8; 8];
         getrandom::getrandom(&mut rand2).map_err(|_| Error::WorkingCopyRenameFailed)?;
-        let sibling = parent.join(format!(
-            "{stem}.{}.bk-checkin.tmp",
-            bytes_to_hex(&rand2)
-        ));
-        if let Err(e) = fs::copy(&staging, &sibling) {
+        let sibling = parent.join(format!("{stem}.{}.bk-checkin.tmp", bytes_to_hex(&rand2)));
+        if let Err(_e) = fs::copy(&staging, &sibling) {
             let _ = fs::remove_file(&staging);
-            return Err(Error::Io(e));
+            return Err(Error::WorkingCopyRenameFailed);
         }
         let _ = fs::remove_file(&staging);
         {
@@ -488,13 +490,18 @@ impl WorkingCopySession {
             .as_secs();
         let pid = std::process::id();
         let body = format!(
-            "{{\n  \"version\": 1,\n  \"id\": \"{}\",\n  \"source_path\": {},\n  \"source_fingerprint\": {{\n    \"size\": {},\n    \"sha256\": \"{}\",\n    \"dev\": {},\n    \"ino\": {},\n    \"magic_ok\": true\n  }},\n  \"work_path\": {},\n  \"phase\": \"{}\",\n  \"pid\": {},\n  \"created_at\": \"{}\"\n}}\n",
+            "{{\n  \"version\": 1,\n  \"id\": \"{}\",\n  \"source_path\": {},\n  \"source_fingerprint\": {{\n    \"size\": {},\n    \"sha256\": \"{}\",\n    \"dev\": {},\n    \"ino\": {},\n    \"magic_ok\": {}\n  }},\n  \"work_path\": {},\n  \"phase\": \"{}\",\n  \"pid\": {},\n  \"created_at\": \"{}\"\n}}\n",
             self.id,
             json_string(&self.source_path.to_string_lossy()),
             self.fingerprint.size,
             bytes_to_hex(&self.fingerprint.sha256),
             self.fingerprint.dev,
             self.fingerprint.ino,
+            if self.fingerprint.magic_ok {
+                "true"
+            } else {
+                "false"
+            },
             json_string(&self.work_path.to_string_lossy()),
             self.phase.as_str(),
             pid,
@@ -566,9 +573,7 @@ pub fn is_under_sync_root(path: &Path) -> bool {
     ];
     path.components().any(|c| {
         let seg = c.as_os_str().to_string_lossy().to_ascii_lowercase();
-        COMPONENTS
-            .iter()
-            .any(|m| seg == *m || seg.contains(m))
+        COMPONENTS.iter().any(|m| seg == *m || seg.contains(m))
     })
 }
 
@@ -661,10 +666,17 @@ pub fn hash_outer_logical(path: &Path) -> Result<OuterFingerprint> {
     let mut file = File::open(path)?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 64 * 1024];
+    let mut magic = [0u8; 4];
+    let mut magic_n = 0usize;
     loop {
         let n = file.read(&mut buf)?;
         if n == 0 {
             break;
+        }
+        if magic_n < 4 {
+            let take = (4 - magic_n).min(n);
+            magic[magic_n..magic_n + take].copy_from_slice(&buf[..take]);
+            magic_n += take;
         }
         hasher.update(&buf[..n]);
     }
@@ -689,6 +701,7 @@ pub fn hash_outer_logical(path: &Path) -> Result<OuterFingerprint> {
         sha256,
         dev,
         ino,
+        magic_ok: magic_n == 4 && magic == MAGIC_VLTD,
     })
 }
 
@@ -846,7 +859,7 @@ fn has_syncthing_temp_sibling(parent: &Path, brick: &Path) -> bool {
     let brick_name = brick.file_name();
     for ent in rd.flatten() {
         let name = ent.file_name();
-        if Some(name.as_os_str()) == brick_name.as_deref() {
+        if Some(name.as_os_str()) == brick_name {
             continue;
         }
         let s = name.to_string_lossy();
@@ -960,10 +973,7 @@ pub fn orphan_work_sessions(work_root: Option<&Path>) -> Result<Vec<WorkSessionI
         .filter(|s| {
             matches!(
                 s.phase,
-                WorkPhase::Copied
-                    | WorkPhase::Mounted
-                    | WorkPhase::Unmounted
-                    | WorkPhase::Checkin
+                WorkPhase::Copied | WorkPhase::Mounted | WorkPhase::Unmounted | WorkPhase::Checkin
             ) && (s.pid == 0 || !pid_alive(s.pid))
         })
         .collect())
@@ -1086,6 +1096,7 @@ fn parse_sidecar(raw: &str) -> Option<ParsedSidecar> {
     let sha256 = hex_to_32(&sha_hex)?;
     let dev: u64 = json_get_num(raw, "dev").unwrap_or(0);
     let ino: u64 = json_get_num(raw, "ino").unwrap_or(0);
+    let magic_ok = json_get_bool(raw, "magic_ok").unwrap_or(true);
     Some(ParsedSidecar {
         id,
         source_path,
@@ -1095,9 +1106,25 @@ fn parse_sidecar(raw: &str) -> Option<ParsedSidecar> {
             sha256,
             dev,
             ino,
+            magic_ok,
         },
         phase,
     })
+}
+
+fn json_get_bool(raw: &str, key: &str) -> Option<bool> {
+    let pat = format!("\"{key}\"");
+    let i = raw.find(&pat)?;
+    let after = &raw[i + pat.len()..];
+    let colon = after.find(':')?;
+    let rest = after[colon + 1..].trim_start();
+    if rest.starts_with("true") {
+        Some(true)
+    } else if rest.starts_with("false") {
+        Some(false)
+    } else {
+        None
+    }
 }
 
 fn json_get_str(raw: &str, key: &str) -> Option<String> {
@@ -1178,10 +1205,7 @@ mod tests {
 
     #[test]
     fn checkout_checkin_roundtrip_and_c101() {
-        let base = std::env::temp_dir().join(format!(
-            "bk-wc-{}",
-            std::process::id()
-        ));
+        let base = std::env::temp_dir().join(format!("bk-wc-{}", std::process::id()));
         let _ = fs::remove_dir_all(&base);
         fs::create_dir_all(&base).unwrap();
         let sync = base.join("sync");
@@ -1225,12 +1249,7 @@ mod tests {
         session.checkin().unwrap();
         assert_eq!(fs::read(&brick).unwrap(), work_bytes);
         // Session dir removed after successful checkin.
-        assert!(work_root
-            .read_dir()
-            .unwrap()
-            .filter_map(|e| e.ok())
-            .count()
-            <= 1); // may retain discarded session from C101 path below
+        assert!(work_root.read_dir().unwrap().filter_map(|e| e.ok()).count() <= 1); // may retain discarded session from C101 path below
 
         // Fresh checkout then mutate remote → checkin refuses.
         let session2 = WorkingCopySession::checkout(CheckoutOpts {
@@ -1243,10 +1262,7 @@ mod tests {
         .unwrap();
         let work2 = session2.work_path.clone();
         {
-            let mut f = fs::OpenOptions::new()
-                .write(true)
-                .open(&brick)
-                .unwrap();
+            let mut f = fs::OpenOptions::new().write(true).open(&brick).unwrap();
             use std::io::Seek;
             f.seek(std::io::SeekFrom::End(0)).unwrap();
             f.write_all(b"REMOTE").unwrap();
@@ -1398,8 +1414,8 @@ mod tests {
         let fp = hash_outer_logical(&path).unwrap();
         assert_eq!(fp.size, 150);
         let mut hasher = Sha256::new();
-        hasher.update(&[0u8; 100]);
-        hasher.update(&[1u8; 50]);
+        hasher.update([0u8; 100]);
+        hasher.update([1u8; 50]);
         let expect: [u8; 32] = hasher.finalize().into();
         assert_eq!(fp.sha256, expect);
         let _ = fs::remove_file(&path);
@@ -1461,6 +1477,11 @@ mod tests {
         })
         .unwrap();
         let raw = fs::read_to_string(session.session_dir.join("state.json")).unwrap();
+        assert!(
+            raw.contains("\"magic_ok\": true"),
+            "sidecar must persist probed magic_ok: {raw}"
+        );
+        assert!(session.fingerprint.magic_ok);
         let needle = "\"created_at\": \"";
         let i = raw.find(needle).unwrap() + needle.len();
         let end = raw[i..].find('"').unwrap();
@@ -1470,6 +1491,194 @@ mod tests {
             "expected RFC3339 Z, got {ts}"
         );
         session.discard().unwrap();
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn idle_probe_passes_on_stable_file() {
+        let base = std::env::temp_dir().join(format!("bk-wc-idle-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let sync = base.join("sync");
+        let work_root = base.join("work");
+        fs::create_dir_all(&sync).unwrap();
+        fs::create_dir_all(&work_root).unwrap();
+        let brick = sync.join("workspace.vltd");
+        {
+            let mut f = File::create(&brick).unwrap();
+            f.write_all(&MAGIC_VLTD).unwrap();
+            f.write_all(&vec![0x22u8; 2048]).unwrap();
+        }
+        let started = Instant::now();
+        let session = WorkingCopySession::checkout(CheckoutOpts {
+            source: &brick,
+            work_root: Some(&work_root),
+            skip_idle_probe: false,
+            cancel: None,
+            progress: None,
+        })
+        .unwrap();
+        assert!(
+            started.elapsed() >= Duration::from_secs(1),
+            "idle probe must wait ≥1s"
+        );
+        session.discard().unwrap();
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn e5_hydration_refuses_short_stub_and_syncthing_temp() {
+        let base = std::env::temp_dir().join(format!("bk-wc-e5-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let stub = base.join("stub.vltd");
+        fs::write(&stub, b"VL").unwrap();
+        assert!(matches!(
+            assert_hydrated_for_checkout(&stub),
+            Err(Error::WorkingCopyHydration)
+        ));
+
+        let sync = base.join("sync");
+        fs::create_dir_all(&sync).unwrap();
+        let brick = sync.join("workspace.vltd");
+        {
+            let mut f = File::create(&brick).unwrap();
+            f.write_all(&MAGIC_VLTD).unwrap();
+            f.write_all(&vec![0x33u8; 2048]).unwrap();
+        }
+        File::create(sync.join(".syncthing.workspace.vltd.tmp"))
+            .unwrap()
+            .write_all(b"x")
+            .unwrap();
+        assert!(matches!(
+            assert_hydrated_for_checkout(&brick),
+            Err(Error::WorkingCopyHydration)
+        ));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn hole_preserving_copy_roundtrips_bytes() {
+        let base = std::env::temp_dir().join(format!("bk-wc-hole-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let src = base.join("sparse.vltd");
+        {
+            use std::io::Seek;
+            let mut f = File::create(&src).unwrap();
+            f.write_all(&MAGIC_VLTD).unwrap();
+            f.seek(std::io::SeekFrom::Start(64 * 1024)).unwrap();
+            f.write_all(&[0xAAu8; 16]).unwrap();
+            f.sync_all().unwrap();
+        }
+        let dst = base.join("out.vltd");
+        copy_brick(&src, &dst).unwrap();
+        assert_eq!(fs::read(&src).unwrap(), fs::read(&dst).unwrap());
+        let fp = hash_outer_logical(&dst).unwrap();
+        assert!(fp.magic_ok);
+        assert_eq!(fp.size, fs::metadata(&src).unwrap().len());
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn e8_fallback_replace_updates_source() {
+        let base = std::env::temp_dir().join(format!("bk-wc-e8-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let sync = base.join("sync");
+        let work_root = base.join("work");
+        fs::create_dir_all(&sync).unwrap();
+        fs::create_dir_all(&work_root).unwrap();
+        let brick = sync.join("workspace.vltd");
+        {
+            let mut f = File::create(&brick).unwrap();
+            f.write_all(&MAGIC_VLTD).unwrap();
+            f.write_all(&vec![0x44u8; 4096]).unwrap();
+        }
+        let session = WorkingCopySession::checkout(CheckoutOpts {
+            source: &brick,
+            work_root: Some(&work_root),
+            skip_idle_probe: true,
+            cancel: None,
+            progress: None,
+        })
+        .unwrap();
+        {
+            let mut f = fs::OpenOptions::new()
+                .write(true)
+                .open(&session.work_path)
+                .unwrap();
+            use std::io::Seek;
+            f.seek(std::io::SeekFrom::End(0)).unwrap();
+            f.write_all(b"E8").unwrap();
+        }
+        let expect = fs::read(&session.work_path).unwrap();
+        session.test_e8_fallback_replace().unwrap();
+        assert_eq!(fs::read(&brick).unwrap(), expect);
+        session.discard().unwrap();
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn e8_checkin_fails_closed_when_sync_dir_not_writable() {
+        use std::os::unix::fs::PermissionsExt;
+        struct RestoreWritable<'a> {
+            path: &'a Path,
+        }
+        impl Drop for RestoreWritable<'_> {
+            fn drop(&mut self) {
+                if let Ok(meta) = fs::metadata(self.path) {
+                    let mut perms = meta.permissions();
+                    perms.set_mode(0o755);
+                    let _ = fs::set_permissions(self.path, perms);
+                }
+            }
+        }
+
+        let base = std::env::temp_dir().join(format!("bk-wc-e8ro-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let sync = base.join("sync");
+        let work_root = base.join("work");
+        fs::create_dir_all(&sync).unwrap();
+        fs::create_dir_all(&work_root).unwrap();
+        let brick = sync.join("workspace.vltd");
+        {
+            let mut f = File::create(&brick).unwrap();
+            f.write_all(&MAGIC_VLTD).unwrap();
+            f.write_all(&vec![0x55u8; 2048]).unwrap();
+        }
+        let session = WorkingCopySession::checkout(CheckoutOpts {
+            source: &brick,
+            work_root: Some(&work_root),
+            skip_idle_probe: true,
+            cancel: None,
+            progress: None,
+        })
+        .unwrap();
+        {
+            let mut f = fs::OpenOptions::new()
+                .write(true)
+                .open(&session.work_path)
+                .unwrap();
+            use std::io::Seek;
+            f.seek(std::io::SeekFrom::End(0)).unwrap();
+            f.write_all(b"X").unwrap();
+        }
+        let mut perms = fs::metadata(&sync).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&sync, perms).unwrap();
+        let _restore = RestoreWritable { path: &sync };
+        let err = session.checkin().unwrap_err();
+        assert!(
+            matches!(
+                err,
+                Error::WorkingCopyRenameFailed | Error::WorkingCopyFailed
+            ),
+            "expected rename fail-closed, got {err:?}"
+        );
+        drop(_restore);
         let _ = fs::remove_dir_all(&base);
     }
 }

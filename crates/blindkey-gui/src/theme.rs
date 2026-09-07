@@ -217,7 +217,11 @@ pub fn surface_card(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
 /// extra inset — never the old 35%-of-spare push that floated content mid-void.
 pub fn locked_vertical_balance_spacer(ui: &mut Ui) {
     let spare = (ui.available_height() - LOCKED_CARD_EST_HEIGHT).max(0.0);
-    let top = if spare > 120.0 { WINDOW_GUTTER } else { SPACE_S };
+    let top = if spare > 120.0 {
+        WINDOW_GUTTER
+    } else {
+        SPACE_S
+    };
     ui.add_space(top);
 }
 
@@ -452,11 +456,7 @@ pub fn settings_value_row(
 }
 
 /// Full-width selectable list row (UC-28 CRAFT-S08 / C92) — hit target spans the row.
-pub fn list_select_row(
-    ui: &mut Ui,
-    selected: bool,
-    label: impl Into<WidgetText>,
-) -> Response {
+pub fn list_select_row(ui: &mut Ui, selected: bool, label: impl Into<WidgetText>) -> Response {
     ui.add_sized(
         [ui.available_width(), ROW_HEIGHT_LIST],
         egui::SelectableLabel::new(selected, label),
@@ -480,7 +480,7 @@ pub fn labeled_secret_row(
     request_focus: &mut bool,
 ) -> Response {
     let _ = FIELD_HEIGHT; // documents field family vs PRIMARY_BTN_HEIGHT
-    // Label sits close to its field — not the global section gap (BK-UI-011).
+                          // Label sits close to its field — not the global section gap (BK-UI-011).
     let restore_y = ui.spacing().item_spacing.y;
     ui.spacing_mut().item_spacing.y = SPACE_XS;
     ui.label(label);
@@ -492,7 +492,8 @@ pub fn labeled_secret_row(
             let field_w = if (col - FORM_WIDTH).abs() < 0.5 {
                 secret_field_width()
             } else {
-                (ui.available_width() - ui.spacing().item_spacing.x - SHOW_ROW_CHECK_WIDTH).max(160.0)
+                (ui.available_width() - ui.spacing().item_spacing.x - SHOW_ROW_CHECK_WIDTH)
+                    .max(160.0)
             };
             // No bullet hint — "••••••••" reads as a prefilled password when empty (BK-UI-008).
             let edit = ui.add(
@@ -565,8 +566,16 @@ pub fn muted_label(ui: &mut Ui, text: impl AsRef<str>) -> Response {
 pub fn vault_path_caption(ui: &mut Ui, path: &std::path::Path) {
     ui.horizontal_wrapped(|ui| {
         ui.label(RichText::new("Vault:").small().color(AA_MUTED));
-        ui.monospace(RichText::new(path.display().to_string()).small().color(AA_MUTED));
-        ui.label(RichText::new(" · Stored only on this computer.").small().color(AA_MUTED));
+        ui.monospace(
+            RichText::new(path.display().to_string())
+                .small()
+                .color(AA_MUTED),
+        );
+        ui.label(
+            RichText::new(" · Stored only on this computer.")
+                .small()
+                .color(AA_MUTED),
+        );
     });
 }
 
@@ -654,7 +663,8 @@ mod tests {
     #[test]
     fn secret_field_width_matches_form_column_math() {
         assert!(
-            (secret_field_width() - (FORM_WIDTH - SPACE_S - SHOW_ROW_CHECK_WIDTH)).abs() < f32::EPSILON
+            (secret_field_width() - (FORM_WIDTH - SPACE_S - SHOW_ROW_CHECK_WIDTH)).abs()
+                < f32::EPSILON
         );
     }
 

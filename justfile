@@ -5,8 +5,12 @@
 default:
     @just --list
 
-# Format, lint (warnings = errors), and test — the pre-PR gate.
-check: fmt-check clippy test
+# Format, lint (warnings = errors), private-path leak scan, and test — the pre-PR gate.
+check: fmt-check clippy leak-scan test
+
+# Fail if docs/code name private vault trees or the operator home path (OSS hygiene).
+leak-scan:
+    bash scripts/verify_no_private_paths.sh
 
 # Format the code.
 fmt:

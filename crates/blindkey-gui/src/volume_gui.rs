@@ -95,7 +95,9 @@ fn default_volume_output() -> String {
     // IA-10: default to a local path (never Dropbox/iCloud). Prefer ~/Documents.
     let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
     if let Some(h) = home {
-        let docs = PathBuf::from(h).join("Documents").join("blindkey-workspace.vltd");
+        let docs = PathBuf::from(h)
+            .join("Documents")
+            .join("blindkey-workspace.vltd");
         return docs.display().to_string();
     }
     "blindkey-workspace.vltd".to_string()
@@ -532,9 +534,8 @@ impl VolumeGui {
                         let work = PathBuf::from(parts[2]);
                         let source = PathBuf::from(parts[3]);
                         self.blindfolder.replace((id, source));
-                        self.status = Some(
-                            "Blindfolder ready — unlock the local working copy.".into(),
-                        );
+                        self.status =
+                            Some("Blindfolder ready — unlock the local working copy.".into());
                         self.request_mount(work);
                     } else {
                         self.error =
@@ -719,10 +720,8 @@ impl VolumeGui {
                     };
                     match session.checkin_with(opts) {
                         Ok(()) => {
-                            self.status = Some(format!(
-                                "Blindfolder sealed back to {}.",
-                                source.display()
-                            ));
+                            self.status =
+                                Some(format!("Blindfolder sealed back to {}.", source.display()));
                         }
                         Err(Error::WorkingCopyRemoteChanged) => {
                             self.error = Some(format!(
@@ -791,7 +790,10 @@ impl VolumeGui {
             ui.add_space(SPACE_XS);
             ui.label(format!("Volume status: {}", self.session_status().label()));
             ui.add_space(SPACE_XS);
-            theme::muted_label(ui, "Workspace = edit as a folder. Seal = encrypt files for Dropbox/USB.");
+            theme::muted_label(
+                ui,
+                "Workspace = edit as a folder. Seal = encrypt files for Dropbox/USB.",
+            );
             ui.add_space(SPACE_M);
 
             if !path_label.is_empty() {
@@ -820,7 +822,9 @@ impl VolumeGui {
             match session {
                 VolumeSessionKind::Locked => {
                     if path_label.is_empty() {
-                        ui.label("No volumes yet — create one, or unlock an existing local volume.");
+                        ui.label(
+                            "No volumes yet — create one, or unlock an existing local volume.",
+                        );
                         ui.add_space(SPACE_M);
                     }
                     if theme::primary_button(ui, "Create volume", HOME_CTA_W).clicked() {
@@ -1011,12 +1015,7 @@ impl VolumeGui {
                     {
                         cancel = true;
                     }
-                    if crate::theme::primary_button(
-                        ui,
-                        "I understand — continue",
-                        200.0,
-                    )
-                    .clicked()
+                    if crate::theme::primary_button(ui, "I understand — continue", 200.0).clicked()
                     {
                         acknowledged = true;
                     }
@@ -1105,8 +1104,7 @@ impl VolumeGui {
                 if let Some(cta) = &sync_warning {
                     ui.add_space(crate::theme::SPACE_XS);
                     ui.colored_label(crate::theme::WARN, cta);
-                    if crate::theme::quiet_button(ui, "Seal files…", 160.0).clicked()
-                    {
+                    if crate::theme::quiet_button(ui, "Seal files…", 160.0).clicked() {
                         self.seal_request = true;
                         cancel = true;
                     }
@@ -1226,7 +1224,6 @@ impl VolumeGui {
         }
     }
 }
-
 
 fn reveal_in_file_manager(path: &Path) {
     #[cfg(target_os = "macos")]
@@ -1458,9 +1455,7 @@ pub fn unlock_success_message(top_level_count: usize) -> String {
             "For live Finder mounts, install macFUSE (https://macfuse.io) and rebuild with \
              `--features macos-fuse`. Blindkey does not bundle macFUSE/Fuse-T."
         };
-        format!(
-            "Volume unlocked (validated, {top_level_count} top-level item(s)). {fuse_hint}"
-        )
+        format!("Volume unlocked (validated, {top_level_count} top-level item(s)). {fuse_hint}")
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -1548,7 +1543,10 @@ mod tests {
         gui.session = VolumeSessionKind::Unlocked;
         gui.active_path = Some(PathBuf::from("/tmp/a.vltd"));
         gui.mount_path = Some(PathBuf::from("/Volumes/bk"));
-        assert_eq!(gui.session_status(), crate::gui_mode::SessionStatus::Mounted);
+        assert_eq!(
+            gui.session_status(),
+            crate::gui_mode::SessionStatus::Mounted
+        );
         gui.eject();
         assert_eq!(gui.session, VolumeSessionKind::Locked);
         assert_eq!(gui.session_status().label(), "Locked");
@@ -1592,10 +1590,7 @@ mod tests {
     #[test]
     fn default_volume_output_is_local_documents() {
         let p = default_volume_output();
-        assert!(
-            p.contains("blindkey-workspace.vltd"),
-            "default path={p}"
-        );
+        assert!(p.contains("blindkey-workspace.vltd"), "default path={p}");
         assert!(
             !p.to_lowercase().contains("dropbox"),
             "must not default under Dropbox: {p}"

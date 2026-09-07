@@ -72,8 +72,7 @@ fn c95_type_scale_nist() {
         "wrapped body copy must use explicit line-height, not item_spacing"
     );
     assert!(
-        theme.contains("item_spacing.y = SPACE_XS")
-            || theme.contains("item_spacing.y = SPACE_XS;"),
+        theme.contains("item_spacing.y = SPACE_XS") || theme.contains("item_spacing.y = SPACE_XS;"),
         "label→field in passphrase helpers must be tight (SPACE_XS)"
     );
 }
@@ -84,10 +83,7 @@ fn c96_muted_contrast() {
     let theme = read_gui_src("theme.rs");
     let main = read_gui_src("main.rs");
     let vol = read_gui_src("volume_gui.rs");
-    assert!(
-        theme.contains("AA_MUTED"),
-        "AA_MUTED token required (C96)"
-    );
+    assert!(theme.contains("AA_MUTED"), "AA_MUTED token required (C96)");
     assert!(
         theme.contains("from_rgb(140, 140, 148)") || theme.contains("from_rgb(140,140,148)"),
         "AA_MUTED seed RGB(140,140,148)"

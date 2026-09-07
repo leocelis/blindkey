@@ -28,6 +28,7 @@ jobs:
       - uses: Swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: bash scripts/verify_no_private_paths.sh
       - run: cargo test --workspace --all-features
 
   # Windows: Blindkey is Unix-first. The agent broker (blindkey-agent) is Unix-socket

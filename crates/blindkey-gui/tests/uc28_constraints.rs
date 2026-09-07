@@ -118,7 +118,8 @@ fn c92_full_row_list_hit() {
         "credential list must use list_select_row (C92)"
     );
     assert!(
-        virt.contains("ENTRY_ROW_HEIGHT: f32 = 28.0") || virt.contains("ENTRY_ROW_HEIGHT: f32 = 28"),
+        virt.contains("ENTRY_ROW_HEIGHT: f32 = 28.0")
+            || virt.contains("ENTRY_ROW_HEIGHT: f32 = 28"),
         "virtualize row height must match medium density"
     );
 }
@@ -191,14 +192,20 @@ fn craft_s05_dialog_cancel_before_affirm() {
 #[test]
 fn craft_shadow_card_default_off() {
     let theme = read_gui_src("theme.rs");
-    assert!(theme.contains("SHADOW_CARD_ENABLED: bool = false") || theme.contains("SHADOW_CARD_ENABLED = false"));
+    assert!(
+        theme.contains("SHADOW_CARD_ENABLED: bool = false")
+            || theme.contains("SHADOW_CARD_ENABLED = false")
+    );
 }
 
 /// Dialog primary verbs prefer ≥120 px width.
 #[test]
 fn craft_s03_dialog_btn_min_width() {
     let theme = read_gui_src("theme.rs");
-    assert!(theme.contains("PRIMARY_BTN_MIN_WIDTH: f32 = 120.0") || theme.contains("PRIMARY_BTN_MIN_WIDTH: f32 = 120"));
+    assert!(
+        theme.contains("PRIMARY_BTN_MIN_WIDTH: f32 = 120.0")
+            || theme.contains("PRIMARY_BTN_MIN_WIDTH: f32 = 120")
+    );
     assert!(theme.contains("DIALOG_BTN_WIDTH"));
 }
 
@@ -221,6 +228,12 @@ fn no_forbidden_visuals_fields() {
 fn row_height_tokens_aligned() {
     let theme = read_gui_src("theme.rs");
     let virt = read_gui_src("list_virtualize.rs");
-    assert!(theme.contains("ROW_HEIGHT_LIST: f32 = 28.0") || theme.contains("ROW_HEIGHT_LIST: f32 = 28"));
-    assert!(virt.contains("ENTRY_ROW_HEIGHT: f32 = 28.0") || virt.contains("ENTRY_ROW_HEIGHT: f32 = 28"));
+    assert!(
+        theme.contains("ROW_HEIGHT_LIST: f32 = 28.0")
+            || theme.contains("ROW_HEIGHT_LIST: f32 = 28")
+    );
+    assert!(
+        virt.contains("ENTRY_ROW_HEIGHT: f32 = 28.0")
+            || virt.contains("ENTRY_ROW_HEIGHT: f32 = 28")
+    );
 }

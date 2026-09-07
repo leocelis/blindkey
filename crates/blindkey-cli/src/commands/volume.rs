@@ -149,7 +149,6 @@ fn map_open_err(e: Error) -> String {
 }
 
 /// Cloud-sync folder detection is centralized in `blindkey_core::is_under_sync_root` (UC-30 W0).
-
 /// Refuse (or, with `--force-local`, warn about) mounting a live volume under a cloud-sync folder.
 /// Points to `volume checkout` (UC-30) and `blindkey seal` (UC-23).
 fn sync_root_guard(path: &Path, force_local: bool) -> CmdResult {
@@ -225,9 +224,11 @@ type UnlockMaterial = (Zeroizing<String>, Option<Zeroizing<Vec<u8>>>);
 fn read_unlock_material(confirm: bool, opts: &OpenOpts) -> Result<UnlockMaterial, String> {
     let password = unlock_secret::read_master_password(confirm, &opts.unlock)?;
     let keyfile = match opts.keyfile.as_ref() {
-        Some(p) => Some(Zeroizing::new(
-            std::fs::read(p).map_err(|e| format!("cannot read keyfile {}: {e}", p.display()))?,
-        )),
+        Some(p) => {
+            Some(Zeroizing::new(std::fs::read(p).map_err(|e| {
+                format!("cannot read keyfile {}: {e}", p.display())
+            })?))
+        }
         None => None,
     };
     Ok((password, keyfile))
@@ -357,7 +358,11 @@ fn cmd_create(
         size_bytes,
         max_bytes,
         block_size_kib,
-        pad_mode: if no_pad { PadMode::None } else { PadMode::Padme },
+        pad_mode: if no_pad {
+            PadMode::None
+        } else {
+            PadMode::Padme
+        },
         allow_weak_kdf,
         ..VolumeCreateOpts::default()
     };
@@ -512,7 +517,8 @@ fn cmd_upgrade_kdf(path: &Path, m: u32, t: u32, p: u32, opts: &OpenOpts) -> CmdR
     eprintln!("Deriving key (Argon2id)…");
     let mut vol = Volume::open(path, &unlock).map_err(map_open_err)?;
     eprintln!("Re-deriving with Argon2id (m={m} KiB, t={t}, p={p})…");
-    vol.upgrade_kdf(&unlock, m, t, p).map_err(|e| e.to_string())?;
+    vol.upgrade_kdf(&unlock, m, t, p)
+        .map_err(|e| e.to_string())?;
     eprintln!("Upgraded KDF parameters (block data unchanged).");
     Ok(())
 }
@@ -560,7 +566,11 @@ pub fn cmd_peek(path: &Path, opts: &OpenOpts) -> CmdResult {
     }
     for (p, size) in &rows {
         // Paths are user-controlled → sanitize before the terminal (C28).
-        println!("{:<width$}  {:>10}", crate::terminal::sanitize_for_terminal(p), size);
+        println!(
+            "{:<width$}  {:>10}",
+            crate::terminal::sanitize_for_terminal(p),
+            size
+        );
     }
     Ok(())
 }
@@ -574,7 +584,8 @@ fn map_work_err(e: Error) -> String {
         Error::WorkingCopyUnresolvedConflicts => e.to_string(),
         Error::WorkingCopyStillMounted => e.to_string(),
         Error::WorkingCopyFailed => WORKING_COPY_ERROR.to_string(),
-        Error::Io(e) => format!("{WORK_E8_PREFIX} {e}"),
+        // Generic I/O (not rename/replace) — exit 1 via main, not E8.
+        Error::Io(e) => e.to_string(),
         _ => WORKING_COPY_ERROR.to_string(),
     }
 }
@@ -637,10 +648,7 @@ fn cmd_checkout(
         session
             .set_phase(WorkPhase::Mounted)
             .map_err(map_work_err)?;
-        eprintln!(
-            "Mounting work copy at {}…",
-            mp.display()
-        );
+        eprintln!("Mounting work copy at {}…", mp.display());
         // Drop session handle before mount keeps process alive; sidecar already Mounted.
         drop(session);
         cmd_mount(&work_path, mp, false, opts)?;
@@ -648,9 +656,7 @@ fn cmd_checkout(
         if let Ok(mut s) = WorkingCopySession::resume_in(&id, &work_root) {
             let _ = s.set_phase(WorkPhase::Unmounted);
         }
-        eprintln!(
-            "When done: blindkey volume checkin {id}"
-        );
+        eprintln!("When done: blindkey volume checkin {id}");
     } else {
         drop(session);
         eprintln!(
@@ -766,7 +772,11 @@ mod tests {
 
     #[test]
     fn allows_local_paths() {
-        for p in ["/tmp/work.vltd", "/home/leo/vaults/work.vltd", "./work.vltd"] {
+        for p in [
+            "/tmp/work.vltd",
+            "/home/leo/vaults/work.vltd",
+            "./work.vltd",
+        ] {
             let path = Path::new(p);
             assert!(!is_under_sync_root(path), "should be local: {p}");
             assert!(sync_root_guard(path, false).is_ok(), "should allow: {p}");

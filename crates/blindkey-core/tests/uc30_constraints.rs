@@ -46,7 +46,10 @@ fn c99_checkout_not_sync_path() {
     assert_ne!(session.work_path, brick);
     assert!(!is_under_sync_root(&session.work_path));
     assert!(session.work_path.starts_with(&work));
-    assert_eq!(fs::read(&session.work_path).unwrap(), fs::read(&brick).unwrap());
+    assert_eq!(
+        fs::read(&session.work_path).unwrap(),
+        fs::read(&brick).unwrap()
+    );
 
     // Sync-root work root is refused (E6).
     let dropbox_work = base.join("Dropbox").join("work");
@@ -137,7 +140,11 @@ fn c101_stale_remote_no_overwrite() {
 
     let err = session.checkin().unwrap_err();
     assert!(matches!(err, Error::WorkingCopyRemoteChanged));
-    assert_eq!(fs::read(&brick).unwrap(), remote, "must not overwrite remote");
+    assert_eq!(
+        fs::read(&brick).unwrap(),
+        remote,
+        "must not overwrite remote"
+    );
     assert!(work_path.is_file(), "work retained for discard/resume");
 
     let _ = fs::remove_dir_all(&base);

@@ -26,10 +26,7 @@ fn uc30_blindfolder_cta_and_open() {
         vol.contains("Resume Blindfolder?"),
         "E2 resume dialog title required"
     );
-    assert!(
-        vol.contains("Resume checkin"),
-        "E2 resume action required"
-    );
+    assert!(vol.contains("Resume checkin"), "E2 resume action required");
     let cta = vol
         .lines()
         .find(|l| l.contains("Open Blindfolder (checkout)") || l.contains("Use Open Blindfolder"))
@@ -55,8 +52,7 @@ fn uc30_eject_checkin_and_e9() {
         "E9 conflict refuse required"
     );
     assert!(
-        vol.contains("coordinated: cfg!(target_os = \"macos\")")
-            || vol.contains("CheckinOpts"),
+        vol.contains("coordinated: cfg!(target_os = \"macos\")") || vol.contains("CheckinOpts"),
         "macOS coordinated checkin path required"
     );
 }

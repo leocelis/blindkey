@@ -13,10 +13,9 @@ use block2::RcBlock;
 use objc2::rc::Retained;
 use objc2_foundation::{
     NSArray, NSError, NSFileCoordinator, NSFileCoordinatorWritingOptions, NSFileVersion, NSString,
-    NSURL, NSURLUbiquitousItemDownloadingStatusCurrent,
-    NSURLUbiquitousItemDownloadingStatusDownloaded,
+    NSURLUbiquitousItemDownloadingStatusCurrent, NSURLUbiquitousItemDownloadingStatusDownloaded,
     NSURLUbiquitousItemDownloadingStatusKey, NSURLUbiquitousItemDownloadingStatusNotDownloaded,
-    NSURLUbiquitousItemHasUnresolvedConflictsKey,
+    NSURLUbiquitousItemHasUnresolvedConflictsKey, NSURL,
 };
 
 /// Mark `path` excluded from Time Machine / device backup (`NSURLIsExcludedFromBackupKey`).
@@ -161,12 +160,12 @@ fn mdls_ubiquitous_status(path: &Path) -> Option<UbiquitousStatus> {
     if lower.contains("notdownloaded") || lower.contains("not_downloaded") {
         return Some(UbiquitousStatus::NotDownloaded);
     }
-    if lower.contains("downloaded") && !lower.contains("current") {
-        if lower.contains("ubiquitousitemdownloadingstatusdownloaded")
-            || lower.ends_with("downloaded")
-        {
-            return Some(UbiquitousStatus::Downloaded);
-        }
+    if lower.contains("downloaded")
+        && !lower.contains("current")
+        && (lower.contains("ubiquitousitemdownloadingstatusdownloaded")
+            || lower.ends_with("downloaded"))
+    {
+        return Some(UbiquitousStatus::Downloaded);
     }
     if lower.contains("current") {
         return Some(UbiquitousStatus::Current);
@@ -217,8 +216,8 @@ fn nsfileversion_has_conflict(path: &Path) -> bool {
 }
 
 fn nsurl_has_conflict_flag(path: &Path) -> bool {
-    use objc2::runtime::AnyObject;
     use objc2::msg_send;
+    use objc2::runtime::AnyObject;
 
     let url = path_to_url(path);
     let mut value: Option<Retained<AnyObject>> = None;
@@ -237,7 +236,11 @@ fn nsurl_has_conflict_flag(path: &Path) -> bool {
 
 fn mdls_has_conflict(path: &Path) -> bool {
     let out = Command::new("/usr/bin/mdls")
-        .args(["-raw", "-name", "NSURLUbiquitousItemHasUnresolvedConflictsKey"])
+        .args([
+            "-raw",
+            "-name",
+            "NSURLUbiquitousItemHasUnresolvedConflictsKey",
+        ])
         .arg(path)
         .output();
     let Ok(out) = out else {
@@ -289,8 +292,9 @@ pub fn coordinated_replace(src: &Path, dest: &Path) -> std::io::Result<()> {
     let block = RcBlock::new(move |new_url: NonNull<NSURL>| {
         let url = unsafe { new_url.as_ref() };
         let Some(ns_path) = url.path() else {
-            *result2.lock().unwrap_or_else(|p| p.into_inner()) =
-                Err(std::io::Error::other("NSFileCoordinator returned empty path"));
+            *result2.lock().unwrap_or_else(|p| p.into_inner()) = Err(std::io::Error::other(
+                "NSFileCoordinator returned empty path",
+            ));
             return;
         };
         let dest_now = PathBuf::from(ns_path.to_string());

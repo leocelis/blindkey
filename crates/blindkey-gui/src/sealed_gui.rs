@@ -1004,12 +1004,12 @@ impl SealedGui {
                     });
                 }
                 ui.add_space(crate::theme::SPACE_S);
-                    if crate::theme::escape_pressed(ui)
-                        || crate::theme::quiet_button(ui, "Close", crate::theme::DIALOG_BTN_WIDTH)
-                            .clicked()
-                    {
-                        close = true;
-                    }
+                if crate::theme::escape_pressed(ui)
+                    || crate::theme::quiet_button(ui, "Close", crate::theme::DIALOG_BTN_WIDTH)
+                        .clicked()
+                {
+                    close = true;
+                }
             });
         if close {
             self.peek_view = None;

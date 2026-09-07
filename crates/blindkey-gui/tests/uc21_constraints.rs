@@ -51,8 +51,7 @@ fn c51_clipboard_timeout_wired() {
     assert!(src.contains("clipboard_timeout_secs"));
     // UC-26 microcopy: countdown without marketing fluff (still surfaces clear timeout).
     assert!(
-        src.contains("Copied. Clipboard clears in")
-            || src.contains("visible to other apps"),
+        src.contains("Copied. Clipboard clears in") || src.contains("visible to other apps"),
         "clipboard clear feedback must be present"
     );
 }

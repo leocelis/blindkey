@@ -87,7 +87,8 @@ pub(crate) fn decode_inodes(buf: &[u8]) -> Result<Vec<Inode>> {
     let mut out = Vec::with_capacity(count.min(1 << 16) as usize);
     for _ in 0..count {
         let plen = c.u16()? as usize;
-        let path = String::from_utf8(c.take(plen)?.to_vec()).map_err(|_| Error::VolumeOpenFailed)?;
+        let path =
+            String::from_utf8(c.take(plen)?.to_vec()).map_err(|_| Error::VolumeOpenFailed)?;
         let is_dir = c.u8()? != 0;
         let length = c.u64()?;
         let first_block = c.u64()?;

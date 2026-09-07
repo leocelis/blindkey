@@ -31,7 +31,9 @@ pub enum Error {
     VolumeOpenFailed,
 
     /// Volume local freshness anchor mismatch (C70) — fail closed.
-    #[error("volume freshness anchor mismatch; use `blindkey volume trust-anchor` on a new device")]
+    #[error(
+        "volume freshness anchor mismatch; use `blindkey volume trust-anchor` on a new device"
+    )]
     VolumeAnchorMismatch,
 
     /// UC-30 working copy could not be prepared (hydration / sync-root / copy) — no format oracle.
@@ -55,9 +57,7 @@ pub enum Error {
     WorkingCopyRenameFailed,
 
     /// UC-30 E9: unresolved cloud conflict versions — resolve in Finder first.
-    #[error(
-        "cloud file has unresolved conflict versions; resolve them in Finder, then try again"
-    )]
+    #[error("cloud file has unresolved conflict versions; resolve them in Finder, then try again")]
     WorkingCopyUnresolvedConflicts,
 
     /// UC-30: checkin refused because the working copy is still mounted / cleartext open.

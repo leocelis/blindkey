@@ -896,7 +896,7 @@ checkout. Do not implement “pause Dropbox.”
 | Google Drive upload class | Workspace Updates 2025-01-10 | ✓ differential uploads for large edits |
 | iCloud sparse eviction | Oakley 2025-04-07 | ✓ |
 | UC-25 outer hash needed | UC-25 §4 Merkle leaves | ✓ |
-| Public leaks | grep [private-vault-removed]/keys.txt | ✓ none |
+| Public leaks | OSS tree grep for private vault paths / home usernames | ✓ none |
 
 **No open research blockers** for UC-30 draft implementation. Remaining work is build (ADR-0010 macOS mount, then S-29).
 

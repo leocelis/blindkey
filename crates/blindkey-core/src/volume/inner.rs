@@ -111,7 +111,13 @@ fn wrap_copy(volume_key: &[u8; 32], volume_id: &[u8; 16], copy: u8, pt: &[u8]) -
     let mut nonce = [0u8; NONCE_LEN];
     getrandom::getrandom(&mut nonce).map_err(|_| Error::Crypto)?;
     let ct = cipher
-        .encrypt(XNonce::from_slice(&nonce), Payload { msg: pt, aad: &aad(volume_id, copy) })
+        .encrypt(
+            XNonce::from_slice(&nonce),
+            Payload {
+                msg: pt,
+                aad: &aad(volume_id, copy),
+            },
+        )
         .map_err(|_| Error::Crypto)?;
     let mut out = Vec::with_capacity(INNER_WRAPPED_LEN);
     out.extend_from_slice(&nonce);
@@ -131,15 +137,27 @@ pub(crate) fn serialize_dual(
     Ok(out)
 }
 
-fn unwrap_copy(volume_key: &[u8; 32], volume_id: &[u8; 16], copy: u8, on_disk: &[u8]) -> Result<InnerHeader> {
+fn unwrap_copy(
+    volume_key: &[u8; 32],
+    volume_id: &[u8; 16],
+    copy: u8,
+    on_disk: &[u8],
+) -> Result<InnerHeader> {
     if on_disk.len() < INNER_WRAPPED_LEN {
         return Err(Error::VolumeOpenFailed);
     }
-    let cipher = XChaCha20Poly1305::new_from_slice(volume_key).map_err(|_| Error::VolumeOpenFailed)?;
+    let cipher =
+        XChaCha20Poly1305::new_from_slice(volume_key).map_err(|_| Error::VolumeOpenFailed)?;
     let nonce = &on_disk[..NONCE_LEN];
     let ct = &on_disk[NONCE_LEN..INNER_WRAPPED_LEN];
     let pt = cipher
-        .decrypt(XNonce::from_slice(nonce), Payload { msg: ct, aad: &aad(volume_id, copy) })
+        .decrypt(
+            XNonce::from_slice(nonce),
+            Payload {
+                msg: ct,
+                aad: &aad(volume_id, copy),
+            },
+        )
         .map_err(|_| Error::VolumeOpenFailed)?;
     InnerHeader::decode(&pt)
 }
@@ -155,7 +173,12 @@ pub(crate) fn parse_dual(
     }
     match unwrap_copy(volume_key, volume_id, 0, &region[..INNER_WRAPPED_LEN]) {
         Ok(h) => Ok(h),
-        Err(_) => unwrap_copy(volume_key, volume_id, 1, &region[INNER_WRAPPED_LEN..2 * INNER_WRAPPED_LEN]),
+        Err(_) => unwrap_copy(
+            volume_key,
+            volume_id,
+            1,
+            &region[INNER_WRAPPED_LEN..2 * INNER_WRAPPED_LEN],
+        ),
     }
 }
 

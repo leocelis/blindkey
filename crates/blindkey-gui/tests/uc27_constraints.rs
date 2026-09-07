@@ -19,7 +19,9 @@ fn c82_form_width_card() {
     assert!(theme.contains("FORM_WIDTH: f32 = 420.0") || theme.contains("FORM_WIDTH: f32 = 420"));
     assert!(theme.contains("fn form_card"));
     assert!(main.contains("theme::form_card"));
-    assert!(main.contains("set_max_width(FORM_WIDTH)") || theme.contains("set_max_width(FORM_WIDTH)"));
+    assert!(
+        main.contains("set_max_width(FORM_WIDTH)") || theme.contains("set_max_width(FORM_WIDTH)")
+    );
     // Locked form must not nest passphrase horizontal as sole child of vertical_centered without form_card.
     let locked = main
         .split("fn locked_screen")

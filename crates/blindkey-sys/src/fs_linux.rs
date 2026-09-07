@@ -11,10 +11,7 @@ use std::path::Path;
 /// (caller should fall back). Does not leave a partial `dst` on failure.
 pub fn try_ficlone(src: &Path, dst: &Path) -> io::Result<bool> {
     let src_f = File::open(src)?;
-    let dst_f = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(dst)?;
+    let dst_f = OpenOptions::new().write(true).create_new(true).open(dst)?;
     // FICLONE = _IOW(0x94, 9, int) on Linux.
     const FICLONE: libc::c_ulong = 0x4004_9409;
     // SAFETY: ioctl with two open fds; kernel validates. Failure → errno, not UB.

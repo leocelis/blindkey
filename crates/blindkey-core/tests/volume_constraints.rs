@@ -6,8 +6,8 @@ use blindkey_core::format::header::{Header, KdfParams, KDF_ALGORITHM_ARGON2ID};
 use blindkey_core::format::stanza::{kind, Stanza};
 use blindkey_core::pad::PadMode;
 use blindkey_core::{
-    ContainerKind, Error, Volume, VolumeCreateOpts, VolumeUnlock, FORMAT_VERSION, MAGIC, MAGIC_VLTD,
-    MAGIC_VLTF, VOLUME_OPEN_ERROR,
+    ContainerKind, Error, Volume, VolumeCreateOpts, VolumeUnlock, FORMAT_VERSION, MAGIC,
+    MAGIC_VLTD, MAGIC_VLTF, VOLUME_OPEN_ERROR,
 };
 
 const PASSWORD: &[u8] = b"uc25-volume-password";
@@ -104,7 +104,8 @@ fn c68_block_aead_bitflip_fails() {
     let dir = tmp("c68");
     let path = dir.join("v.vltd");
     {
-        let mut v = Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
+        let mut v =
+            Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
         v.write("notes/todo.txt", b"buy milk and eggs").unwrap();
         v.sync().unwrap();
     }
@@ -129,7 +130,8 @@ fn c69_kcom_mismatch_fails() {
     let dir = tmp("c69");
     let path = dir.join("v.vltd");
     {
-        let mut v = Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
+        let mut v =
+            Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
         v.write("secret.txt", b"top secret").unwrap();
         v.sync().unwrap();
     }
@@ -147,7 +149,8 @@ fn c70_anchor_mismatch_and_trust_anchor() {
     let old = dir.join("v.old");
 
     {
-        let mut v = Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
+        let mut v =
+            Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
         v.write("a.txt", b"first").unwrap();
         v.sync().unwrap();
     }
@@ -189,7 +192,8 @@ fn c71_padme_default_and_no_plaintext_paths() {
     let mut lens = Vec::new();
     for (tag, size) in [("a", 100usize), ("b", 105usize)] {
         let path = dir.join(format!("{tag}.vltd"));
-        let mut v = Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
+        let mut v =
+            Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
         v.write(secret_name, &vec![b'x'; size]).unwrap();
         v.sync().unwrap();
         let bytes = fs::read(&path).unwrap();
@@ -200,7 +204,10 @@ fn c71_padme_default_and_no_plaintext_paths() {
         );
         lens.push(bytes.len());
     }
-    assert_eq!(lens[0], lens[1], "C71: same Padmé bucket → same on-disk length");
+    assert_eq!(
+        lens[0], lens[1],
+        "C71: same Padmé bucket → same on-disk length"
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -234,7 +241,8 @@ fn c73_docs_forbid_live_cloud_sync() {
         "C73: docs must mark live cloud sync unsupported"
     );
     assert!(
-        blob.contains("seal") && (blob.contains("dropbox") || blob.contains("cloud") || blob.contains("sync")),
+        blob.contains("seal")
+            && (blob.contains("dropbox") || blob.contains("cloud") || blob.contains("sync")),
         "C73: docs must point at seal / cloud residual"
     );
 }
@@ -245,7 +253,8 @@ fn c74_uniform_errors() {
     let dir = tmp("c74");
     let path = dir.join("v.vltd");
     {
-        let mut v = Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
+        let mut v =
+            Volume::create(&path, &VolumeUnlock::password_only(PASSWORD), &fast_opts()).unwrap();
         v.write("f.txt", b"data").unwrap();
         v.sync().unwrap();
     }

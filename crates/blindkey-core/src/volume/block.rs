@@ -26,7 +26,8 @@ type HmacSha256 = Hmac<Sha256>;
 
 /// Derived per-block nonce: first 24 bytes of `HMAC-SHA256(nonce_key, block_id_le || version_le)`.
 pub(crate) fn block_nonce(nonce_key: &[u8; 32], block_id: u64, version: u64) -> [u8; NONCE_LEN] {
-    let mut mac = <HmacSha256 as Mac>::new_from_slice(nonce_key).expect("HMAC accepts any key length");
+    let mut mac =
+        <HmacSha256 as Mac>::new_from_slice(nonce_key).expect("HMAC accepts any key length");
     mac.update(&block_id.to_le_bytes());
     mac.update(&version.to_le_bytes());
     let full = mac.finalize().into_bytes();
@@ -59,7 +60,13 @@ pub(crate) fn seal_block(
     let nonce = block_nonce(nonce_key, block_id, version);
     let aad = block_aad(volume_id, block_id, version, kind);
     let ct = cipher
-        .encrypt(XNonce::from_slice(&nonce), Payload { msg: plaintext, aad: &aad })
+        .encrypt(
+            XNonce::from_slice(&nonce),
+            Payload {
+                msg: plaintext,
+                aad: &aad,
+            },
+        )
         .map_err(|_| Error::Crypto)?;
     let mut out = Vec::with_capacity(NONCE_LEN + ct.len());
     out.extend_from_slice(&nonce);
@@ -91,10 +98,17 @@ pub(crate) fn open_block(
     if on_disk.len() < NONCE_LEN + TAG_LEN {
         return Err(Error::VolumeOpenFailed);
     }
-    let cipher = XChaCha20Poly1305::new_from_slice(volume_key).map_err(|_| Error::VolumeOpenFailed)?;
+    let cipher =
+        XChaCha20Poly1305::new_from_slice(volume_key).map_err(|_| Error::VolumeOpenFailed)?;
     let nonce = block_nonce(nonce_key, block_id, version);
     let aad = block_aad(volume_id, block_id, version, kind);
     cipher
-        .decrypt(XNonce::from_slice(&nonce), Payload { msg: &on_disk[NONCE_LEN..], aad: &aad })
+        .decrypt(
+            XNonce::from_slice(&nonce),
+            Payload {
+                msg: &on_disk[NONCE_LEN..],
+                aad: &aad,
+            },
+        )
         .map_err(|_| Error::VolumeOpenFailed)
 }

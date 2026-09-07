@@ -58,16 +58,10 @@ impl std::error::Error for Error {
 /// Result alias for this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[cfg(any(
-    target_os = "linux",
-    all(target_os = "macos", feature = "macos-fuse")
-))]
+#[cfg(any(target_os = "linux", all(target_os = "macos", feature = "macos-fuse")))]
 mod session;
 
-#[cfg(any(
-    target_os = "linux",
-    all(target_os = "macos", feature = "macos-fuse")
-))]
+#[cfg(any(target_os = "linux", all(target_os = "macos", feature = "macos-fuse")))]
 pub use session::MountGuard;
 
 /// True when a macFUSE runtime install looks present (filesystem bundle / mount helper / dylib).

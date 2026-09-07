@@ -63,10 +63,9 @@ fn uc23_password_labels_in_sealed_dialogs() {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/sealed_gui.rs"),
     )
     .unwrap();
-    let theme = std::fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/theme.rs"),
-    )
-    .unwrap();
+    let theme =
+        std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/theme.rs"))
+            .unwrap();
     // UC-27: labels via theme::labeled_secret_row / labeled_secret_confirm.
     assert!(sealed.contains("\"Passphrase\""));
     assert!(sealed.contains("\"Confirm passphrase\""));

@@ -44,10 +44,7 @@ impl MaterializedMount {
     pub fn open(volume: Volume, root: &Path) -> Result<Self> {
         if root.exists() {
             if root.is_dir() {
-                let nonempty = fs::read_dir(root)
-                    .map_err(Error::Io)?
-                    .next()
-                    .is_some();
+                let nonempty = fs::read_dir(root).map_err(Error::Io)?.next().is_some();
                 if nonempty {
                     return Err(Error::Io(std::io::Error::new(
                         std::io::ErrorKind::AlreadyExists,
@@ -77,10 +74,7 @@ impl MaterializedMount {
     /// Open a fresh export, or adopt an existing non-empty cleartext tree (kill-9 recovery).
     pub fn open_or_adopt(volume: Volume, root: &Path) -> Result<Self> {
         if root.is_dir() {
-            let nonempty = fs::read_dir(root)
-                .map_err(Error::Io)?
-                .next()
-                .is_some();
+            let nonempty = fs::read_dir(root).map_err(Error::Io)?.next().is_some();
             if nonempty {
                 return Self::adopt(volume, root);
             }
@@ -111,6 +105,7 @@ impl MaterializedMount {
     /// Read tree back into the volume, sync, shred the folder, return the volume.
     ///
     /// On failure, returns the mount unchanged (no shred) so cleartext edits survive.
+    #[allow(clippy::result_large_err)] // Err carries the live mount for recovery (intentional).
     pub fn close(mut self) -> std::result::Result<Volume, CloseMountError> {
         let Some(mut vol) = self.volume.take() else {
             return Err(CloseMountError {
@@ -143,7 +138,10 @@ impl Drop for MaterializedMount {
                 Ok(()) => shred_dir(&self.root),
                 Err(_) => {
                     // Fail closed for data loss: leave cleartext for operator recovery.
-                    let _ = fs::write(self.root.join(".bk-unsynced"), b"blindkey: cleartext not sealed\n");
+                    let _ = fs::write(
+                        self.root.join(".bk-unsynced"),
+                        b"blindkey: cleartext not sealed\n",
+                    );
                 }
             }
             // vol drops → keys zeroize
@@ -330,8 +328,8 @@ mod tests {
         let mnt = dir.join("mnt");
         let mat = MaterializedMount::open(vol, &mnt).unwrap();
         fs::write(mnt.join("a.txt"), b"kill9-edit").unwrap();
-        // Simulate kill -9: forget without Drop (no import/shred).
-        std::mem::forget(mat);
+        // Simulate kill -9: skip Drop (no import/shred). ManuallyDrop avoids mem::forget (C11).
+        let _leak = std::mem::ManuallyDrop::new(mat);
         assert!(mnt.join("a.txt").is_file());
 
         let vol = Volume::open(&vltd, &unlock).unwrap();
@@ -348,7 +346,9 @@ mod tests {
 
     #[test]
     fn blindfolder_lifecycle_checkout_materialize_checkin() {
-        use crate::volume::working_copy::{CheckinOpts, CheckoutOpts, WorkPhase, WorkingCopySession};
+        use crate::volume::working_copy::{
+            CheckinOpts, CheckoutOpts, WorkPhase, WorkingCopySession,
+        };
 
         let sync = std::env::temp_dir().join(format!("bk-bf-sync-{}", std::process::id()));
         let work_root = std::env::temp_dir().join(format!("bk-bf-work-{}", std::process::id()));
@@ -385,9 +385,7 @@ mod tests {
         let mut session = WorkingCopySession::resume_in(&id, &work_root).unwrap();
         session.set_phase(WorkPhase::Unmounted).unwrap();
         session
-            .checkin_with(CheckinOpts {
-                coordinated: false,
-            })
+            .checkin_with(CheckinOpts { coordinated: false })
             .unwrap();
 
         let vol = Volume::open(&source, &unlock).unwrap();

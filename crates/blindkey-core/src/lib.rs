@@ -49,11 +49,11 @@ pub use sealed::{
 };
 pub use vault::{RotateDataKeyOptions, SaveOptions, SaveReport, Vault, YUBIKEY_STALE_WARNING};
 pub use volume::{
-    assert_hydrated_for_checkout, cleartext_mnt_beside, default_work_root, hash_outer_logical,
-    has_unresolved_conflicts, is_under_sync_root, list_work_sessions, orphan_work_sessions,
-    orphaned_cleartext_sessions, CheckinOpts, CheckoutOpts, CloseMountError, MaterializedMount,
-    NodeKind, OuterFingerprint, Volume, VolumeCreateOpts, VolumeUnlock, WorkPhase,
-    WorkSessionInfo, WorkingCopySession, VOLUME_OPEN_ERROR, WORKING_COPY_ERROR,
+    assert_hydrated_for_checkout, cleartext_mnt_beside, default_work_root,
+    has_unresolved_conflicts, hash_outer_logical, is_under_sync_root, list_work_sessions,
+    orphan_work_sessions, orphaned_cleartext_sessions, CheckinOpts, CheckoutOpts, CloseMountError,
+    MaterializedMount, NodeKind, OuterFingerprint, Volume, VolumeCreateOpts, VolumeUnlock,
+    WorkPhase, WorkSessionInfo, WorkingCopySession, VOLUME_OPEN_ERROR, WORKING_COPY_ERROR,
 };
 
 /// The current on-disk format version (constraint C7).

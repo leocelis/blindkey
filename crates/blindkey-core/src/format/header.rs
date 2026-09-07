@@ -301,8 +301,7 @@ mod tests {
         let mut h = sample_header();
         h.magic = crate::MAGIC_VLTD;
         h.seal(&[0xAB; 32]);
-        let parsed =
-            Header::parse_with_kind(&h.serialize(), Some(ContainerKind::Volume)).unwrap();
+        let parsed = Header::parse_with_kind(&h.serialize(), Some(ContainerKind::Volume)).unwrap();
         assert_eq!(parsed.magic, crate::MAGIC_VLTD);
         assert_eq!(parsed.kind(), ContainerKind::Volume);
         assert_eq!(parsed, h);

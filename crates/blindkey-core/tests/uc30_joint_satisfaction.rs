@@ -4,9 +4,7 @@ use std::fs::{self, File};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 
-use blindkey_core::{
-    is_under_sync_root, CheckoutOpts, Error, WorkingCopySession, MAGIC_VLTD,
-};
+use blindkey_core::{is_under_sync_root, CheckoutOpts, Error, WorkingCopySession, MAGIC_VLTD};
 
 fn write_fake_vltd(path: &Path, payload: &[u8]) {
     let mut f = File::create(path).unwrap();

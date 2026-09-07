@@ -211,3 +211,150 @@ fn checkin_refuses_when_remote_brick_changed() {
 
     let _ = fs::remove_dir_all(&base);
 }
+
+#[test]
+fn checkout_exits_11_on_hydration_stub() {
+    let base = unique_dir("e5");
+    let _ = fs::remove_dir_all(&base);
+    let sync = base.join("Dropbox");
+    let work_root = base.join("work");
+    fs::create_dir_all(&sync).unwrap();
+    fs::create_dir_all(&work_root).unwrap();
+    let brick = sync.join("stub.vltd");
+    // Too short for VLTD magic / hydration gate (E5).
+    fs::write(&brick, b"VL").unwrap();
+
+    let (code, _, err) = run(
+        &[
+            "volume",
+            "checkout",
+            brick.to_str().unwrap(),
+            "--work-dir",
+            work_root.to_str().unwrap(),
+        ],
+        "unused\n",
+        &[],
+    );
+    assert_eq!(code, Some(11), "E5 must exit 11, got {code:?}: {err}");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn checkout_exits_12_when_work_dir_under_sync_root() {
+    let base = unique_dir("e6");
+    let _ = fs::remove_dir_all(&base);
+    let sync = base.join("Dropbox");
+    // Work root itself under Dropbox → E6.
+    let work_root = sync.join("work-under-dropbox");
+    fs::create_dir_all(&sync).unwrap();
+    fs::create_dir_all(&work_root).unwrap();
+    let brick = sync.join("workspace.vltd");
+
+    let pw = "uc30-e6-password\nuc30-e6-password\n";
+    let (code, err) = create_volume(&brick, pw);
+    assert_eq!(code, Some(0), "create: {err}");
+
+    let (code, _, err) = run(
+        &[
+            "volume",
+            "checkout",
+            brick.to_str().unwrap(),
+            "--work-dir",
+            work_root.to_str().unwrap(),
+        ],
+        "uc30-e6-password\n",
+        &[],
+    );
+    assert_eq!(code, Some(12), "E6 must exit 12, got {code:?}: {err}");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[cfg(unix)]
+#[test]
+fn checkin_exits_13_when_sync_dir_not_writable() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::Path;
+
+    struct RestoreWritable<'a> {
+        path: &'a Path,
+    }
+    impl Drop for RestoreWritable<'_> {
+        fn drop(&mut self) {
+            if let Ok(meta) = fs::metadata(self.path) {
+                let mut perms = meta.permissions();
+                perms.set_mode(0o755);
+                let _ = fs::set_permissions(self.path, perms);
+            }
+        }
+    }
+
+    let base = unique_dir("e8");
+    let _ = fs::remove_dir_all(&base);
+    let sync = base.join("Dropbox");
+    let work_root = base.join("work");
+    fs::create_dir_all(&sync).unwrap();
+    fs::create_dir_all(&work_root).unwrap();
+    let brick = sync.join("workspace.vltd");
+
+    let pw = "uc30-e8-password\nuc30-e8-password\n";
+    let (code, err) = create_volume(&brick, pw);
+    assert_eq!(code, Some(0), "create: {err}");
+
+    let (code, stdout, err) = run(
+        &[
+            "volume",
+            "checkout",
+            brick.to_str().unwrap(),
+            "--work-dir",
+            work_root.to_str().unwrap(),
+        ],
+        "uc30-e8-password\n",
+        &[],
+    );
+    assert_eq!(code, Some(0), "checkout: {err}");
+    let id = stdout.trim().to_string();
+
+    // Mutate work so checkin must write a new temp into the sync dir.
+    let work_brick = work_root.join(&id).join("brick.vltd");
+    {
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .open(&work_brick)
+            .unwrap();
+        f.write_all(b"X").unwrap();
+    }
+
+    let mut perms = fs::metadata(&sync).unwrap().permissions();
+    perms.set_mode(0o555);
+    fs::set_permissions(&sync, perms).unwrap();
+    let _restore = RestoreWritable { path: &sync };
+
+    let (code, _, err) = run(
+        &[
+            "volume",
+            "checkin",
+            &id,
+            "--work-dir",
+            work_root.to_str().unwrap(),
+        ],
+        "",
+        &[],
+    );
+
+    assert_eq!(code, Some(13), "E8 must exit 13, got {code:?}: {err}");
+    drop(_restore);
+
+    let (code, _, err) = run(
+        &[
+            "volume",
+            "work-discard",
+            &id,
+            "--work-dir",
+            work_root.to_str().unwrap(),
+        ],
+        "",
+        &[],
+    );
+    assert_eq!(code, Some(0), "discard: {err}");
+    let _ = fs::remove_dir_all(&base);
+}

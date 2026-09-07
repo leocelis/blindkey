@@ -1,7 +1,7 @@
 # UC-30 — Volume working copy (checkout / checkin)
 
-> **Tech spec** · **Accepted v0.3** · September 2026 · **Status:** core + CLI + GUI Blindfolder complete (W0–W4); GUI opens a cleartext working folder via `MaterializedMount` (ADR-0010 degraded path); Linux FUSE remains optional `volume-mount`  
-> **Cross-checked:** 2026-09-06 vs research R1–R17 + live CLI/GUI/core · **Impl↔spec audit:** 2026-09-06 (§19) · **Full ship pass:** 2026-09-06 (materialize mount)  
+> **Tech spec** · **Accepted v0.3** · September 2026 · **Status:** core + CLI + GUI Blindfolder complete (W0–W5); GUI opens a cleartext working folder via `MaterializedMount` (ADR-0010 degraded path); Linux FUSE remains optional `volume-mount`; optional macOS FUSE via user macFUSE + `macos-fuse`  
+> **Cross-checked:** 2026-09-07 vs research R1–R17 + live CLI/GUI/core · **Impl↔spec gap close:** 2026-09-07 (§19)  
 > **PRD:** [docs/PRD.md](../PRD.md) §5 UC-30  
 > **Constraints:** C99–C102 (G22, **PASS**) · **amends** C73 (live mount of a *sync-path* `.vltd` stays forbidden)  
 > **Depends on:** [UC-25](UC-25-local-encrypted-volume.md) (volume format + mount) · [UC-07](UC-07-untrusted-storage-sync.md) · [ADR-0011](../adr/0011-volume-working-copy-checkout.md) · [ADR-0010](../adr/0010-volume-macos-mount-matrix.md) (macOS mount)  
@@ -231,6 +231,7 @@ pub struct OuterFingerprint {
     pub sha256: [u8; 32],
     pub dev: u64,
     pub ino: u64,
+    pub magic_ok: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -411,9 +412,9 @@ blindkey volume mount PATH.vltd MOUNTPOINT [--force-local]   # existing; C73
 - Passwords: TTY / `--password-fd` / `--password-stdin` / `BLINDKEY_PASSWORD_FILE` only (C31).
 - Exit codes: extend UC-04/G0.8 table — distinct codes for E1 fingerprint mismatch, E5
   hydration, E6 sync-root work path, E8 rename failure.
-- **C73 refuse copy (today):** points at `blindkey seal` only. **W1 target:** also name
-  `volume checkout` / Blindfolder. Keep `--force-local` as an explicit unsupported override
-  with stderr warning (do not add a GUI equivalent).
+- **C73 refuse copy:** names `volume checkout` / Blindfolder **and** `blindkey seal`.
+  Keep `--force-local` as an explicit unsupported override with stderr warning
+  (do not add a GUI equivalent).
 
 ---
 
@@ -427,7 +428,7 @@ Thin shell over core (UC-18). No crypto reimplementation.
 | Open / Mount on **non-sync** `.vltd` | Existing UC-25 mount (unchanged) |
 | Eject | Umount → checkin → clear work; on E1 show both paths |
 | Resume dialog | On launch with orphan sidecar: Resume checkin / Discard / Reveal in Finder |
-| Cloud folder + Mount attempted | Refuse (C73); **today** Seal CTA only; **W3** also Open Blindfolder (checkout). No GUI `--force-local`. |
+| Cloud folder + Mount attempted | Refuse (C73); offer **Open Blindfolder** (checkout) and **Seal**. No GUI `--force-local`. |
 | iCloud unresolved conflicts | Refuse with Finder-resolution message (E9) |
 | Progress | Worker thread + cancel; `request_repaint` (UC-20) |
 
@@ -464,14 +465,16 @@ checkout copies closed file to non-sync path and mounts **that**.
 | Suite | Location (planned) | Covers |
 |-------|--------------------|--------|
 | Outer hash holes = zeros | `blindkey-core` unit | R15 / C101 |
-| Hole-preserving copy / clone | `blindkey-core` (APFS/Linux where available) | C99 / R4 |
+| Hole-preserving copy / clone | `working_copy::tests::hole_preserving_copy_roundtrips_bytes` | C99 / R4 |
 | Atomic replace + no truncate | `c100_*` | C100 |
 | Fingerprint mismatch refuse | `c101_*` | C101 / E1 |
-| Sync-root work path refuse | `c99_*` | C99 / E6 |
-| Hydration stubs (mock attrs) | platform-gated unit | E5 / R2 |
+| Sync-root work path refuse | `c99_*` + CLI exit 12 | C99 / E6 |
+| Hydration stubs | `e5_hydration_refuses_*` + CLI exit 11 | E5 / R2 |
+| Idle probe ≥1s | `idle_probe_passes_on_stable_file` | §7.1 |
+| E8 fallback + fail-closed | `e8_fallback_replace_*` + CLI exit 13 | E8 |
 | Sidecar resume / discard | `work_session` tests | E2 / E3 |
 | Joint satisfaction | `tests/uc30_joint_satisfaction.rs` | C99–C102 one fixture: mutate remote → checkin refuses |
-| CLI | `blindkey-cli/tests/volume_work_cli.rs` | verbs, C73 hint, exit codes |
+| CLI | `blindkey-cli/tests/volume_work_cli.rs` | verbs, C73 hint, exits 10–13 |
 | GUI | `uc30_constraints.rs` | Blindfolder CTA, resume dialog strings |
 | C73 regression | existing refuse tests | C102 |
 
@@ -493,11 +496,12 @@ equals pre-checkin fingerprint; work retained for discard/resume.
 | **W1** | CLI `checkout` / `checkin` / resume; C73 refuse text names checkout **and** seal | ✓ |
 | **W2** | Wire checkout → UC-25 mount (`--mount` / operator mount of work path) | ✓ |
 | **W3** | GUI Blindfolder + resume dialog | ✓ |
-| **W4** | macOS hydration (SF_DATALESS / ubiquitous probe) + exclude-from-backup + coordinated replace path + E8 fallback | ✓ (portable + macOS helpers in `blindkey-sys`; live Finder mount still ADR-0010) |
-| **W5** | Docs: CLI.md, CONSTRAINT_INDEX, ROADMAP S-29 | ✓ (this ship) |
+| **W4** | macOS hydration (SF_DATALESS / ubiquitous probe) + exclude-from-backup + coordinated replace path + E8 fallback | ✓ (portable + macOS helpers in `blindkey-sys`; live Finder FUSE still ADR-0010) |
+| **W5** | Docs: CLI.md, CONSTRAINT_INDEX, ROADMAP S-29 | ✓ |
 
-**Hard dependency:** useful macOS Blindfolder UX waits on UC-25 Phase C (ADR-0010). Linux
-can ship W0–W3 earlier.
+**macOS Blindfolder UX:** ships via `MaterializedMount` (cleartext working folder). Optional
+user-installed macFUSE + `--features macos-fuse` is additive (ADR-0010) — **not** a hard
+gate for Blindfolder. Linux FUSE remains optional `volume-mount`.
 
 ---
 
@@ -569,8 +573,9 @@ can ship W0–W3 earlier.
 | 2026-09-06 | Core + CLI ship (W0–W1) | `WorkingCopySession` + CLI verbs + `uc30_*` tests |
 | 2026-09-06 | **Full implement W2–W4** | CLI `--mount`; exit 10–13; orphan warn; GUI Blindfolder+resume+E9; Linux FICLONE/SEEK_HOLE; macOS backup-exclude + dataless + coordinated replace; E8 out-of-tree fallback; cancel/progress opts |
 | 2026-09-06 | **Residual complete** | Real `NSFileCoordinator` (objc2); kill-9 `open_or_adopt`; Drive xattr/sibling probes; Linux GUI `volume-mount` FUSE; Blindfolder lifecycle test |
+| 2026-09-07 | **Impl↔spec gap close** | Docs drift fixed (§10/§11/§14/§19); `magic_ok` persisted from probe; idle/E5/hole-copy/E8/CLI exit 11–13 tests |
 
-### 19.1 Implementation ↔ contract matrix (2026-09-06 · full ship)
+### 19.1 Implementation ↔ contract matrix (2026-09-07 · gap close)
 
 | Contract item | Status | Evidence / note |
 |---------------|--------|-----------------|
@@ -582,13 +587,13 @@ can ship W0–W3 earlier.
 | E9 conflicts | **PASS** | `WorkingCopyUnresolvedConflicts` + Finder UX |
 | Hole-preserving copy | **PASS** | macOS `cp -c`; Linux FICLONE→SEEK_HOLE→`fs::copy` |
 | Exclude from backup | **PASS** (macOS) | on copy + each `set_phase` / checkin sidecar write |
-| Coordinated replace | **PASS** | POSIX rename (shipped); ObjC coordinator = optional packaging |
+| Coordinated replace | **PASS** | GUI macOS: real `NSFileCoordinator` `ForReplacing` (`fs_macos.rs`); CLI/Linux: POSIX rename; E8 out-of-tree fallback |
 | Distinct exit codes | **PASS** | 10=E1, 11=E5, 12=E6, 13=E8 |
 | `phase=mounted\|unmounted` | **PASS** | CLI + GUI; checkin refuses `Mounted` / leftover `mnt` |
 | C101 `dev`/`ino` | **PASS** | compared in `assert_source_unchanged` |
 | Materialize close-fail | **PASS** | returns mount intact; no shred without sync |
 
-**Verdict:** UC-30 Blindfolder **PASS** including residual hardening and optional macOS FUSE packaging path (`--features macos-fuse` + user-installed macFUSE; no bundled Fuse-T). Default macOS UX remains `MaterializedMount`.
+**Verdict:** UC-30 Blindfolder **PASS** — docs aligned with live `NSFileCoordinator` + `MaterializedMount`; residual tests for idle/E5/hole-copy/E8/CLI exits 10–13 green. Default macOS UX remains `MaterializedMount`; optional `--features macos-fuse` + user macFUSE.
 
 ---
 

@@ -1,7 +1,7 @@
 # Constraint test index (IVD Rule 3)
 
-Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **102 constraints**, **22 groups**, intent **v1.9.7**
-(extends the v1.9.6 / C1–C98 set with UC-30 C99–C102 FORWARD).
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) — **102 constraints**, **22 groups**, intent **v1.9.11**
+(extends the v1.9.6 / C1–C98 set with UC-30 C99–C102).
 C61–C66 (G16, [UC-23 sealed file storage](specs/UC-23-sealed-file-storage.md)) ship in **S-22**
 (implemented). C67–C74 (G17, [UC-25 local encrypted volume](specs/UC-25-local-encrypted-volume.md))
 are **PASS**. C75–C81 (G18, [UC-26 desktop UI IA](specs/UC-26-desktop-ui-information-architecture.md))
@@ -12,13 +12,13 @@ are **PASS** via `uc26_constraints.rs` + theme/mode modules. C82–C87 (G19,
 `uc28_constraints.rs` + surface/quiet/list helpers. C94–C98 (G21,
 [UC-29 contrast/typography/polarity](specs/UC-29-desktop-ui-contrast-typography.md)) are **PASS** via
 `uc29_constraints.rs` + Dark theme force + token retune. C99–C102 (G22,
-[UC-30 volume working copy](specs/UC-30-volume-working-copy.md)) are **FORWARD / UNVERIFIED**
-until checkout/checkin ships (ROADMAP S-29; blocked on macOS mount).
+[UC-30 volume working copy](specs/UC-30-volume-working-copy.md)) are **PASS**
+(core + CLI + GUI Blindfolder / `MaterializedMount`; ROADMAP S-29 DONE).
 The CP-7 sweep below is **66/66 PASS** at the automated gate for the original **66 constraints**
 through C66; C67–C74 are **PASS** at the core+CLI+GUI+fuzz level; C75–C81 are **PASS** at the
 GUI presentation level; C82–C87 are **PASS** at the GUI craft level; C88–C93 are **PASS** at the
 GUI component-kit level; C94–C98 are **PASS** at the GUI contrast/polarity level (see the C94–C98 rows);
-C99–C102 are **FORWARD** (see those rows).
+C99–C102 are **PASS** (see those rows).
 
 Tests are **distributed** across crate suites (not a single monolithic file). Run everything with:
 

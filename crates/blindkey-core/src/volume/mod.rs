@@ -18,7 +18,7 @@ mod working_copy;
 
 pub use materialize::{cleartext_mnt_beside, CloseMountError, MaterializedMount};
 pub use working_copy::{
-    assert_hydrated_for_checkout, default_work_root, hash_outer_logical, has_unresolved_conflicts,
+    assert_hydrated_for_checkout, default_work_root, has_unresolved_conflicts, hash_outer_logical,
     is_under_sync_root, list_work_sessions, orphan_work_sessions, orphaned_cleartext_sessions,
     CheckinOpts, CheckoutOpts, OuterFingerprint, WorkPhase, WorkSessionInfo, WorkingCopySession,
     WORKING_COPY_ERROR,
@@ -217,7 +217,15 @@ impl Volume {
         random_bytes(&mut nonce_prefix)?;
 
         let data_key = envelope::generate_data_key()?;
-        let stanza = wrap_stanza(&data_key, unlock, &salt, &vault_id, opts.m_cost, opts.t_cost, opts.p_cost)?;
+        let stanza = wrap_stanza(
+            &data_key,
+            unlock,
+            &salt,
+            &vault_id,
+            opts.m_cost,
+            opts.t_cost,
+            opts.p_cost,
+        )?;
 
         let header = Header {
             magic: MAGIC_VLTD,
@@ -280,7 +288,9 @@ impl Volume {
         let header = Header::parse_with_kind(&bytes, Some(crate::ContainerKind::Volume))?;
         let (m, t, p) = (header.kdf.m_cost, header.kdf.t_cost, header.kdf.p_cost);
         let data_key = unwrap_data_key(&header, unlock).map_err(vfail)?;
-        header.verify_hmac(data_key.expose_secret()).map_err(vfail)?;
+        header
+            .verify_hmac(data_key.expose_secret())
+            .map_err(vfail)?;
         let vault_id = header.vault_id;
         let keys = VolumeKeys::derive(data_key.expose_secret(), &vault_id);
 
@@ -295,9 +305,15 @@ impl Volume {
         let ih = inner::parse_dual(&keys.volume_key, &vault_id, &bytes[inner_start..inner_end])?;
 
         // C69 — key commitment: recompute from the password factor and compare constant-time.
-        let expected_kcom =
-            envelope::password_key_commitment(unlock.password, &header.kdf.salt, &vault_id, m, t, p)
-                .map_err(vfail)?;
+        let expected_kcom = envelope::password_key_commitment(
+            unlock.password,
+            &header.kdf.salt,
+            &vault_id,
+            m,
+            t,
+            p,
+        )
+        .map_err(vfail)?;
         if !bool::from(expected_kcom.ct_eq(&ih.kcom)) {
             return Err(Error::VolumeOpenFailed);
         }
@@ -309,7 +325,9 @@ impl Volume {
         let mut tags: Vec<[u8; 16]> = Vec::with_capacity(ih.block_count as usize);
         let mut off = inner_end;
         for block_id in 0..ih.block_count as u64 {
-            let end = off.checked_add(block_on_disk).ok_or(Error::VolumeOpenFailed)?;
+            let end = off
+                .checked_add(block_on_disk)
+                .ok_or(Error::VolumeOpenFailed)?;
             if bytes.len() < end {
                 return Err(Error::VolumeOpenFailed);
             }
@@ -536,8 +554,14 @@ impl Volume {
         self.header.kdf.m_cost = m_cost;
         self.header.kdf.t_cost = t_cost;
         self.header.kdf.p_cost = p_cost;
-        self.kcom =
-            envelope::password_key_commitment(unlock.password, &salt, &vid, m_cost, t_cost, p_cost)?;
+        self.kcom = envelope::password_key_commitment(
+            unlock.password,
+            &salt,
+            &vid,
+            m_cost,
+            t_cost,
+            p_cost,
+        )?;
         self.persist()
     }
 
@@ -696,7 +720,10 @@ impl Volume {
         out.extend_from_slice(&inner_bytes);
         out.extend_from_slice(&body);
 
-        let pad_len = self.pad_mode.padded_len(out.len()).saturating_sub(out.len());
+        let pad_len = self
+            .pad_mode
+            .padded_len(out.len())
+            .saturating_sub(out.len());
         if pad_len > 0 {
             out.resize(out.len() + pad_len, 0);
         }
@@ -779,7 +806,11 @@ fn wrap_stanza(
 fn unwrap_data_key(header: &Header, unlock: &VolumeUnlock<'_>) -> Result<DataKey> {
     let (m, t, p) = (header.kdf.m_cost, header.kdf.t_cost, header.kdf.p_cost);
     if let Some(kf) = unlock.keyfile {
-        if let Some(s) = header.stanzas.iter().find(|s| s.stanza_type == kind::PW_KEYFILE) {
+        if let Some(s) = header
+            .stanzas
+            .iter()
+            .find(|s| s.stanza_type == kind::PW_KEYFILE)
+        {
             return envelope::unwrap_keyfile_2fa_stanza(
                 s,
                 unlock.password,
@@ -797,7 +828,15 @@ fn unwrap_data_key(header: &Header, unlock: &VolumeUnlock<'_>) -> Result<DataKey
         .iter()
         .find(|s| s.stanza_type == kind::PASSWORD)
         .ok_or(Error::HeaderAuth)?;
-    envelope::unwrap_password_stanza(s, unlock.password, &header.kdf.salt, &header.vault_id, m, t, p)
+    envelope::unwrap_password_stanza(
+        s,
+        unlock.password,
+        &header.kdf.salt,
+        &header.vault_id,
+        m,
+        t,
+        p,
+    )
 }
 
 /// Reconstruct the VFS from decrypted blocks + the inode table.

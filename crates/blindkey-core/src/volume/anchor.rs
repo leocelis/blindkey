@@ -25,7 +25,12 @@ pub(crate) fn anchor_path(volume_id: &[u8; 16]) -> Result<PathBuf> {
     let state = rollback::anchor_path(volume_id)?; // <data_dir>/blindkey/<hex>.state
     let blindkey_dir = state
         .parent()
-        .ok_or_else(|| Error::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "no data dir")))?
+        .ok_or_else(|| {
+            Error::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "no data dir",
+            ))
+        })?
         .to_path_buf();
     Ok(blindkey_dir
         .join("volume-anchors")
@@ -79,12 +84,16 @@ pub(crate) fn write(volume_id: &[u8; 16], root: &[u8; 32], version: u64) -> Resu
 
 /// Fail closed if the disk state is stale versus the anchor (regressed version, or a fork at the
 /// same version). Forward progress (higher version) is accepted.
-pub(crate) fn verify_fresh(volume_id: &[u8; 16], disk_root: &[u8; 32], disk_version: u64) -> Result<()> {
+pub(crate) fn verify_fresh(
+    volume_id: &[u8; 16],
+    disk_root: &[u8; 32],
+    disk_version: u64,
+) -> Result<()> {
     match read(volume_id)? {
         None => Ok(()), // trust-on-first-use
         Some(a) => {
-            let stale = disk_version < a.version
-                || (disk_version == a.version && disk_root != &a.root);
+            let stale =
+                disk_version < a.version || (disk_version == a.version && disk_root != &a.root);
             if stale {
                 Err(Error::VolumeAnchorMismatch)
             } else {
