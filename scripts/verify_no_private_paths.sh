@@ -5,7 +5,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Contiguous private-tree tokens. This script is excluded from the scan.
-PATTERN='[private-vault-removed]/|workspace/ledger|ledger/tenants|tenants/leocelis|/Users/x'
+# literal private path needles below are intentional gate detectors — not product docs.
+PATTERN='limitless/|workspace/ledger|ledger/tenants|tenants/leocelis|/Users/leocelis'
 
 hits="$(
   rg -nE "$PATTERN" "$ROOT" \
