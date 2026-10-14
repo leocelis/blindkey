@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build blindkey-gui (release) and wrap it in a double-clickable macOS .app bundle.
 #
-# Output: target/Vault.app  — double-click it in Finder, or `open target/Vault.app`.
+# Output: target/Blindkey.app  — double-click it in Finder, or `open target/Blindkey.app`.
 # This is an unsigned local bundle for personal use; it is NOT notarized for distribution.
 #
 # Usage:  ./scripts/bundle-macos.sh
@@ -17,7 +17,7 @@ fi
 echo "Building blindkey-gui (release)…"
 cargo build --release -p blindkey-gui
 
-APP="target/Vault.app"
+APP="target/Blindkey.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 

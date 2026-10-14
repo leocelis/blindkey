@@ -122,28 +122,58 @@ flowchart TD
 
 ## Install
 
-**Fastest path** — download from [GitHub Releases](https://github.com/leocelis/blindkey/releases), verify SHA256SUMS, `chmod +x`, move to PATH.
+### Developers (recommended)
 
-Prebuilt binaries today: **macOS x86_64 only** (`v1.0.0`). Linux, Windows, and Apple Silicon: build from source ([docs/INSTALL.md](docs/INSTALL.md)).
+You need a Rust toolchain (1.96+). No Apple Developer account required.
 
 ```sh
-# Example (macOS x86_64) — see docs/VERIFYING_RELEASES.md
+git clone https://github.com/leocelis/blindkey.git && cd blindkey
+./scripts/setup-rust.sh
+
+# CLI → ~/.local/bin/blindkey  (put ~/.local/bin on your PATH)
+./scripts/install.sh
+
+# Desktop app (opens a window — leave the terminal running)
+cargo run -p blindkey-gui
+
+# Optional: local double-click .app on macOS (unsigned — Gatekeeper may warn)
+./scripts/bundle-macos.sh    # → target/Blindkey.app ; open target/Blindkey.app
+```
+
+Or install the CLI without cloning:
+
+```sh
+cargo install --git https://github.com/leocelis/blindkey.git --tag v1.0.0 --locked blindkey-cli
+```
+
+**Apple Silicon (M1/M2/M3/…):** there is no prebuilt GUI/CLI for arm64 yet — use the clone + build path above.  
+**Prebuilt CLI today:** macOS **x86_64 only** (`v1.0.0` GitHub Release). Linux / Windows / arm64: build from source.
+
+Full options (Linux GUI deps, containers, fleet): [docs/INSTALL.md](docs/INSTALL.md)
+
+### Prebuilt CLI (no Rust)
+
+Download from [GitHub Releases](https://github.com/leocelis/blindkey/releases), verify SHA256SUMS, `chmod +x`, move to PATH. See [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
+
+```sh
+# Example — macOS x86_64 only
 curl -LO https://github.com/leocelis/blindkey/releases/download/v1.0.0/blindkey-x86_64-apple-darwin
 curl -LO https://github.com/leocelis/blindkey/releases/download/v1.0.0/SHA256SUMS.txt
 shasum -a 256 -c SHA256SUMS.txt
 chmod +x blindkey-x86_64-apple-darwin && sudo mv blindkey-x86_64-apple-darwin /usr/local/bin/blindkey
 ```
 
-**Build from source** (contributors):
+There is **no** notarized Mac `.app` download yet. End-user double-click install needs Apple signing later; until then use the developer GUI path above.
 
-```sh
-git clone https://github.com/leocelis/blindkey.git && cd blindkey
-./scripts/setup-rust.sh && ./scripts/install.sh   # → ~/.local/bin/blindkey
-```
+### Try Blindfolder (desktop)
 
-Or `cargo install --git https://github.com/leocelis/blindkey.git --tag v1.0.0 --locked blindkey-cli`
+Blindfolder keeps a `.vltd` in Dropbox/Drive/iCloud and never live-mounts that sync path ([UC-30](docs/specs/UC-30-volume-working-copy.md)).
 
-Full options: [docs/INSTALL.md](docs/INSTALL.md)
+1. Run the desktop app (`cargo run -p blindkey-gui`).
+2. **Create volume** → **Save as…** into your Dropbox (or other sync) folder → passphrase → **Create**. Wait until the file is fully downloaded.
+3. Open that `.vltd` with **Open Blindfolder** (not Mount on the sync path).
+4. Unlock; edit files in the local folder Blindkey opens.
+5. **Eject**. Wait for the sync client to finish uploading the closed `.vltd`.
 
 ## Quickstart
 
@@ -192,8 +222,7 @@ $ blindkey get github --stdout    # default is clipboard; --stdout shown here fo
   ghp_synthetic_example_not_real
 ```
 
-Desktop app (build from source — no prebuilt GUI binary yet, see [#status](#project-status)):
-`cargo run -p blindkey-gui` — drag `samples/keys.txt` onto the window to import.
+Desktop app: see [Install → Developers](#developers-recommended). Drag `samples/keys.txt` onto the window to import credentials.
 
 ## Documentation
 

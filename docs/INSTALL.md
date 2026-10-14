@@ -2,19 +2,23 @@
 
 > **Status:** v1.0.0 — build from source, install from git, or download a
 > [GitHub Release](https://github.com/leocelis/blindkey/releases) binary with SHA-256 checksums.
+> Start with the short **Developers** box in the [root README](../README.md#developers-recommended).
 
-## Quick install (recommended)
+## Quick install (developers)
 
 From a clone of this repo:
 
 ```sh
 git clone https://github.com/leocelis/blindkey.git
-cd vault
+cd blindkey
 ./scripts/setup-rust.sh    # once: project-scoped toolchain in ./.toolchain
-./scripts/install.sh       # builds release binary → ~/.local/bin/vault
+./scripts/install.sh       # builds release CLI → ~/.local/bin/blindkey
 ```
 
 Ensure `~/.local/bin` is on your `PATH`.
+
+**Apple Silicon / Linux / Windows:** build from source (no arm64 or Linux prebuilt CLI in `v1.0.0` yet).  
+**Prebuilt CLI:** macOS **x86_64** only — see [GitHub Releases](#github-releases).
 
 ## Install from Git (no clone)
 
@@ -40,32 +44,36 @@ Until then, use git install or a GitHub Release binary.
 
 ## GitHub Releases
 
-Download `vault-<arch>-<platform>` from [Releases](https://github.com/leocelis/blindkey/releases),
+Download `blindkey-<arch>-<platform>` from [Releases](https://github.com/leocelis/blindkey/releases),
 verify with [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md), then:
 
 ```sh
-chmod +x vault-x86_64-apple-darwin   # example
-sudo mv vault-x86_64-apple-darwin /usr/local/bin/vault
+chmod +x blindkey-x86_64-apple-darwin   # example — macOS x86_64
+sudo mv blindkey-x86_64-apple-darwin /usr/local/bin/blindkey
 ```
 
 ## Build from source (manual)
 
 ```sh
-cd vault
+cd blindkey
 . scripts/dev-env.sh       # activate ./.toolchain (or Rust 1.96+)
 cargo build --release -p blindkey-cli
-# Binary at target/release/vault
+# Binary at target/release/blindkey
 ```
 
 Reproducibility check: `./scripts/reproducible-build.sh`
 
 ## Desktop app (`blindkey-gui`)
 
+No notarized Mac download yet (Apple Developer ID required for Gatekeeper-clean distribution). Developers:
+
 ```sh
 cargo run -p blindkey-gui
-# macOS app bundle:
-./scripts/bundle-macos.sh    # → target/Blindkey.app
+# macOS: optional unsigned local .app (Gatekeeper may warn)
+./scripts/bundle-macos.sh    # → target/Blindkey.app ; open target/Blindkey.app
 ```
+
+**Blindfolder (sync-folder `.vltd`):** Create volume into Dropbox/Drive/iCloud → **Open Blindfolder** → edit the local folder → **Eject**. Do not Mount the sync-path file. Spec: [UC-30](specs/UC-30-volume-working-copy.md).
 
 The GUI crate enables egui’s `default_fonts` feature (readable labels with
 `eframe` `default-features = false`). If glyphs ever render blank on a host,
