@@ -750,12 +750,12 @@ mod tests {
     #[test]
     fn detects_and_refuses_sync_roots() {
         for p in [
-            "/Users/leo/Dropbox/work.vltd",
-            "/Users/leo/Library/CloudStorage/OneDrive-Personal/work.vltd",
-            "/home/leo/OneDrive/work.vltd",
-            "/Users/leo/Google Drive/work.vltd",
-            "/Users/leo/Library/Mobile Documents/com~apple~CloudDocs/work.vltd",
-            "/home/leo/syncthing/share/work.vltd",
+            "/Users/x/Dropbox/work.vltd",
+            "/Users/x/Library/CloudStorage/OneDrive-Personal/work.vltd",
+            "/home/x/OneDrive/work.vltd",
+            "/Users/x/Google Drive/work.vltd",
+            "/Users/x/Library/Mobile Documents/com~apple~CloudDocs/work.vltd",
+            "/home/x/syncthing/share/work.vltd",
         ] {
             let path = Path::new(p);
             assert!(is_under_sync_root(path), "should detect: {p}");
@@ -772,11 +772,7 @@ mod tests {
 
     #[test]
     fn allows_local_paths() {
-        for p in [
-            "/tmp/work.vltd",
-            "/home/leo/vaults/work.vltd",
-            "./work.vltd",
-        ] {
+        for p in ["/tmp/work.vltd", "/home/x/vaults/work.vltd", "./work.vltd"] {
             let path = Path::new(p);
             assert!(!is_under_sync_root(path), "should be local: {p}");
             assert!(sync_root_guard(path, false).is_ok(), "should allow: {p}");

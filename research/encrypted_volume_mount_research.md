@@ -446,8 +446,8 @@ C3 rule: **no hand-rolled ciphers**; stick to RustCrypto / audited crates.
 5. **Benchmarks:** random 4K read/write and sequential; FUSE will lose to dm-crypt — set honest
    expectations in docs.
 6. **Privilege:** prefer userspace mount; document when admin is required.
-7. **macOS packaging:** FSKit / Fuse-T path to avoid kext; notarize GUI; never ship private
-   Limitless paths in public docs.
+7. **macOS packaging:** FSKit / Fuse-T path to avoid kext; notarize GUI; never ship maintainer-local
+   home or private-repo paths in public docs.
 
 ### 8.3 What UC-23 already decided (do not quietly reverse)
 
