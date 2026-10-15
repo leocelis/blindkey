@@ -80,6 +80,10 @@ This adds `Signed-off-by: Your Name <you@example.com>` (from your git config) to
 message. A PR bot checks every commit; if one's missing, amend it (`git commit --amend -s`) or
 add a follow-up signed-off commit — no need to open a new PR.
 
+**Use a public-safe email** in `user.email` (the address you intend to show on GitHub), never a
+machine-local address such as `you@Some-MacBook.local` — that hostname becomes permanent public
+git history. CI runs `scripts/verify_commit_identity.sh` on new commits to block `@*.local`.
+
 ## Pull request checklist
 
 - [ ] `just check` passes (fmt, clippy with `-D warnings`, tests).

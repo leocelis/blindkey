@@ -146,15 +146,64 @@ fn uc23_padme_default_on_in_seal_dialog() {
 }
 
 /// C54: true when line `i` (a `.password(` field) sits inside a `labeled_secret*` helper
-/// that draws its `ui.label(label)` before the field. Those helpers are the labeled
-/// abstraction call sites use; their layout code can push the label past the 8-line window.
+/// that draws `ui.label(label)` **for this field** — after the previous `.password(` in the
+/// same helper (or after the `fn`), and before this one. A second unlabeled field in the
+/// same helper must not pass just because an earlier label exists.
 fn inside_labeled_secret_helper(lines: &[&str], i: usize) -> bool {
+    let mut fn_start = None;
     for j in (0..i).rev() {
         let l = lines[j];
         if l.contains("fn ") {
-            return l.contains("fn labeled_secret")
-                && lines[j..i].iter().any(|b| b.contains("ui.label(label)"));
+            if !l.contains("fn labeled_secret") {
+                return false;
+            }
+            fn_start = Some(j);
+            break;
         }
     }
-    false
+    let Some(start) = fn_start else {
+        return false;
+    };
+    let mut bound = start;
+    for j in (start..i).rev() {
+        if lines[j].contains(".password(") {
+            bound = j + 1;
+            break;
+        }
+    }
+    lines[bound..i]
+        .iter()
+        .any(|b| b.contains("ui.label(label)"))
+}
+
+#[test]
+fn labeled_secret_helper_requires_label_per_password_field() {
+    let ok = [
+        "fn labeled_secret_row(ui: &mut Ui, label: &str) {",
+        "    ui.label(label);",
+        "    TextEdit::singleline(s).password(true);",
+        "}",
+    ];
+    assert!(inside_labeled_secret_helper(&ok, 2));
+
+    let second_unlabeled = [
+        "fn labeled_secret_row(ui: &mut Ui, label: &str) {",
+        "    ui.label(label);",
+        "    TextEdit::singleline(a).password(true);",
+        "    TextEdit::singleline(b).password(true);",
+        "}",
+    ];
+    assert!(inside_labeled_secret_helper(&second_unlabeled, 2));
+    assert!(
+        !inside_labeled_secret_helper(&second_unlabeled, 3),
+        "second password in the same helper must not inherit the first label"
+    );
+
+    let other_fn = [
+        "fn draw_form(ui: &mut Ui) {",
+        "    ui.label(label);",
+        "    TextEdit::singleline(s).password(true);",
+        "}",
+    ];
+    assert!(!inside_labeled_secret_helper(&other_fn, 2));
 }

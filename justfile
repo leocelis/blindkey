@@ -5,12 +5,21 @@
 default:
     @just --list
 
-# Format, lint (warnings = errors), private-path leak scan, and test — the pre-PR gate.
-check: fmt-check clippy leak-scan test
+# Format, lint (warnings = errors), private-path leak scan, tip identity, optional
+# macOS FUSE, and test — the pre-PR gate.
+check: fmt-check clippy leak-scan commit-identity macos-fuse-check test
 
 # Fail if docs/code name private vault trees or the operator home path (OSS hygiene).
 leak-scan:
     bash scripts/verify_no_private_paths.sh
+
+# Fail if the tip commit uses a machine-local @*.local email (public history hygiene).
+commit-identity:
+    bash scripts/verify_commit_identity.sh
+
+# Clippy/test --features macos-fuse when macFUSE headers exist; otherwise SKIP.
+macos-fuse-check:
+    bash scripts/check_macos_fuse.sh
 
 # Format the code.
 fmt:

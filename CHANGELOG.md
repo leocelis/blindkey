@@ -92,11 +92,22 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 - **UC-30 checkin failed on Windows.** Temp-file `fsync` opened the file read-only; Windows
   `FlushFileBuffers` needs write access, so every checkin returned `WorkingCopyRenameFailed`.
-  Now opened with write access. `webbrowser` bumped to 1.2.2 (RUSTSEC-2026-0257). CI green
-  again: macOS checks every feature except `macos-fuse` (needs a user-installed macFUSE),
-  fuzz runs on `+nightly`, Scorecard action moved to its ghcr.io image (v2.4.4), and stale
-  version-pinned doc tests now read the intent version. `fuser` RUSTSEC-2021-0154 exempted
-  as unreachable (see docs/SUPPLY_CHAIN.md).
+  `fsync_file` now write-opens on Windows only (Unix keeps a read open). `webbrowser` bumped
+  to 1.2.2 (RUSTSEC-2026-0257). macOS CI checks every feature except `macos-fuse` (needs a
+  user-installed macFUSE; optional coverage via `scripts/check_macos_fuse.sh`). Fuzz runs on
+  `+nightly`; Scorecard action moved to its ghcr.io image (v2.4.4); stale version-pinned doc
+  tests now read the intent version. `fuser` RUSTSEC-2021-0154 exempted as unreachable (see
+  docs/SUPPLY_CHAIN.md), with a Cargo.toml feature guard so Linux never enables `libfuse`.
+- **UC-30 live sessions looked orphaned on Windows.** `pid_alive` had no Windows branch and
+  always returned false, so a live working-copy session was offered as an orphan. Windows now
+  probes via `tasklist` CSV (PID column exact match) and treats probe failure as alive. This
+  completed the Windows CI green after the checkin fsync fix.
+- **C54 labeled-secret scan.** The `inside_labeled_secret_helper` exception now requires a
+  `ui.label(label)` between this `.password(` and the previous one (or the `fn`), so a second
+  unlabeled field in the same helper cannot inherit the first label.
+- **Commit identity gate.** New commits must not use `@*.local` author/committer emails
+  (`scripts/verify_commit_identity.sh` in CI / `just commit-identity`). Existing history is
+  not rewritten.
 - **`BLINDKEY_AGENT_AUTO_APPROVE` was undocumented.** The flag that skips the broker's `[y/N]`
   human-approval prompt existed only as a source comment ("test-only") — a reader had no way to
   know it existed, that it's not a supported deployment mode, or what it does and doesn't weaken.

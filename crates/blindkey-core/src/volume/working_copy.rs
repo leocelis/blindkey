@@ -867,11 +867,20 @@ fn has_syncthing_temp_sibling(parent: &Path, brick: &Path) -> bool {
     false
 }
 
-/// Flush a file's data to disk. Opens with write access: on Windows `sync_all` is
-/// `FlushFileBuffers`, which fails with access-denied on a read-only handle ("The file
-/// handle must have the GENERIC_WRITE access right", Microsoft Learn). Unix accepts either.
+/// Flush a file's data to disk.
+///
+/// Windows: open with write access — `sync_all` is `FlushFileBuffers`, which needs
+/// `GENERIC_WRITE` (Microsoft Learn). Unix: read-only open is enough and avoids needing
+/// write permission on an otherwise readable path.
 fn fsync_file(path: &Path) -> std::io::Result<()> {
-    fs::OpenOptions::new().write(true).open(path)?.sync_all()
+    #[cfg(windows)]
+    {
+        fs::OpenOptions::new().write(true).open(path)?.sync_all()
+    }
+    #[cfg(not(windows))]
+    {
+        File::open(path)?.sync_all()
+    }
 }
 
 fn copy_brick(src: &Path, dst: &Path) -> Result<()> {
@@ -994,6 +1003,24 @@ pub fn orphaned_cleartext_sessions(work_root: Option<&Path>) -> Result<Vec<WorkS
         .collect())
 }
 
+/// True when `tasklist /FO CSV /NH` stdout has a data row whose **PID column** equals `pid`.
+/// Parses the second quoted CSV field only (not Session# / memory), so PID 12 never matches
+/// 123 and Session# `1` never counts as PID 1.
+fn tasklist_csv_reports_pid(stdout: &str, pid: u32) -> bool {
+    let want = pid.to_string();
+    stdout.lines().any(|line| {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with("INFO:") {
+            return false;
+        }
+        // `"Image Name","PID","Session Name",...` → split on `","` after outer quotes.
+        let trimmed = line.trim().trim_matches('"');
+        let mut fields = trimmed.split("\",\"");
+        let _image = fields.next();
+        matches!(fields.next(), Some(pid_field) if pid_field == want)
+    })
+}
+
 fn pid_alive(pid: u32) -> bool {
     if pid == 0 {
         return false;
@@ -1011,14 +1038,16 @@ fn pid_alive(pid: u32) -> bool {
             .unwrap_or(false)
     }
     // Windows: no `unsafe` outside blindkey-sys, so ask the stock `tasklist` (like `kill -0`
-    // above). CSV rows quote the PID ("name.exe","1234",...); no match prints an INFO line.
-    // If tasklist cannot run, report alive: a live session must never be offered as an orphan.
+    // above). CSV rows are `"name.exe","1234",...`; match the PID as its own quoted field so
+    // PID 12 never matches 123. No match prints an INFO line. If tasklist cannot run, report
+    // alive: a live session must never be offered as an orphan (PID reuse may hide a true
+    // orphan until that process exits — prefer that over reclaiming a live working copy).
     #[cfg(windows)]
     {
         std::process::Command::new("tasklist")
             .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
             .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).contains(&format!("\"{pid}\"")))
+            .map(|o| tasklist_csv_reports_pid(&String::from_utf8_lossy(&o.stdout), pid))
             .unwrap_or(true)
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
@@ -1205,6 +1234,22 @@ fn hex_to_32(s: &str) -> Option<[u8; 32]> {
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn tasklist_csv_pid_field_is_exact() {
+        let row = "\"blindkey.exe\",\"12\",\"Console\",\"1\",\"10,240 K\"\r\n";
+        assert!(tasklist_csv_reports_pid(row, 12));
+        assert!(!tasklist_csv_reports_pid(row, 1));
+        assert!(!tasklist_csv_reports_pid(row, 123));
+        assert!(!tasklist_csv_reports_pid(
+            "INFO: No tasks are running which match the specified criteria.\r\n",
+            12
+        ));
+        // Wider PID must not be a prefix match of a shorter needle via bare quotes.
+        let wide = "\"app.exe\",\"123\",\"Console\",\"1\",\"1 K\"\n";
+        assert!(tasklist_csv_reports_pid(wide, 123));
+        assert!(!tasklist_csv_reports_pid(wide, 12));
+    }
 
     #[test]
     fn sync_root_detects_dropbox_and_cloudstorage() {

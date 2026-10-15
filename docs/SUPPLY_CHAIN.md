@@ -70,10 +70,22 @@ trigger. Blanket ignores are never used.
   `default-features = false` (pure-Rust `fusermount` path) and macOS `macos-fuse` against
   macFUSE, which fuser builds as `libfuse2`. Neither compiles `fuse3.rs`. `fuser` reaches
   only `blindkey-fuse` (volume mount), never the security core.
+- **Do not enable `fuser`'s `libfuse` feature on Linux.** That is the libfuse3 path the
+  advisory covers. Workspace `Cargo.toml` keeps `default-features = false`; the Linux
+  target dep is `fuser.workspace = true` only. Guarded by
+  `crates/blindkey-fuse/tests/fuser_feature_guard.rs`. If that guard fails, drop the
+  advisory ignore until the feature graph is fixed or `fuser >= 0.16` is adopted.
 - **Why not just upgrade:** `fuser` 0.16 changes the filesystem API that `blindkey-fuse`
   implements; that move belongs with a FUSE adapter change tested on Linux and macFUSE.
 - **Removal trigger:** when `blindkey-fuse` moves to `fuser >= 0.16`, drop the ID from
   [`.cargo/audit.toml`](../.cargo/audit.toml) and [`deny.toml`](../deny.toml).
+
+### Optional `macos-fuse` CI coverage
+
+GitHub-hosted macOS runners do not install macFUSE, so the main CI matrix excludes
+`--features macos-fuse` (ADR-0010). `scripts/check_macos_fuse.sh` (and `just macos-fuse-check`)
+runs clippy + tests with that feature when `fuse.pc` / `osxfuse.pc` is present, and prints
+SKIP otherwise. Wire a self-hosted runner with macFUSE to get continuous coverage.
 
 ## License allow-list — GUI-only additions
 
