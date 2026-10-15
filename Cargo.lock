@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-agent"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "blindkey-core",
  "getrandom 0.2.17",
@@ -449,7 +449,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-cli"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "blindkey-agent",
  "blindkey-clip",
@@ -468,14 +468,14 @@ dependencies = [
 
 [[package]]
 name = "blindkey-clip"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "arboard",
 ]
 
 [[package]]
 name = "blindkey-core"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "argon2",
  "blindkey-sys",
@@ -497,7 +497,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-fuse"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "blindkey-core",
  "blindkey-sys",
@@ -507,7 +507,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-gui"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "blindkey-clip",
  "blindkey-core",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-hardware"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "blindkey-core",
  "getrandom 0.2.17",
@@ -533,7 +533,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-sys"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "block2 0.6.2",
  "libc",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "blindkey-tui"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "blindkey-core",
  "clap",

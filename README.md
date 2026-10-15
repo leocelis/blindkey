@@ -3,7 +3,7 @@
 # 🔑 Blindkey
 
 **The local-first credential vault your AI agents can use — but never see.**
-**No server. No account. One encrypted file. 66 testable security constraints. Rust.**
+**No server. No account. One encrypted file. 102 testable security constraints. Rust.**
 
 Passwords. API keys. `.env` files. SSH and signing keys. Database URLs. The credentials your AI
 coding agents touch every day.
@@ -12,14 +12,14 @@ coding agents touch every day.
 [![Scorecard](https://github.com/leocelis/blindkey/actions/workflows/scorecard.yml/badge.svg)](https://github.com/leocelis/blindkey/actions/workflows/scorecard.yml)
 [![MSRV](https://img.shields.io/badge/MSRV-1.96-blue.svg)](rust-toolchain.toml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Status: v1.0.0 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.0.0%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
+[![Status: v1.1.0 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.1.0%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
 
 [Install](#install) · [Documentation](#documentation) · [Quickstart](#quickstart) · [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md)
 
 </div>
 
 > [!WARNING]
-> **v1.0.0 — not independently third-party audited — keep your own backup of anything you store.**
+> **v1.1.0 — not independently third-party audited — keep your own backup of anything you store.**
 > Blindkey is **functional**: cryptographic core implemented and tested, working CLI *and* desktop app.
 > **On-disk format v1 is stable** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)) — vault files from
 > alpha releases open on 1.x without migration. See [ROADMAP.md](ROADMAP.md) and [SECURITY.md](SECURITY.md).
@@ -143,11 +143,10 @@ cargo run -p blindkey-gui
 Or install the CLI without cloning:
 
 ```sh
-cargo install --git https://github.com/leocelis/blindkey.git --tag v1.0.0 --locked blindkey-cli
+cargo install --git https://github.com/leocelis/blindkey.git --tag v1.1.0 --locked blindkey-cli
 ```
 
-**Apple Silicon (M1/M2/M3/…):** there is no prebuilt GUI/CLI for arm64 yet — use the clone + build path above.  
-**Prebuilt CLI today:** macOS **x86_64 only** (`v1.0.0` GitHub Release). Linux / Windows / arm64: build from source.
+**Prebuilt CLI (`v1.1.0` GitHub Release):** `x86_64` and `aarch64` for macOS and Linux. Windows: build from source (Unix-first broker). GUI: build from source (`cargo run -p blindkey-gui`).
 
 Full options (Linux GUI deps, containers, fleet): [docs/INSTALL.md](docs/INSTALL.md)
 
@@ -156,11 +155,11 @@ Full options (Linux GUI deps, containers, fleet): [docs/INSTALL.md](docs/INSTALL
 Download from [GitHub Releases](https://github.com/leocelis/blindkey/releases), verify SHA256SUMS, `chmod +x`, move to PATH. See [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
 
 ```sh
-# Example — macOS x86_64 only
-curl -LO https://github.com/leocelis/blindkey/releases/download/v1.0.0/blindkey-x86_64-apple-darwin
-curl -LO https://github.com/leocelis/blindkey/releases/download/v1.0.0/SHA256SUMS.txt
-shasum -a 256 -c SHA256SUMS.txt
-chmod +x blindkey-x86_64-apple-darwin && sudo mv blindkey-x86_64-apple-darwin /usr/local/bin/blindkey
+# Example — macOS Apple Silicon
+curl -LO https://github.com/leocelis/blindkey/releases/download/v1.1.0/blindkey-aarch64-apple-darwin
+curl -LO https://github.com/leocelis/blindkey/releases/download/v1.1.0/SHA256SUMS.txt
+grep blindkey-aarch64-apple-darwin SHA256SUMS.txt | shasum -a 256 -c -
+chmod +x blindkey-aarch64-apple-darwin && sudo mv blindkey-aarch64-apple-darwin /usr/local/bin/blindkey
 ```
 
 There is **no** notarized Mac `.app` download yet. End-user double-click install needs Apple signing later; until then use the developer GUI path above.
@@ -248,13 +247,12 @@ encrypt-then-MAC · **zero network, zero telemetry**.
 
 ## Project status
 
-- ✅ Research + 66-constraint intent (v1.8.0) + CP-7 sweep (60/60 PASS on the v1.0 set)
+- ✅ Research + 102-constraint intent + quality gate (`just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml))
 - ✅ CLI, TUI, desktop GUI on shared `blindkey-core`
-- ✅ Quality gate: local `just check` / `just audit-ready`; [GHA CI](.github/workflows/ci.yml) on push
-- ✅ **v1.0.0** — first stable release; format v1 frozen ([ADR-0005](docs/adr/0005-format-v1-freeze.md))
+- ✅ **v1.1.0** — Blindfolder, local volumes, desktop craft; format v1 frozen ([ADR-0005](docs/adr/0005-format-v1-freeze.md))
 - ✅ **Blindfolder** — keep a `.vltd` in Dropbox/Drive/iCloud/Syncthing; Blindkey copies it locally, opens a normal folder, and atomically checks it back in. It does **not** live-mount the sync-path file ([UC-30](docs/specs/UC-30-volume-working-copy.md)).
 - ✅ **Volume live mount** — Linux FUSE via `blindkey-fuse` (`--features volume-mount`). macOS live Finder mount is **optional**: install [macFUSE](https://macfuse.io) yourself, then build with `--features macos-fuse`. Blindkey does **not** bundle or redistribute macFUSE/Fuse-T ([ADR-0010](docs/adr/0010-volume-macos-mount-matrix.md)). Without that feature, Blindfolder still opens a cleartext working folder.
-- 🟡 `blindkey mcp` — initial MCP server (status-only `list_handles` + `use_handle`); headless-approval delivery is the tracked next step ([UC-24](docs/specs/UC-24-mcp-broker.md))
+- ✅ `blindkey mcp` — MCP server with broker-backed `use_handle` delivery when a companion agent is listening ([UC-24](docs/specs/UC-24-mcp-broker.md))
 - ⏳ Hardware FFI polish, sync/merge, optional third-party audit — [ROADMAP.md](ROADMAP.md)
 
 ### macOS live mount (optional)

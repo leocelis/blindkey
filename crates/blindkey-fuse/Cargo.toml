@@ -18,7 +18,7 @@ default = []
 macos-fuse = ["dep:fuser", "dep:libc"]
 
 [dependencies]
-blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+blindkey-core = { path = "../blindkey-core", version = "1.1.0" }
 
 # Linux: pure-Rust fusermount path (no system libfuse required to *build*).
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -27,6 +27,6 @@ libc.workspace = true
 
 # macOS: always link blindkey-sys for runtime macFUSE detection; fuser only with `macos-fuse`.
 [target.'cfg(target_os = "macos")'.dependencies]
-blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
+blindkey-sys = { path = "../blindkey-sys", version = "1.1.0" }
 fuser = { version = "0.15", optional = true, default-features = false, features = ["libfuse", "macfuse-4-compat"] }
 libc = { workspace = true, optional = true }

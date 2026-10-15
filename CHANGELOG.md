@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-15
+
 ### Added
 - **UC-30 Blindfolder (volume working copy)** — checkout a sync-folder `.vltd` to a local
   non-sync work path, open a cleartext working folder (`MaterializedMount`) or optional FUSE
@@ -629,7 +631,8 @@ still change before `1.0.0`. Not independently audited.
 ### Notes
 - Blindkey is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
-[Unreleased]: https://github.com/leocelis/blindkey/compare/v1.0.0...main
+[Unreleased]: https://github.com/leocelis/blindkey/compare/v1.1.0...main
+[1.1.0]: https://github.com/leocelis/blindkey/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/leocelis/blindkey/compare/v0.1.0-alpha.3...v1.0.0
 [0.1.0-alpha.3]: https://github.com/leocelis/blindkey/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/leocelis/blindkey/releases/tag/v0.1.0-alpha.2

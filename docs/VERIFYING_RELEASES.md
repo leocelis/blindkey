@@ -4,9 +4,9 @@ A security tool you can't verify is a security tool you have to *trust*. Blindke
 **maintainer-built** from a tagged commit with a **pinned toolchain** (`rust-toolchain.toml`) and
 **SHA-256 checksums** published alongside each binary. *(constraint C34)*
 
-> Blindkey **1.0.0**. There is no automated cosign/SLSA pipeline — maintainers build
-> locally per [RELEASE.md](RELEASE.md). Latest release: [`v1.0.0`](https://github.com/leocelis/blindkey/releases/tag/v1.0.0)
-> (macOS x86_64 binary + SHA256SUMS). Other platforms: [INSTALL.md](INSTALL.md).
+> Blindkey **1.1.0**. There is no automated cosign/SLSA pipeline — maintainers build
+> locally per [RELEASE.md](RELEASE.md). Latest release: [`v1.1.0`](https://github.com/leocelis/blindkey/releases/tag/v1.1.0)
+> (macOS + Linux, x86_64 and aarch64, + SHA256SUMS). Other platforms: [INSTALL.md](INSTALL.md).
 
 ## 1. Verify the checksum
 
@@ -17,11 +17,11 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ## 2. Verify the signed git tag (optional)
 
-Release tags should be GPG-signed by a maintainer:
+Release tags should be signed by a maintainer (SSH or GPG):
 
 ```sh
 git fetch --tags
-git tag -v v1.0.0
+git tag -v v1.1.0
 ```
 
 ## 3. Reproduce the build yourself
@@ -31,7 +31,7 @@ Because the toolchain is pinned and we build `--locked`, you can rebuild bit-for
 ```sh
 git checkout vX.Y.Z
 ./scripts/reproducible-build.sh
-shasum -a 256 target/release/vault
+shasum -a 256 target/release/blindkey
 # Compare against the published checksum.
 ```
 

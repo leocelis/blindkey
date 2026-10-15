@@ -30,12 +30,29 @@ fmt-check:
     cargo fmt --all -- --check
 
 # Lint with clippy; deny warnings (constraint-grade strictness).
+# macOS: skip `macos-fuse` (needs user-installed macFUSE / ADR-0010) — same set as CI.
+# Linux/other: --all-features. Optional FUSE coverage: `just macos-fuse-check`.
 clippy:
-    cargo clippy --all-targets --all-features -- -D warnings
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      cargo clippy --workspace --all-targets \
+        --features blindkey-cli/volume-mount,blindkey-gui/volume-mount,blindkey-hardware/fido2,blindkey-hardware/tpm,blindkey-hardware/secure-enclave,blindkey-hardware/dpapi \
+        -- -D warnings
+    else
+      cargo clippy --workspace --all-targets --all-features -- -D warnings
+    fi
 
-# Run the test suite.
+# Run the test suite (feature set matches `just clippy` / CI).
 test:
-    cargo test --all-features --workspace
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      cargo test --workspace \
+        --features blindkey-cli/volume-mount,blindkey-gui/volume-mount,blindkey-hardware/fido2,blindkey-hardware/tpm,blindkey-hardware/secure-enclave,blindkey-hardware/dpapi
+    else
+      cargo test --workspace --all-features
+    fi
 
 # Supply-chain checks: advisories + licenses + bans + vet (constraints C3, C24; gap D2).
 audit:

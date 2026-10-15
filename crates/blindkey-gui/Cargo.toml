@@ -25,11 +25,11 @@ volume-mount = ["dep:blindkey-fuse"]
 macos-fuse = ["volume-mount", "blindkey-fuse/macos-fuse"]
 
 [dependencies]
-blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
-blindkey-hardware = { path = "../blindkey-hardware", version = "1.0.0" }
-blindkey-clip = { path = "../blindkey-clip", version = "1.0.0" }
-blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
-blindkey-fuse = { path = "../blindkey-fuse", version = "1.0.0", optional = true }
+blindkey-core = { path = "../blindkey-core", version = "1.1.0" }
+blindkey-hardware = { path = "../blindkey-hardware", version = "1.1.0" }
+blindkey-clip = { path = "../blindkey-clip", version = "1.1.0" }
+blindkey-sys = { path = "../blindkey-sys", version = "1.1.0" }
+blindkey-fuse = { path = "../blindkey-fuse", version = "1.1.0", optional = true }
 eframe = { workspace = true }   # UC-20: glow pinned in workspace; no persistence (C41)
 rfd = { workspace = true }
 zeroize = { workspace = true }

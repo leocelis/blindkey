@@ -1,6 +1,6 @@
 # Installation
 
-> **Status:** v1.0.0 — build from source, install from git, or download a
+> **Status:** v1.1.0 — build from source, install from git, or download a
 > [GitHub Release](https://github.com/leocelis/blindkey/releases) binary with SHA-256 checksums.
 > Start with the short **Developers** box in the [root README](../README.md#developers-recommended).
 
@@ -17,8 +17,8 @@ cd blindkey
 
 Ensure `~/.local/bin` is on your `PATH`.
 
-**Apple Silicon / Linux / Windows:** build from source (no arm64 or Linux prebuilt CLI in `v1.0.0` yet).  
-**Prebuilt CLI:** macOS **x86_64** only — see [GitHub Releases](#github-releases).
+**Prebuilt CLI (`v1.1.0`):** macOS and Linux, `x86_64` and `aarch64` — see [GitHub Releases](#github-releases).  
+**Windows / GUI:** build from source (Unix-first broker; no notarized `.app` yet).
 
 ## Install from Git (no clone)
 
@@ -29,7 +29,7 @@ cargo install --git https://github.com/leocelis/blindkey.git --locked blindkey-c
 Pin a release tag for reproducibility:
 
 ```sh
-cargo install --git https://github.com/leocelis/blindkey.git --tag v1.0.0 --locked blindkey-cli
+cargo install --git https://github.com/leocelis/blindkey.git --tag v1.1.0 --locked blindkey-cli
 ```
 
 ## Install from crates.io

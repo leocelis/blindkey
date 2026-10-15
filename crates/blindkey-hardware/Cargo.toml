@@ -9,7 +9,7 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+blindkey-core = { path = "../blindkey-core", version = "1.1.0" }
 sha2 = { workspace = true }
 zeroize = { workspace = true }
 getrandom = { workspace = true }

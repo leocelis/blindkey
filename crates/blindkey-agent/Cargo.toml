@@ -10,7 +10,7 @@ repository.workspace = true
 publish = true
 
 [dependencies]
-blindkey-core = { path = "../blindkey-core", version = "1.0.0" }
+blindkey-core = { path = "../blindkey-core", version = "1.1.0" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 getrandom.workspace = true

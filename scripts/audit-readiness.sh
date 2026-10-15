@@ -16,16 +16,33 @@ cargo test -p blindkey-core --release latency
 
 echo "==> Sealed throughput bench (UC-23 / A23, release only)"
 export BLINDKEY_SEAL_BENCH_MIN_MIB_S="${BLINDKEY_SEAL_BENCH_MIN_MIB_S:-20}"
-cargo test -p blindkey-core --release c63_sealed_throughput_release_bench c63_rss_ceiling_large_on_disk_seal -- --nocapture
+# cargo test accepts a single filter; run each bench separately.
+cargo test -p blindkey-core --release c63_sealed_throughput_release_bench -- --nocapture
+cargo test -p blindkey-core --release c63_rss_ceiling_large_on_disk_seal -- --nocapture
+
+# Feature set: Linux --all-features; macOS every feature except macos-fuse (ADR-0010 /
+# needs user-installed macFUSE). Matches .github/workflows/ci.yml.
+FEATURES=(--all-features)
+case "$(uname -s)" in
+  Darwin)
+    FEATURES=(--features blindkey-cli/volume-mount,blindkey-gui/volume-mount,blindkey-hardware/fido2,blindkey-hardware/tpm,blindkey-hardware/secure-enclave,blindkey-hardware/dpapi)
+    ;;
+esac
 
 echo "==> Workspace tests"
-cargo test --workspace --quiet
+cargo test --workspace --quiet "${FEATURES[@]}"
 
 echo "==> Format check"
 cargo fmt --all -- --check
 
 echo "==> Clippy (-D warnings)"
-cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --workspace --all-targets "${FEATURES[@]}" -- -D warnings
+
+echo "==> Private-path leak scan"
+bash scripts/verify_no_private_paths.sh
+
+echo "==> Commit identity (tip)"
+bash scripts/verify_commit_identity.sh
 
 echo "==> Supply chain"
 if command -v cargo-audit >/dev/null 2>&1 || cargo audit --version >/dev/null 2>&1; then

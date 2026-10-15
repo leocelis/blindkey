@@ -22,7 +22,7 @@ subtle.workspace = true
 getrandom.workspace = true
 unicode-normalization.workspace = true
 nucleo-matcher.workspace = true
-blindkey-sys = { path = "../blindkey-sys", version = "1.0.0" }
+blindkey-sys = { path = "../blindkey-sys", version = "1.1.0" }
 zeroize.workspace = true
 secrecy.workspace = true
 thiserror.workspace = true
