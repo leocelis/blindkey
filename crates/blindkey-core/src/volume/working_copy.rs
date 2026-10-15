@@ -1010,7 +1010,18 @@ fn pid_alive(pid: u32) -> bool {
             .map(|s| s.success())
             .unwrap_or(false)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    // Windows: no `unsafe` outside blindkey-sys, so ask the stock `tasklist` (like `kill -0`
+    // above). CSV rows quote the PID ("name.exe","1234",...); no match prints an INFO line.
+    // If tasklist cannot run, report alive: a live session must never be offered as an orphan.
+    #[cfg(windows)]
+    {
+        std::process::Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains(&format!("\"{pid}\"")))
+            .unwrap_or(true)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {
         let _ = pid;
         false
