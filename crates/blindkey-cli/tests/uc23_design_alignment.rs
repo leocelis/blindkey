@@ -76,13 +76,22 @@ fn design_package_files_exist() {
 #[test]
 fn intent_v180_forward_constraints_and_sc9() {
     let intent = read_repo_file("blindkey_intent.yaml");
+    // UC-23 landed in intent 1.8.0 with C61–C66 (66 constraints). Later intents keep them, so
+    // assert "at least", not the landing snapshot (an exact pin broke at 1.9.0).
+    let (major, minor) = intent_major_minor(&intent);
     assert!(
-        intent.contains("version: \"1.8.0\""),
-        "intent meta.version must be 1.8.0"
+        (major, minor) >= (1, 8),
+        "intent meta.version must be >= 1.8.0, got {major}.{minor}"
     );
+    let count: u32 = intent
+        .lines()
+        .find_map(|l| l.trim().strip_prefix("constraint_count: "))
+        .and_then(|v| v.split_whitespace().next())
+        .and_then(|v| v.parse().ok())
+        .expect("meta.constraint_count");
     assert!(
-        intent.contains("constraint_count: 66"),
-        "intent constraint_count must be 66"
+        count >= 66,
+        "intent constraint_count must be >= 66, got {count}"
     );
     assert!(intent.contains("G16:"), "intent must define group G16");
     for id in FORWARD {
@@ -135,7 +144,7 @@ fn uc23_spec_matches_intent_and_patterns() {
 #[test]
 fn constraint_index_lists_uc23_rows_as_pass() {
     let index = read_repo_file("docs/CONSTRAINT_INDEX.md");
-    assert!(index.contains("v1.8.0"));
+    // The current intent version in the index is asserted by constraint_index.rs.
     assert!(index.contains("66 constraints"));
     assert!(
         index.contains("66 PASS"),
@@ -163,7 +172,16 @@ fn constraint_index_lists_uc23_rows_as_pass() {
 fn prd_roadmap_and_specs_index_reference_uc23() {
     let prd = read_repo_file("docs/PRD.md");
     assert!(prd.contains("UC-23"));
-    assert!(prd.contains("v1.8.0"));
+    let intent = read_repo_file("blindkey_intent.yaml");
+    let current = intent
+        .lines()
+        .find_map(|l| l.strip_prefix("  version: \""))
+        .and_then(|rest| rest.split('"').next())
+        .expect("meta.version");
+    assert!(
+        prd.contains(&format!("**v{current}**")),
+        "PRD sources-of-truth line must name intent v{current}"
+    );
     assert!(prd.contains("C61"));
     assert!(prd.contains("sealed-archive"));
 
@@ -227,4 +245,17 @@ fn proposed_constraint_texts_align_intent_and_spec() {
             "spec {id} missing phrase: {spec_phrase}"
         );
     }
+}
+
+/// `meta.version` of the intent as (major, minor).
+fn intent_major_minor(intent: &str) -> (u32, u32) {
+    let v = intent
+        .lines()
+        .find_map(|l| l.strip_prefix("  version: \""))
+        .and_then(|rest| rest.split('"').next())
+        .expect("meta.version");
+    let mut parts = v
+        .split('.')
+        .map(|p| p.parse::<u32>().expect("numeric version"));
+    (parts.next().expect("major"), parts.next().expect("minor"))
 }

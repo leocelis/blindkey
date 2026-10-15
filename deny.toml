@@ -26,6 +26,12 @@ ignore = [
     # docs/SUPPLY_CHAIN.md; revisit whenever the GUI stack is upgraded.
     "RUSTSEC-2024-0436",
     "RUSTSEC-2026-0192",
+    # RUSTSEC-2021-0154 (fuser <0.16, unsound): NULL operation list passed to
+    # libfuse3 `fuse_session_new`. Not reachable: that call lives only in fuser's
+    # `mnt/fuse3.rs`, compiled only for the libfuse3 mount impl. Blindkey builds
+    # Linux with default-features = false (pure-Rust mount) and macOS `macos-fuse`
+    # against libfuse2 (macFUSE). Drop when blindkey-fuse moves to fuser >=0.16.
+    "RUSTSEC-2021-0154",
 ]
 
 [licenses]
@@ -49,6 +55,13 @@ allow = [
     "MPL-2.0",   # Mozilla Public License — file-scoped copyleft, dep-only (nucleo-matcher)
 ]
 confidence-threshold = 0.93
+# egui's built-in fonts (Ubuntu-Light under the Ubuntu Font License, emoji fonts under
+# OFL-1.1) are embedded by `epaint_default_fonts`. Both licenses permit embedding and
+# redistribution; scoped to that one GUI crate rather than added to the global allow list.
+# UFL has no SPDX id, hence LicenseRef (egui issue #2321). See docs/SUPPLY_CHAIN.md.
+exceptions = [
+    { allow = ["OFL-1.1", "LicenseRef-UFL-1.0"], crate = "epaint_default_fonts" },
+]
 
 [bans]
 # Keep the trusted surface small; flag duplicate versions and risky crates.

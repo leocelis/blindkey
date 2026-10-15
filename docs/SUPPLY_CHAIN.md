@@ -60,6 +60,21 @@ trigger. Blanket ignores are never used.
 - **Removal trigger:** the GUI stack (`egui`/`eframe`) drops them or they gain a
   maintained successor.
 
+### RUSTSEC-2021-0154 — `fuser` < 0.16 (unsound)
+
+- **Advisory:** fuser passed a NULL operation list to libfuse3's `fuse_session_new`,
+  causing an uninitialized read and a leak inside `libfuse.so`.
+- **Why it is not reachable in Blindkey:** the call is only in fuser's `src/mnt/fuse3.rs`,
+  compiled only when its build script selects the `libfuse3` mount implementation (the
+  `libfuse` feature on a non-macOS host). Blindkey builds Linux with
+  `default-features = false` (pure-Rust `fusermount` path) and macOS `macos-fuse` against
+  macFUSE, which fuser builds as `libfuse2`. Neither compiles `fuse3.rs`. `fuser` reaches
+  only `blindkey-fuse` (volume mount), never the security core.
+- **Why not just upgrade:** `fuser` 0.16 changes the filesystem API that `blindkey-fuse`
+  implements; that move belongs with a FUSE adapter change tested on Linux and macFUSE.
+- **Removal trigger:** when `blindkey-fuse` moves to `fuser >= 0.16`, drop the ID from
+  [`.cargo/audit.toml`](../.cargo/audit.toml) and [`deny.toml`](../deny.toml).
+
 ## License allow-list — GUI-only additions
 
 The desktop GUI's windowing/clipboard/text stack pulls a few permissive and
@@ -72,6 +87,7 @@ MIT-or-Apache-2.0 source:
 | `BSL-1.0` (Boost) | `clipboard-win`, `error-code` | Permissive, OSI-approved |
 | `Zlib` | `foldhash`, `slotmap` | Permissive, OSI-approved |
 | `MPL-2.0` (Mozilla) | `nucleo-matcher` | File-scoped copyleft; obligation is limited to modifications of the MPL files themselves, which Blindkey does not make (dependency-only) |
+| `OFL-1.1`, `LicenseRef-UFL-1.0` | `epaint_default_fonts` only (per-crate exception) | Font licenses for egui's embedded default fonts; both permit embedding and redistribution with the software |
 
 ## Non-blocking advisories
 

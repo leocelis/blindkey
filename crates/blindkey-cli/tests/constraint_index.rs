@@ -79,7 +79,21 @@ fn constraint_index_documentation_exists() {
     let index =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/CONSTRAINT_INDEX.md");
     let text = std::fs::read_to_string(&index).expect("read docs/CONSTRAINT_INDEX.md");
-    assert!(text.contains("v1.8.0"));
+    // The index must name the CURRENT intent version, read from the intent itself, so an
+    // intent bump fails here until the index is updated (a typed literal went stale at v1.8.0).
+    let intent = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../blindkey_intent.yaml"),
+    )
+    .expect("read blindkey_intent.yaml");
+    let version = intent
+        .lines()
+        .find_map(|l| l.strip_prefix("  version: \""))
+        .and_then(|rest| rest.split('"').next())
+        .expect("meta.version in blindkey_intent.yaml");
+    assert!(
+        text.contains(&format!("intent **v{version}**")),
+        "docs/CONSTRAINT_INDEX.md must name intent v{version}"
+    );
     assert!(text.contains("66 constraints"));
     assert!(text.contains("C60"));
     assert!(text.contains("C66"));

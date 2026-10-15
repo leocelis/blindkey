@@ -11,4 +11,7 @@ ignore = [
     # (wayland-scanner 0.31.10, latest, still pins quick-xml 0.39). See docs/SUPPLY_CHAIN.md.
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+    # fuser <0.16 (RUSTSEC-2021-0154, unsound): the NULL-ops call is only in the libfuse3
+    # mount impl, which Blindkey never builds (Linux = pure-Rust, macOS = libfuse2).
+    "RUSTSEC-2021-0154",
 ]

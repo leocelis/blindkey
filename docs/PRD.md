@@ -1,7 +1,7 @@
 # Blindkey — Product Requirements Document (PRD)
 
 > **Status:** Accepted v0.2 · June 2026 · **v1.0.0** (CLI + desktop app; format v1 frozen per ADR-0005)
-> **Sources of truth:** [`blindkey_intent.yaml`](../blindkey_intent.yaml) (87 constraints — **87 implemented**: C1–C81 + UC-27 C82–C87, **v1.9.4**; volume macOS FUSE packaging remains Phase C),
+> **Sources of truth:** [`blindkey_intent.yaml`](../blindkey_intent.yaml) (102 constraints — **102 implemented**: C1–C102 through UC-30 Blindfolder, intent **v1.9.11**; status per constraint in [`CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md)),
 > [`research/vault_spec.md`](../research/vault_spec.md),
 > [`research/llm_offensive_threats.md`](../research/llm_offensive_threats.md),
 > [`research/security_coverage_gaps.md`](../research/security_coverage_gaps.md).

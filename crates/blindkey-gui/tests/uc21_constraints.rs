@@ -112,7 +112,8 @@ fn c54_password_fields_preceded_by_labels() {
                 .iter()
                 .skip(i.saturating_sub(8))
                 .take(8)
-                .any(|l| l.contains("ui.label(") || l.contains("labeled_secret"));
+                .any(|l| l.contains("ui.label(") || l.contains("labeled_secret"))
+                || inside_labeled_secret_helper(&lines, i);
             assert!(
                 window,
                 "password field in {name} at line {} lacks a preceding label:\n{}",
@@ -121,4 +122,18 @@ fn c54_password_fields_preceded_by_labels() {
             );
         }
     }
+}
+
+/// C54: true when line `i` (a `.password(` field) sits inside a `labeled_secret*` helper
+/// that draws its `ui.label(label)` before the field. Those helpers are the labeled
+/// abstraction call sites use; their layout code can push the label past the 8-line window.
+fn inside_labeled_secret_helper(lines: &[&str], i: usize) -> bool {
+    for j in (0..i).rev() {
+        let l = lines[j];
+        if l.contains("fn ") {
+            return l.contains("fn labeled_secret")
+                && lines[j..i].iter().any(|b| b.contains("ui.label(label)"));
+        }
+    }
+    false
 }

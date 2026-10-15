@@ -90,6 +90,13 @@ All notable changes to this project are documented here. The format is based on
   tracked in UC-24 / issue #37.
 
 ### Fixed
+- **UC-30 checkin failed on Windows.** Temp-file `fsync` opened the file read-only; Windows
+  `FlushFileBuffers` needs write access, so every checkin returned `WorkingCopyRenameFailed`.
+  Now opened with write access. `webbrowser` bumped to 1.2.2 (RUSTSEC-2026-0257). CI green
+  again: macOS checks every feature except `macos-fuse` (needs a user-installed macFUSE),
+  fuzz runs on `+nightly`, Scorecard action moved to its ghcr.io image (v2.4.4), and stale
+  version-pinned doc tests now read the intent version. `fuser` RUSTSEC-2021-0154 exempted
+  as unreachable (see docs/SUPPLY_CHAIN.md).
 - **`BLINDKEY_AGENT_AUTO_APPROVE` was undocumented.** The flag that skips the broker's `[y/N]`
   human-approval prompt existed only as a source comment ("test-only") — a reader had no way to
   know it existed, that it's not a supported deployment mode, or what it does and doesn't weaken.

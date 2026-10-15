@@ -354,8 +354,7 @@ impl WorkingCopySession {
             return Err(Error::WorkingCopyRenameFailed);
         }
         {
-            let f = File::open(&tmp_path).map_err(|_| Error::WorkingCopyRenameFailed)?;
-            f.sync_all().map_err(|_| Error::WorkingCopyRenameFailed)?;
+            fsync_file(&tmp_path).map_err(|_| Error::WorkingCopyRenameFailed)?;
         }
 
         // Re-check before rename (TOCTOU window).
@@ -415,8 +414,7 @@ impl WorkingCopySession {
         let staging = staging_root.join(format!("{}.tmp", bytes_to_hex(&rand)));
         copy_brick(&self.work_path, &staging).map_err(|_| Error::WorkingCopyRenameFailed)?;
         {
-            let f = File::open(&staging).map_err(|_| Error::WorkingCopyRenameFailed)?;
-            f.sync_all().map_err(|_| Error::WorkingCopyRenameFailed)?;
+            fsync_file(&staging).map_err(|_| Error::WorkingCopyRenameFailed)?;
         }
         self.assert_source_unchanged()
             .map_err(|_| Error::WorkingCopyRemoteChanged)?;
@@ -439,8 +437,7 @@ impl WorkingCopySession {
         }
         let _ = fs::remove_file(&staging);
         {
-            let f = File::open(&sibling).map_err(|_| Error::WorkingCopyRenameFailed)?;
-            f.sync_all().map_err(|_| Error::WorkingCopyRenameFailed)?;
+            fsync_file(&sibling).map_err(|_| Error::WorkingCopyRenameFailed)?;
         }
         if let Err(_e) = fs::rename(&sibling, &self.source_path) {
             let _ = fs::remove_file(&sibling);
@@ -868,6 +865,13 @@ fn has_syncthing_temp_sibling(parent: &Path, brick: &Path) -> bool {
         }
     }
     false
+}
+
+/// Flush a file's data to disk. Opens with write access: on Windows `sync_all` is
+/// `FlushFileBuffers`, which fails with access-denied on a read-only handle ("The file
+/// handle must have the GENERIC_WRITE access right", Microsoft Learn). Unix accepts either.
+fn fsync_file(path: &Path) -> std::io::Result<()> {
+    fs::OpenOptions::new().write(true).open(path)?.sync_all()
 }
 
 fn copy_brick(src: &Path, dst: &Path) -> Result<()> {

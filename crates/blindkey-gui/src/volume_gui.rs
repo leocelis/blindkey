@@ -229,8 +229,10 @@ pub enum VolumeSessionKind {
 }
 
 /// Live open folder: cleartext materialization and/or FUSE (`volume-mount` / `macos-fuse`).
+/// `MaterializedMount` is boxed: unboxed it is ~6x the FUSE variant and makes every
+/// `LiveMount` (and `seal`'s error) carry that size (clippy `large_enum_variant`).
 enum LiveMount {
-    Materialized(MaterializedMount),
+    Materialized(Box<MaterializedMount>),
     #[cfg(any(
         all(feature = "volume-mount", target_os = "linux"),
         all(feature = "macos-fuse", target_os = "macos")
@@ -253,12 +255,15 @@ impl LiveMount {
     /// Seal / unmount. Materialized returns the volume for an explicit close; FUSE syncs on disk.
     fn seal(self) -> Result<(), (Error, Option<LiveMount>)> {
         match self {
-            Self::Materialized(mat) => match mat.close() {
+            Self::Materialized(mat) => match (*mat).close() {
                 Ok(vol) => {
                     let _ = vol.close();
                     Ok(())
                 }
-                Err(close_err) => Err((close_err.error, Some(Self::Materialized(close_err.mount)))),
+                Err(close_err) => Err((
+                    close_err.error,
+                    Some(Self::Materialized(Box::new(close_err.mount))),
+                )),
             },
             #[cfg(any(
                 all(feature = "volume-mount", target_os = "linux"),
@@ -1350,7 +1355,12 @@ fn run_mount_job(
         {
             match MaterializedMount::adopt(vol, &mnt_root) {
                 Ok(mat) => {
-                    return handoff_live(finish, handoff, LiveMount::Materialized(mat), count);
+                    return handoff_live(
+                        finish,
+                        handoff,
+                        LiveMount::Materialized(Box::new(mat)),
+                        count,
+                    );
                 }
                 Err(e) => {
                     finish(Ok(format!(
@@ -1363,9 +1373,7 @@ fn run_mount_job(
         }
         let _ = std::fs::create_dir_all(&mnt_root);
         match blindkey_fuse::mount_volume(vol, &mnt_root) {
-            Ok(guard) => {
-                return handoff_live(finish, handoff, LiveMount::Fuse(guard), count);
-            }
+            Ok(guard) => handoff_live(finish, handoff, LiveMount::Fuse(guard), count),
             Err(_e) => {
                 // Fall through: reopen volume for MaterializedMount (fuse consumed/closed on err).
                 let vol = match Volume::open(&path, &unlock) {
@@ -1376,15 +1384,17 @@ fn run_mount_job(
                     }
                 };
                 match MaterializedMount::open_or_adopt(vol, &mnt_root) {
-                    Ok(mat) => {
-                        return handoff_live(finish, handoff, LiveMount::Materialized(mat), count);
-                    }
+                    Ok(mat) => handoff_live(
+                        finish,
+                        handoff,
+                        LiveMount::Materialized(Box::new(mat)),
+                        count,
+                    ),
                     Err(e) => {
                         finish(Ok(format!(
                             "{} (folder open failed: {e})",
                             unlock_success_message(count)
                         )));
-                        return;
                     }
                 }
             }
@@ -1397,7 +1407,12 @@ fn run_mount_job(
     )))]
     {
         match MaterializedMount::open_or_adopt(vol, &mnt_root) {
-            Ok(mat) => handoff_live(finish, handoff, LiveMount::Materialized(mat), count),
+            Ok(mat) => handoff_live(
+                finish,
+                handoff,
+                LiveMount::Materialized(Box::new(mat)),
+                count,
+            ),
             Err(e) => {
                 // C79 fallback: credentials were valid; folder materialize failed.
                 finish(Ok(format!(
