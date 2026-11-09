@@ -60,6 +60,15 @@ trigger. Blanket ignores are never used.
 - **Removal trigger:** the GUI stack (`egui`/`eframe`) drops them or they gain a
   maintained successor.
 
+### RUSTSEC-2026-0370 / -0371 / -0372 (`zvariant`, `zbus_names`, `zvariant_derive`) — unmaintained
+
+- **Advisory:** "no longer maintained" notices, not vulnerabilities: the three crates were
+  merged into `zbus` 6.
+- **Why exempted:** desktop-GUI-only. `zbus` 5 reaches `blindkey-gui` through `rfd` ->
+  `ashpd` (the Linux file dialog). The CLI and security core never pull them. Ignored in
+  `deny.toml` with this rationale.
+- **Removal trigger:** `rfd` moves to `zbus` >= 6.
+
 ### RUSTSEC-2021-0154 — `fuser` < 0.16 (unsound)
 
 - **Advisory:** fuser passed a NULL operation list to libfuse3's `fuse_session_new`,

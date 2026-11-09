@@ -26,6 +26,14 @@ ignore = [
     # docs/SUPPLY_CHAIN.md; revisit whenever the GUI stack is upgraded.
     "RUSTSEC-2024-0436",
     "RUSTSEC-2026-0192",
+    # RUSTSEC-2026-0370 / -0371 / -0372 (zvariant, zbus_names, zvariant_derive):
+    # "unmaintained" notices (not vulnerabilities): the three crates were merged
+    # into zbus 6. Desktop-GUI-only: pulled by zbus 5 via rfd -> ashpd (the Linux
+    # file dialog) into `blindkey-gui`; the CLI and security core never pull them.
+    # Drop when rfd moves to zbus >= 6. Tracked in docs/SUPPLY_CHAIN.md.
+    "RUSTSEC-2026-0370",
+    "RUSTSEC-2026-0371",
+    "RUSTSEC-2026-0372",
     # RUSTSEC-2021-0154 (fuser <0.16, unsound): NULL operation list passed to
     # libfuse3 `fuse_session_new`. Not reachable: that call lives only in fuser's
     # `mnt/fuse3.rs`, compiled only for the libfuse3 mount impl. Blindkey builds
