@@ -34,9 +34,10 @@ machine if ever needed.
 
 ## User install path
 
+When published:
+
 ```sh
 cargo install blindkey-cli --locked   # installs the `blindkey` binary
 ```
 
-Or download a signed GitHub Release binary, or `brew install leocelis/tap/blindkey` — see
-[INSTALL.md](INSTALL.md).
+Until then, install from git or download a GitHub Release binary — see [INSTALL.md](INSTALL.md).

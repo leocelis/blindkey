@@ -19,7 +19,7 @@ See [`docs/CONSTRAINT_INDEX.md`](docs/CONSTRAINT_INDEX.md) for where constraint 
 
 If you're proposing new behavior with no constraint yet, open a discussion first — we add the
 constraint (with a test) before the implementation. See [research/security_coverage_gaps.md](research/security_coverage_gaps.md)
-for post-1.0 candidate areas beyond the current 74 constraints.
+for post-1.0 candidate areas beyond the current 102 constraints.
 
 ## Ground rules for a security codebase
 

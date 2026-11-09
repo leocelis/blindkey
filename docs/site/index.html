@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Blindkey — secrets your AI agents can use but never see</title>
-<meta name="description" content="Blindkey is a local-first credential vault your AI agents can use — but never see. No server. No account. One encrypted file. 66 testable security constraints. Rust." />
+<meta name="description" content="Blindkey is a local-first credential vault your AI agents can use — but never see. No server. No account. One encrypted file. 102 testable security constraints. Rust." />
 <meta property="og:title" content="Blindkey" />
-<meta property="og:description" content="The local-first credential vault your AI agents can use — but never see. 66 testable security constraints. Rust." />
+<meta property="og:description" content="The local-first credential vault your AI agents can use — but never see. 102 testable security constraints. Rust." />
 <meta property="og:type" content="website" />
 <meta property="og:image" content="https://leocelis.github.io/blindkey/og.png" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -76,9 +76,9 @@
     <div class="grid">
       <div class="card"><h3>Model-blind by design</h3><p>The agent gets a scoped handle; a human approves; the secret is delivered to the destination, never to the requesting process.</p></div>
       <div class="card"><h3>No proxy, no account</h3><p>Not a cloud platform or a MITM HTTPS proxy in your traffic. One encrypted file plus a local broker — nothing to stand up, nothing to trust with your connection.</p></div>
-      <div class="card"><h3>Zero-plaintext at rest</h3><p>URLs, titles, timestamps — all encrypted. Argon2id with an enforced floor; XChaCha20-Poly1305 STREAM; whole-file rollback detected.</p></div>
+      <div class="card"><h3>Zero-plaintext at rest</h3><p>URLs, titles, timestamps — all encrypted. Argon2id with an enforced floor; ChaCha20-Poly1305 STREAM (age construction) with a per-save key derived by HKDF; whole-file rollback detected.</p></div>
       <div class="card"><h3>Memory-hardened Rust</h3><p><code>zeroize</code> + <code>mlock</code>, <code>panic = "abort"</code>, and no <code>unsafe</code> outside one designated FFI crate.</p></div>
-      <div class="card"><h3>Every claim is testable</h3><p>66 numbered security constraints, each with a test — not a trust-us page. Read the whole design in an afternoon.</p></div>
+      <div class="card"><h3>Every claim is testable</h3><p>102 numbered security constraints, each with a test — not a trust-us page. Read the whole design in an afternoon.</p></div>
       <div class="card"><h3>Fully offline</h3><p>Zero network, zero telemetry. Sync the encrypted blob over any storage you don't trust; rollback is still detected.</p></div>
     </div>
   </section>
@@ -92,7 +92,7 @@
   Imported 2 entries into ~/.blindkey/vault.vlt
 
 <span class="cmt">$ blindkey get github</span>            <span class="cmt"># copies to clipboard, model-blind by default</span>
-  <span class="ok">✓ copied github password to clipboard (clears in 30s)</span></pre>
+  <span class="ok">Copied github to the clipboard (model-blind). Clears in 30s.</span></pre>
   </section>
 
   <section>

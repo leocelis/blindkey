@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-09
+
+Documentation and metadata accuracy release. No change to the vault format, crypto or CLI behaviour.
+
+### Fixed
+- Constraint count is 102 everywhere it is stated (README, site, audit docs); it read 66 or 74.
+- README Quickstart "Real output" is now the actual output of the commands shown.
+- Windows is stated as unsupported (the agent broker is Unix-only), not "build from source".
+- Crypto description: ChaCha20-Poly1305 STREAM (age construction) with a per-save HKDF key, not
+  XChaCha20-Poly1305.
+- `blindkey-hardware` description lists what ships: YubiKey challenge-response, FIDO2 hmac-secret,
+  TPM 2.0 via OS tools.
+- Removed internal roadmap labels from `blindkey agent --help` and the `blindkey-agent` crate.
+- Workspace authors read "The Blindkey maintainers".
+- crates.io and Homebrew install lines are marked as not yet published.
+
+### Changed
+- The "Publish crates" workflow runs on manual dispatch only until the crate names are claimed.
+
 ## [1.1.0] - 2026-10-15
 
 ### Added
@@ -631,7 +650,8 @@ still change before `1.0.0`. Not independently audited.
 ### Notes
 - Blindkey is **functional pre-1.0** — CLI and desktop app work; keep your own backup of secrets until 1.0.
 
-[Unreleased]: https://github.com/leocelis/blindkey/compare/v1.1.0...main
+[Unreleased]: https://github.com/leocelis/blindkey/compare/v1.1.1...main
+[1.1.1]: https://github.com/leocelis/blindkey/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/leocelis/blindkey/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/leocelis/blindkey/compare/v0.1.0-alpha.3...v1.0.0
 [0.1.0-alpha.3]: https://github.com/leocelis/blindkey/releases/tag/v0.1.0-alpha.3

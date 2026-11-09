@@ -12,14 +12,14 @@ coding agents touch every day.
 [![Scorecard](https://github.com/leocelis/blindkey/actions/workflows/scorecard.yml/badge.svg)](https://github.com/leocelis/blindkey/actions/workflows/scorecard.yml)
 [![MSRV](https://img.shields.io/badge/MSRV-1.96-blue.svg)](rust-toolchain.toml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Status: v1.1.0 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.1.0%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
+[![Status: v1.1.1 / unaudited / format v1 stable](https://img.shields.io/badge/status-v1.1.1%20%2F%20unaudited%20%2F%20format%20v1%20stable-yellow.svg)](#project-status)
 
 [Install](#install) · [Documentation](#documentation) · [Quickstart](#quickstart) · [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md)
 
 </div>
 
 > [!WARNING]
-> **v1.1.0 — not independently third-party audited — keep your own backup of anything you store.**
+> **v1.1.1 — not independently third-party audited — keep your own backup of anything you store.**
 > Blindkey is **functional**: cryptographic core implemented and tested, working CLI *and* desktop app.
 > **On-disk format v1 is stable** ([ADR-0005](docs/adr/0005-format-v1-freeze.md)) — vault files from
 > alpha releases open on 1.x without migration. See [ROADMAP.md](ROADMAP.md) and [SECURITY.md](SECURITY.md).
@@ -61,7 +61,7 @@ Blindkey is that something else, built local-first:
 | Plaintext metadata (URLs, titles, timestamps) | **None — all encrypted** | Varies | Often leaks at least some |
 | KDF | **Argon2id, floor enforced on open** | N/A | Argon2d / PBKDF2; no floor check |
 | In-memory secrets | **`zeroize` + `mlock`** | N/A | Often left in plaintext |
-| How you verify the claims | **66 constraints** with distributed tests ([index](docs/CONSTRAINT_INDEX.md)) | Trust us | Trust us |
+| How you verify the claims | **102 constraints** with distributed tests ([index](docs/CONSTRAINT_INDEX.md)) | Trust us | Trust us |
 
 ## How an agent uses a secret without seeing it
 
@@ -74,7 +74,7 @@ sequenceDiagram
     participant Broker as blindkey agent (local broker)
     participant Human
     participant Vault as Encrypted vault (.vlt)
-    participant Dest as Destination (env / subprocess / HTTP)
+    participant Dest as Destination (child-process env var)
 
     Agent->>Broker: request handle "github" (never the secret)
     Broker->>Human: approve use of "github" for <cmd>? (TTY prompt)
@@ -143,10 +143,10 @@ cargo run -p blindkey-gui
 Or install the CLI without cloning:
 
 ```sh
-cargo install --git https://github.com/leocelis/blindkey.git --tag v1.1.0 --locked blindkey-cli
+cargo install --git https://github.com/leocelis/blindkey.git --tag v1.1.1 --locked blindkey-cli
 ```
 
-**Prebuilt CLI (`v1.1.0` GitHub Release):** `x86_64` and `aarch64` for macOS and Linux. Windows: build from source (Unix-first broker). GUI: build from source (`cargo run -p blindkey-gui`).
+**Prebuilt CLI (`v1.1.1` GitHub Release):** `x86_64` and `aarch64` for macOS and Linux. Windows is not supported: the agent broker is Unix-only. GUI: build from source (`cargo run -p blindkey-gui`).
 
 Full options (Linux GUI deps, containers, fleet): [docs/INSTALL.md](docs/INSTALL.md)
 
@@ -156,8 +156,8 @@ Download from [GitHub Releases](https://github.com/leocelis/blindkey/releases), 
 
 ```sh
 # Example — macOS Apple Silicon
-curl -LO https://github.com/leocelis/blindkey/releases/download/v1.1.0/blindkey-aarch64-apple-darwin
-curl -LO https://github.com/leocelis/blindkey/releases/download/v1.1.0/SHA256SUMS.txt
+curl -LO https://github.com/leocelis/blindkey/releases/download/v1.1.1/blindkey-aarch64-apple-darwin
+curl -LO https://github.com/leocelis/blindkey/releases/download/v1.1.1/SHA256SUMS.txt
 grep blindkey-aarch64-apple-darwin SHA256SUMS.txt | shasum -a 256 -c -
 chmod +x blindkey-aarch64-apple-darwin && sudo mv blindkey-aarch64-apple-darwin /usr/local/bin/blindkey
 ```
@@ -199,26 +199,32 @@ Real output from the flow above (secrets shown only because `--stdout` was passe
 the default is a model-blind clipboard copy):
 
 ```console
-$ blindkey init
-  Created vault at ~/.blindkey/vault.vlt
+$ blindkey init                    # prompts for a master password (not shown)
+Deriving key (Argon2id)…
+Initial backup written to ~/.blindkey/vault.vlt.bak
+note: Blindkey has not had an independent third-party security audit — keep a separate backup; do not make this your only copy of irreplaceable secrets.
+Created vault at ~/.blindkey/vault.vlt
 
 $ blindkey import --format raw --yes keys.txt
-  Parsed 2 entries (0 blocks skipped):
-    github                       ghp_…real (30)
-    openai                       sk-p…real (26)
-  Imported 2 entries into ~/.blindkey/vault.vlt
+note: Blindkey has not had an independent third-party security audit — keep a separate backup; do not make this your only copy of irreplaceable secrets.
+Parsed 1 entry (0 blocks skipped):
+  github                       synt…-use (34)
+Deriving key (Argon2id)…
+Backup written to ~/.blindkey/vault.vlt.bak
+Imported 1 entries into ~/.blindkey/vault.vlt.
 
 $ blindkey ls
-  github
-  openai
+Deriving key (Argon2id)…
+github
 
 $ blindkey gen --length 24
-  %L1H*$b)!*:m#[D4ErQ&yqk6
-  (157 bits of entropy)
+S+6W;]|5c<}#^/*|+$.B1{_W
+(157 bits of entropy)
 
 $ blindkey get github --stdout    # default is clipboard; --stdout shown here for illustration
-  WARNING: plaintext written to stdout; ensure no AI agent or untrusted process captures this stream.
-  ghp_synthetic_example_not_real
+Deriving key (Argon2id)…
+WARNING: plaintext written to stdout; ensure no AI agent or untrusted process captures this stream.
+synthetic-example-token-do-not-use
 ```
 
 Desktop app: see [Install → Developers](#developers-recommended). Drag `samples/keys.txt` onto the window to import credentials.
@@ -235,14 +241,14 @@ Desktop app: see [Install → Developers](#developers-recommended). Drag `sample
 | Cryptography | [docs/CRYPTO.md](docs/CRYPTO.md) |
 | File format | [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| 66 security constraints | [blindkey_intent.yaml](blindkey_intent.yaml) · [test index](docs/CONSTRAINT_INDEX.md) |
-| Use-case specs (22) | [docs/specs/](docs/specs/README.md) |
+| 102 security constraints | [blindkey_intent.yaml](blindkey_intent.yaml) · [test index](docs/CONSTRAINT_INDEX.md) |
+| Use-case specs (30) | [docs/specs/](docs/specs/README.md) |
 | Roadmap | [ROADMAP.md](ROADMAP.md) |
 | Release verification | [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md) |
 | Export & sanctions compliance (contains cryptography) | [docs/EXPORT_COMPLIANCE.md](docs/EXPORT_COMPLIANCE.md) |
 | EU Cyber Resilience Act status | [docs/EU_CRA_STATUS.md](docs/EU_CRA_STATUS.md) |
 
-Design at a glance: XChaCha20-Poly1305 STREAM · Argon2id · age-style multi-stanza envelope ·
+Design at a glance: ChaCha20-Poly1305 STREAM (age construction) with a per-save key derived by HKDF · Argon2id · age-style multi-stanza envelope ·
 encrypt-then-MAC · **zero network, zero telemetry**.
 
 ## Project status
@@ -279,7 +285,7 @@ blindkey/
 │   ├── blindkey-agent/     # handle-based broker for AI agents (scaffold)
 │   ├── blindkey-clip/      # clipboard concealment
 │   ├── blindkey-sys/       # mlock, setrlimit — only `unsafe` boundary
-│   └── blindkey-hardware/  # YubiKey CR (CLI); FIDO2/TPM mocks — see docs/guides/hardware-factor-status.md
+│   └── blindkey-hardware/  # YubiKey CR (CLI); YubiKey CR, FIDO2, TPM (need OS tools and the hardware) — see docs/guides/hardware-factor-status.md
 ├── docs/                # specs, threat model, CONSTRAINT_INDEX
 ├── samples/             # synthetic keys.txt for import demo
 ├── research/            # security research behind the design

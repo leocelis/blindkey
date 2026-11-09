@@ -48,7 +48,7 @@ Install vet once: `cargo install cargo-vet --locked` (project toolchain via `. s
 
 ## IVD constraint index
 
-Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) (66 constraints, v1.8.0).
+Canonical constraints: [`blindkey_intent.yaml`](../blindkey_intent.yaml) (102 constraints, v1.9.11).
 
 Test map: [`docs/CONSTRAINT_INDEX.md`](CONSTRAINT_INDEX.md) — distributed across crate suites.
 

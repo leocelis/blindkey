@@ -207,7 +207,7 @@ enum Command {
     ///
     /// Unseals with the current PCR policy, re-seals to new PCRs, and updates the TPM stanza.
     ReEnrollTpm,
-    /// Model-blind agent broker — opaque handles + OS approval gate (S-13 / UC-16 scaffold).
+    /// Model-blind agent broker — opaque handles + OS approval gate.
     Agent {
         #[command(subcommand)]
         action: crate::agent::AgentAction,

@@ -72,7 +72,7 @@ criteria live in the constraints' `test:` fields — they are not duplicated her
 ### UC-1 · First-run: install and create a vault
 **Persona:** all · **Constraints:** C20, C2, C4, C5, C7, C8
 
-A developer installs with one command (`cargo install blindkey-cli`; static binary, no runtime
+A developer installs with one command (`cargo install blindkey-cli` when published on crates.io; static binary, no runtime
 deps) and runs `blindkey init`. They choose a master password; Blindkey generates a random data
 key, wraps it in a password stanza (Argon2id, m=64 MiB/t=3/p=4 by default), and writes a
 single versioned file. First entry added in under 60 seconds and at most 5 prompts.

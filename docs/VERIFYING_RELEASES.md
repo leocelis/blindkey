@@ -4,8 +4,8 @@ A security tool you can't verify is a security tool you have to *trust*. Blindke
 **maintainer-built** from a tagged commit with a **pinned toolchain** (`rust-toolchain.toml`) and
 **SHA-256 checksums** published alongside each binary. *(constraint C34)*
 
-> Blindkey **1.1.0**. There is no automated cosign/SLSA pipeline — maintainers build
-> locally per [RELEASE.md](RELEASE.md). Latest release: [`v1.1.0`](https://github.com/leocelis/blindkey/releases/tag/v1.1.0)
+> Blindkey **1.1.1**. There is no automated cosign/SLSA pipeline — maintainers build
+> locally per [RELEASE.md](RELEASE.md). Latest release: [`v1.1.1`](https://github.com/leocelis/blindkey/releases/tag/v1.1.1)
 > (macOS + Linux, x86_64 and aarch64, + SHA256SUMS). Other platforms: [INSTALL.md](INSTALL.md).
 
 ## 1. Verify the checksum
@@ -21,7 +21,7 @@ Release tags should be signed by a maintainer (SSH or GPG):
 
 ```sh
 git fetch --tags
-git tag -v v1.1.0
+git tag -v v1.1.1
 ```
 
 ## 3. Reproduce the build yourself

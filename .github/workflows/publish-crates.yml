@@ -1,4 +1,5 @@
-# Publish the workspace crates to crates.io on a published GitHub Release, in dependency order.
+# Publish the workspace crates to crates.io, in dependency order. Manual run only until the crate
+# names are claimed on crates.io (it failed on every release while it ran on `release: published`).
 #
 # Uses crates.io Trusted Publishing (OIDC) — no long-lived API token stored in the repo. This
 # requires a ONE-TIME maintainer setup on crates.io: for each crate, add a Trusted Publisher
@@ -8,8 +9,6 @@
 name: Publish crates
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:

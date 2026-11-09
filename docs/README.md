@@ -14,7 +14,7 @@ Start here based on what you need:
 | Read the crypto design | [CRYPTO.md](CRYPTO.md) |
 | Read the file format | [FILE_FORMAT.md](FILE_FORMAT.md) |
 | See system architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| See all 74 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
+| See all 102 constraints + tests | [CONSTRAINT_INDEX.md](CONSTRAINT_INDEX.md) · [../blindkey_intent.yaml](../blindkey_intent.yaml) |
 | Verify a release binary | [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md) |
 | See what's shipped vs planned | [../ROADMAP.md](../ROADMAP.md) · [guides/hardware-factor-status.md](guides/hardware-factor-status.md) |
 | Enterprise / fleet deployment | [ENTERPRISE_POSTURE.md](ENTERPRISE_POSTURE.md) · [guides/enterprise-deployment.md](guides/enterprise-deployment.md) |
