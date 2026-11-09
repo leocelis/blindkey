@@ -93,7 +93,7 @@ version = "2.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.async-executor]]
-version = "1.14.0"
+version = "1.14.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.async-fs]]
@@ -285,7 +285,7 @@ version = "1.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.clipboard-win]]
-version = "5.4.1"
+version = "5.4.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.codespan-reporting]]
