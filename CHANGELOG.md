@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- The desktop app and the TUI now open the same default vault as the CLI, `~/.blindkey/vault.vlt`
+  (they defaulted to `~/.vault/vault.vlt`), and the desktop config is `~/.blindkey/config` as
+  C47 states. An existing `~/.vault/vault.vlt` keeps opening while `~/.blindkey` does not exist;
+  nothing is moved. One shared resolver: `blindkey_core::paths`.
+- Docs: the agent broker is shipped (not a scaffold); `agent use` takes DEST positionally;
+  unlock flags, volume mount, exit codes, hardware factors, SECURITY.md versions corrected.
+
 ## [1.1.1] - 2026-11-09
 
 Documentation and metadata accuracy release. No change to the vault format, crypto or CLI behaviour.

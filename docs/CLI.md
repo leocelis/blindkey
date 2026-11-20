@@ -205,7 +205,7 @@ vault file your only backup.
 
 ## Configuration
 
-The CLI does not read a config file yet. The desktop app reads `~/.vault/config` (`BLINDKEY_CONFIG_DIR`
+The CLI does not read a config file yet. The desktop app reads `~/.blindkey/config` (`BLINDKEY_CONFIG_DIR`
 overrides) with `auto_lock_secs`, `clipboard_timeout_secs` and `lock_on_blur`. The planned CLI
 schema, `~/.vault.toml`, is below for reference (not read today):
 

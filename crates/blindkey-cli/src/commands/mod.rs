@@ -1616,10 +1616,8 @@ fn vault_path(opt: Option<PathBuf>) -> Result<PathBuf, String> {
             return Ok(PathBuf::from(p));
         }
     }
-    let home = std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .ok_or("cannot determine your home directory; pass --vault <PATH>")?;
-    Ok(PathBuf::from(home).join(".blindkey").join("vault.vlt"))
+    blindkey_core::paths::default_vault_path()
+        .ok_or_else(|| "cannot determine your home directory; pass --vault <PATH>".to_string())
 }
 
 fn read_vault(path: &Path) -> Result<Vec<u8>, String> {

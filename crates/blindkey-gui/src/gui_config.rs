@@ -107,15 +107,15 @@ impl GuiConfig {
     }
 }
 
-/// Config directory: `BLINDKEY_CONFIG_DIR` or `~/.vault`.
+/// Config directory: `BLINDKEY_CONFIG_DIR`, else the shared data dir (`~/.blindkey`, C47;
+/// a legacy `~/.vault` that holds a vault is kept — see `blindkey_core::paths`).
 pub fn config_dir() -> Option<PathBuf> {
     if let Ok(dir) = std::env::var("BLINDKEY_CONFIG_DIR") {
         if !dir.is_empty() {
             return Some(PathBuf::from(dir));
         }
     }
-    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
-    Some(PathBuf::from(home).join(".vault"))
+    blindkey_core::paths::data_dir()
 }
 
 fn config_file_path() -> Option<PathBuf> {
@@ -156,17 +156,17 @@ mod tests {
     }
 
     #[test]
-    fn config_dir_ends_with_dot_vault_when_home_set() {
+    fn config_dir_is_the_shared_data_dir_when_home_set() {
         if std::env::var_os("HOME")
             .or_else(|| std::env::var_os("USERPROFILE"))
             .is_some()
             && std::env::var("BLINDKEY_CONFIG_DIR").is_err()
         {
             let d = config_dir().expect("home");
-            assert!(
-                d.ends_with(".vault"),
-                "default config dir should be ~/.vault, got {}",
-                d.display()
+            assert_eq!(
+                Some(d),
+                blindkey_core::paths::data_dir(),
+                "desktop config dir must be the data dir the CLI and TUI use (C47)"
             );
         }
     }

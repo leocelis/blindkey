@@ -32,6 +32,7 @@ pub mod gen; // C26     CSPRNG password generation
 pub mod import; // UC-17   lenient keys.txt parser
 pub mod memory; // C11–C13, C25  secret types, mlock, constant-time
 pub mod pad; // UC-07 §3.2  optional Padmé payload padding
+pub mod paths; // default data dir + vault path shared by CLI, TUI and desktop app (C47)
 pub mod rollback; // C16     monotonic counter + local anchor
 pub mod sealed; // UC-23   sealed file containers (.vltf)
 pub mod search; // UC-19   fuzzy keyboard-first omni-search (metadata only — C35)
