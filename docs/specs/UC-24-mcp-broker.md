@@ -66,9 +66,8 @@ environment, while the MCP tool response carried no secret material at any point
 - Windows transport (the broker is Unix-socket only; named-pipe transport is tracked separately).
 - Automated integration test spinning up `blindkey agent run` + `blindkey mcp` as real
   subprocesses in CI (the crate-level test fakes the broker's *response*, not the full process
-  pair; the full pair was verified manually — see commit history).
-- Live verification against a specific MCP client (Claude Code / Cursor) — a HITL step, tracked
-  as an issue.
+  pair; the full pair was verified manually).
+- Live verification inside a specific MCP client (Claude Code / Cursor) — not done yet.
 
 ## 6. Client configuration (example)
 

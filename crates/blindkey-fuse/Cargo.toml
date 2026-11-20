@@ -1,6 +1,6 @@
 [package]
 name = "blindkey-fuse"
-description = "Blindkey — FUSE mount adapter for UC-25 local encrypted volumes (.vltd). Maps a userspace FUSE session onto an unlocked blindkey-core Volume; contains no cryptography (ADR-0009)."
+description = "Blindkey — FUSE mount adapter for local encrypted volumes (.vltd). Maps a userspace FUSE session onto an unlocked blindkey-core Volume; contains no cryptography."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -146,9 +146,11 @@ Or install the CLI without cloning:
 cargo install --git https://github.com/leocelis/blindkey.git --tag v1.1.1 --locked blindkey-cli
 ```
 
-**Prebuilt CLI (`v1.1.1` GitHub Release):** `x86_64` and `aarch64` for macOS and Linux. Windows is not supported: the agent broker is Unix-only. GUI: build from source (`cargo run -p blindkey-gui`).
+**Prebuilt CLI (`v1.1.1` GitHub Release):** `x86_64` and `aarch64` for macOS and Linux. Windows is not supported: the agent broker is Unix-only. GUI: build from source (`cargo run -p blindkey-gui`). Prebuilt binaries have no live volume mount; build with `--features volume-mount` (Linux) or `--features macos-fuse` (macOS) for that.
 
 Full options (Linux GUI deps, containers, fleet): [docs/INSTALL.md](docs/INSTALL.md)
+
+Not the npm `blindkey` or `@blindkey/*` packages, which are a different project.
 
 ### Prebuilt CLI (no Rust)
 
@@ -194,6 +196,9 @@ blindkey get github                           # copies to clipboard (model-blind
 blindkey gen --length 24
 blindkey add myservice                        # interactive — no secrets on argv
 ```
+
+Scripts and agents without a terminal: pass `--password-stdin`, `--password-fd N`, or set
+`BLINDKEY_PASSWORD_FILE`.
 
 Real output from the flow above (secrets shown only because `--stdout` was passed explicitly;
 the default is a model-blind clipboard copy):
@@ -282,10 +287,11 @@ blindkey/
 │   ├── blindkey-cli/       # the `blindkey` binary
 │   ├── blindkey-gui/       # egui desktop app
 │   ├── blindkey-tui/       # ratatui terminal UI
-│   ├── blindkey-agent/     # handle-based broker for AI agents (scaffold)
+│   ├── blindkey-agent/     # handle broker + MCP server for AI agents
 │   ├── blindkey-clip/      # clipboard concealment
+│   ├── blindkey-fuse/      # FUSE mount adapter for encrypted volumes
 │   ├── blindkey-sys/       # mlock, setrlimit — only `unsafe` boundary
-│   └── blindkey-hardware/  # YubiKey CR (CLI); YubiKey CR, FIDO2, TPM (need OS tools and the hardware) — see docs/guides/hardware-factor-status.md
+│   └── blindkey-hardware/  # optional hardware unlock: YubiKey CR, FIDO2, TPM (need OS tools) — see docs/guides/hardware-factor-status.md
 ├── docs/                # specs, threat model, CONSTRAINT_INDEX
 ├── samples/             # synthetic keys.txt for import demo
 ├── research/            # security research behind the design

@@ -1,6 +1,6 @@
 # CLI Reference
 
-> **Status:** core loop implemented and tested (pre-1.0). Authoritative constraints:
+> **Status:** core loop implemented and tested (1.x). Authoritative constraints:
 > **C20–C22, C26–C29, C31, C33, C35–C39** in [blindkey_intent.yaml](../blindkey_intent.yaml).
 > Stubs below are marked *(not yet implemented)*.
 
@@ -43,21 +43,21 @@ YubiKey 2FA vaults default to **strict** at enrollment (`blindkey enroll yubikey
 | `blindkey audit` | Offline **password health** report (weak/reused/stale) — not the CI dependency audit |
 | `blindkey export --format json [--yes]` | Decrypted JSON to stdout (warning on stderr; `--yes` when piped). |
 | `blindkey upgrade-kdf` | Re-encrypt with stronger Argon2id parameters. |
-| `blindkey rotate-data-key [--re-seal-recovery]` | Fresh data key + re-wrap stanzas (gap C2; see [deletion guide](guides/deletion-and-rotation.md)). |
+| `blindkey rotate-data-key [--re-seal-recovery]` | Fresh data key + re-wrap stanzas (see [deletion guide](guides/deletion-and-rotation.md)). |
 | `blindkey tune` | Benchmark and recommend Argon2id params (~300 ms target). |
 | `blindkey pad on\|off` | Toggle Padmé payload size-padding (UC-07). |
-| `blindkey agent allow …` | Register opaque handle for model-blind agent use (S-13). |
+| `blindkey agent allow …` | Register opaque handle for model-blind agent use. |
 | `blindkey agent run` | Start local broker (Unix socket, OS approval per use). |
 | `blindkey agent list` / `revoke` / `use` | Manage handles; `use` returns status-only JSON. |
 | `blindkey enroll yubikey` | Required-both YubiKey 2FA + one-time recovery code (strict saves by default). |
 | `blindkey enroll keyfile <PATH>` | Required-both keyfile 2FA (no hardware). |
-| `blindkey enroll-tpm` | TPM stanza enrollment (mock/dev path; live TPM FFI deferred). |
-| `blindkey re-enroll-tpm` | Re-seal TPM stanza after firmware/kernel update (mock/dev). |
+| `blindkey enroll-tpm` | TPM 2.0 stanza enrollment via `tpm2-tools` (Linux/Windows; needs a TPM). |
+| `blindkey re-enroll-tpm` | Re-seal TPM stanza after firmware/kernel update. |
 | `blindkey stanzas list` | Show enrolled stanza types (no secrets). Works on `.vlt` and `.vltf` headers. |
 | `blindkey stanzas add TYPE` | Enrollment guidance (delegates to `blindkey enroll …`). |
 | `blindkey stanzas remove TYPE` | Remove a non-password stanza (requires unlock). |
 
-See [AGENT_BROKER.md](AGENT_BROKER.md) for the S-13 scaffold workflow.
+See [AGENT_BROKER.md](AGENT_BROKER.md) for the agent broker workflow.
 
 ## Sealed file containers (UC-23 — `.vltf`)
 
@@ -70,7 +70,7 @@ header + stanza envelope + STREAM body (constraints **C61–C66**). Padmé paddi
 | `blindkey seal PATH… -o OUT.vltf --append` | Merge new paths into an existing `.vltf` (full re-encrypt; unlock required). |
 | `blindkey seal - [-o OUT.vltf]` | Seal stdin as inner path `-` (passphrase via TTY / fd / `BLINDKEY_PASSWORD_FILE`; not `--password-stdin`). |
 | `blindkey open ARCHIVE.vltf [-C DIR]` | Extract all entries under `DIR` (default: cwd). Staging dir `.vltf-partial/` until complete. |
-| `blindkey open ARCHIVE.vltf --stdout` | Decrypt a **single** small file to stdout (stderr warning; 64 MiB cap — SC9). |
+| `blindkey open ARCHIVE.vltf --stdout` | Decrypt a **single** small file to stdout (stderr warning; 64 MiB cap). |
 | `blindkey peek ARCHIVE.vltf` | List inner paths and sizes only (no file bodies). |
 | `blindkey --vault FILE.vltf enroll keyfile\|yubikey\|fido2 …` | Add stanzas to a sealed container (header re-wrap only; inner archive unchanged). |
 | `blindkey --vault FILE.vltf enroll-tpm` / `re-enroll-tpm` | TPM OR stanza on `.vltf` (same PCR-7 policy as `.vlt`). |
@@ -78,7 +78,7 @@ header + stanza envelope + STREAM body (constraints **C61–C66**). Padmé paddi
 | `blindkey --vault FILE.vltf rotate-data-key` | Fresh data key + full inner re-encrypt (password/keyfile/YubiKey stanzas only; drop FIDO2/TPM first). |
 | `blindkey --vault FILE.vltf stanzas remove TYPE` | Remove a non-password stanza from `.vltf` (requires unlock). |
 
-**Unlock flags** (same as vault commands): `--password-stdin`, `--password-file PATH`,
+**Unlock flags** (same as vault commands): `--password-stdin`, `--password-fd FD` (or `BLINDKEY_PASSWORD_FILE`),
 `--keyfile PATH`, `--recovery` — keyfile/YubiKey stanzas use the same UC-09 paths as `.vlt`.
 
 **KDF tuning:** `--allow-weak-kdf`, `--kdf-m-cost`, `--kdf-t-cost`, `--kdf-p-cost` (same names as init).
@@ -109,22 +109,22 @@ live RW mount on a cloud-sync folder is unsupported (C73).
 | Command | Description |
 |---------|-------------|
 | `blindkey volume create PATH.vltd --size SIZE [--max-size SIZE] [--block-size-kib 32] [--no-pad]` | Create a new encrypted volume (refuses overwrite; Padmé on by default). |
-| `blindkey volume mount PATH.vltd [MOUNTPOINT]` | Unlock + mount as a folder (userspace FUSE). Files are cleartext to the OS while mounted. |
+| `blindkey volume mount PATH.vltd MOUNTPOINT` | Unlock + mount as a folder (userspace FUSE). Files are cleartext to the OS while mounted. |
 | `blindkey volume umount PATH.vltd\|MOUNTPOINT` | Eject: end the FUSE session, sync, zeroize keys. |
 | `blindkey volume resize PATH.vltd --size SIZE` | Grow the sparse volume up to `--max-size`. |
 | `blindkey volume status PATH.vltd\|MOUNTPOINT` | Mount state + version/freshness summary (no secrets). |
-| `blindkey volume trust-anchor PATH.vltd` | Explicitly accept the current on-disk version as fresh on a new device (MSV-19). |
+| `blindkey volume trust-anchor PATH.vltd` | Explicitly accept the current on-disk version as fresh on a new device. |
 | `blindkey volume checkout PATH.vltd [--work-dir DIR] [--mount MOUNTPOINT]` | UC-30: copy a sync-folder brick to `…/blindkey/volumes/work/<id>/`. Optional `--mount` unlocks+mounts the **work** copy (never the sync path). |
-| `blindkey volume checkin [WORK_ID] [--work-dir DIR]` | UC-30: atomic replace of the sync-folder brick from the working copy (C100/C101). Exit **10** on E1 fingerprint mismatch. |
+| `blindkey volume checkin [WORK_ID] [--work-dir DIR]` | UC-30: atomic replace of the sync-folder brick from the working copy (C100/C101). Exit **10** if the sync-folder copy changed since checkout. |
 | `blindkey volume work-status [WORK_ID] [--work-dir DIR]` | UC-30: list or show working-copy sessions. |
 | `blindkey volume work-discard WORK_ID [--work-dir DIR]` | UC-30: discard a working copy without writing the sync path. |
 
-UC-30 working-copy exits: **10** E1 remote changed · **11** E5 hydration · **12** E6 work under sync root · **13** E8 rename/replace failed. Orphan sessions print a resume/discard hint on any `volume` command.
+UC-30 working-copy exits: **10** sync-folder copy changed · **11** file not fully downloaded by the sync client · **12** work folder is inside a sync folder · **13** rename/replace failed. Orphan sessions print a resume/discard hint on any `volume` command.
 | `blindkey peek PATH.vltd` | List the virtual tree (paths + sizes only, no file bodies). |
 
-**Unlock flags:** same UC-09 paths as vault/`.vltf` (`--password-stdin`, `--password-file`,
-`--keyfile`, `--recovery`). **KDF tuning:** `--allow-weak-kdf`, `--kdf-m-cost`, `--kdf-t-cost`,
-`--kdf-p-cost`. **Cloud policy (C73 / UC-30):** if `PATH.vltd` is under a detectable sync root
+**Unlock flags:** same UC-09 paths as vault/`.vltf` (`--password-stdin`, `--password-fd`,
+`--keyfile`, `--recovery`). **KDF tuning:** `volume upgrade-kdf` re-wraps the header under new
+Argon2id parameters (`--kdf-m-cost`, `--kdf-t-cost`, `--kdf-p-cost`); `volume create` uses the defaults. **Cloud policy (C73 / UC-30):** if `PATH.vltd` is under a detectable sync root
 (Dropbox/Drive/iCloud/Syncthing/…), `mount` refuses and points to `volume checkout` or
 `blindkey seal`. Use `--force-local` only as an unsupported escape hatch.
 **Errors:** auth/parse failures collapse to the uniform `volume could not be opened` (C74).
@@ -163,7 +163,7 @@ Parses unstructured secrets files (`key=value`, bare secret lines, `---` block r
 ## Second factors — true 2FA (UC-09)
 
 **v1 hardware honesty:** [guides/hardware-factor-status.md](guides/hardware-factor-status.md) —
-YubiKey CR and keyfile 2FA ship; FIDO2/TPM/Secure Enclave are deferred (mocks only).
+YubiKey CR, keyfile, FIDO2 hmac-secret and TPM 2.0 ship (FIDO2/TPM need OS tools and the hardware); Secure Enclave is not shipped.
 
 `blindkey enroll yubikey` and `blindkey enroll keyfile <PATH>` turn the master password into a
 **required-both** factor: the data key is re-wrapped under
@@ -182,7 +182,7 @@ YubiKey CR and keyfile 2FA ship; FIDO2/TPM/Secure Enclave are deferred (mocks on
 - **Clipboard auto-clears** via detached helper (C13/C33).
 - **Terminal output sanitized** (C28/C30).
 
-## Pre-1.0 / backup notice
+## Backup notice
 
 Blindkey is **not independently audited**. On `init` and `import`, the CLI prints a notice and writes
 `vault.vlt.bak` beside the vault before overwriting. Keep an **off-site copy** — do not make the
@@ -200,12 +200,14 @@ vault file your only backup.
 | 5 | authentication — invalid credentials or tampered header (C9) |
 | 6 | KDF parameters outside the safe range (C2) |
 | 7 | no clipboard available and `--stdout` not given (C27) |
-| 8 | usage error — bad arguments/flags (e.g. piped import without `--yes`) |
+| 8 | usage error — e.g. piped import without `--yes` (unknown or missing arguments exit **2**, from the argument parser) |
 | 9 | entry or field not found / ambiguous |
 
 ## Configuration
 
-`~/.vault.toml` (optional; partial support):
+The CLI does not read a config file yet. The desktop app reads `~/.vault/config` (`BLINDKEY_CONFIG_DIR`
+overrides) with `auto_lock_secs`, `clipboard_timeout_secs` and `lock_on_blur`. The planned CLI
+schema, `~/.vault.toml`, is below for reference (not read today):
 
 ```toml
 clipboard_timeout = 30     # seconds, 5..=300

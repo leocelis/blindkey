@@ -1,7 +1,7 @@
-# Agent broker (S-13 scaffold)
+# Agent broker
 
 > **Status:** handle broker + MCP server both functional; live verification against a specific
-> MCP client (Claude Code / Cursor) is still a tracked HITL step. See
+> MCP client (Claude Code / Cursor) has not been done yet. See
 > [UC-16](specs/UC-16-agent-interface-future.md), [UC-24](specs/UC-24-mcp-broker.md), and
 > [ADR-0006](adr/0006-agent-broker-scaffold.md).
 
@@ -17,8 +17,8 @@ blindkey agent allow github --dest-env GITHUB_TOKEN --for-cmd ./scripts/deploy.s
 # 2. Start the broker (unlocks vault, listens on Unix socket)
 blindkey agent run
 
-# 3. From another terminal / future MCP adapter — request use
-blindkey agent use <handle-id> --dest 'env:GITHUB_TOKEN:./scripts/deploy.sh'
+# 3. From another terminal (or an MCP client via `blindkey mcp`) — request use
+blindkey agent use <handle-id> 'env:GITHUB_TOKEN:./scripts/deploy.sh'
 ```
 
 Each `use` prompts on the **broker's TTY**: entry name, destination id, uses remaining.
@@ -58,9 +58,12 @@ narrower, shorter-lived handles (`agent allow`'s TTL/use-count), not a way to st
 
 | Path | Purpose |
 |------|---------|
-| `$XDG_DATA_HOME/blindkey/agent-handles.json` | Registered handles |
-| `$XDG_DATA_HOME/blindkey/agent-audit.jsonl` | Use audit (no secrets) |
-| `$XDG_RUNTIME_DIR/blindkey-agent.sock` | Broker socket |
+| `<data dir>/agent-handles.json` | Registered handles |
+| `<data dir>/agent-audit.jsonl` | Use audit (no secrets) |
+| `$XDG_RUNTIME_DIR/blindkey-agent.sock`, or `<data dir>/agent.sock` when `XDG_RUNTIME_DIR` is unset | Broker socket |
+
+`<data dir>` is `~/Library/Application Support/vault/` on macOS and `$XDG_DATA_HOME/vault/`
+(default `~/.local/share/vault/`) on Linux.
 
 Override data dir: `BLINDKEY_AGENT_DATA_DIR` (tests).
 

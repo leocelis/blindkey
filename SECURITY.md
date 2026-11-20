@@ -5,7 +5,7 @@ coordinated disclosure. Thank you for helping keep Blindkey and its users safe.
 
 ## Supported versions
 
-Blindkey **1.0.0** is the current stable release — the CLI and desktop app work today and have
+Blindkey **1.1.1** is the current stable release — the CLI and desktop app work today and have
 **not** had an independent third-party security audit (recommended before enterprise adoption; see
 [THIRD_PARTY_AUDIT.md](docs/THIRD_PARTY_AUDIT.md)). **On-disk format v1 is stable** (see
 [ADR-0005](docs/adr/0005-format-v1-freeze.md)). Security fixes land on `main` and are tagged from
@@ -13,8 +13,8 @@ there — see [docs/RELEASE.md](docs/RELEASE.md).
 
 | Version | Supported |
 |---------|-----------|
-| `1.0.0` (latest) | ✅ — report against this tag or `main` |
-| `0.1.0-alpha.*` | ⚠️ upgrade to 1.0.0; alpha vault files open without migration |
+| `1.1.1` (latest), `1.x` | ✅ — report against the latest tag or `main` |
+| `0.1.0-alpha.*` | ⚠️ upgrade to 1.1.1; alpha vault files open without migration |
 | Pre-release / dev builds | report against commit hash |
 
 crates.io (`cargo install blindkey-cli --locked`) is optional and not published yet.
@@ -28,7 +28,7 @@ Report privately via **GitHub Security Advisories**:
 👉 https://github.com/leocelis/blindkey/security/advisories/new
 
 If you cannot use that channel, email **[leo@leocelis.com](mailto:leo@leocelis.com)** with subject
-line `VAULT-SECURITY` (see [MAINTAINERS.md](MAINTAINERS.md)). GHSA supports private threads without encryption; if you
+line `BLINDKEY-SECURITY` (see [MAINTAINERS.md](MAINTAINERS.md)). GHSA supports private threads without encryption; if you
 need encrypted intake, ask in your initial report and we will provide an age public key
 (see [UC-15](docs/specs/UC-15-vulnerability-reporting.md)).
 
@@ -73,12 +73,12 @@ residual, not entry-level plaintext).
 
 ## Our commitments to security (defensive posture)
 
-- **Memory-safe Rust**, `#![forbid(unsafe_code)]` outside a vetted crypto-FFI boundary.
+- **Memory-safe Rust**, `#![forbid(unsafe_code)]` outside one OS-hardening FFI crate (`blindkey-sys`).
 - **Audited libraries only** — no custom cryptographic primitives.
 - **`cargo audit` / `cargo deny` / `cargo vet`** on every push and PR (not just before release); advisory exemptions are documented per-ID with rationale in [docs/SUPPLY_CHAIN.md](docs/SUPPLY_CHAIN.md).
 - **Fuzzed parsers** for all untrusted input.
 - **Reproducible builds + checksums** — see [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md).
-- **Release quality gate** before `1.0.0` — see [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md)
+- **Release quality gate** before each release — see [docs/AUDIT_READINESS.md](docs/AUDIT_READINESS.md)
   (`just audit-ready`).
 - **Export & sanctions compliance** — this distribution contains cryptographic software; see
   [docs/EXPORT_COMPLIANCE.md](docs/EXPORT_COMPLIANCE.md) before importing, possessing, or using it

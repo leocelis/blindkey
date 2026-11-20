@@ -1,6 +1,6 @@
 [package]
 name = "blindkey-agent"
-description = "Handle broker for model-blind agent secret injection."
+description = "Handle broker and MCP server for model-blind agent secret injection."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

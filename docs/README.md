@@ -5,7 +5,7 @@ Start here based on what you need:
 | I want to… | Read |
 |------------|------|
 | Seal files for untrusted cloud storage | [CLI.md](CLI.md) (`blindkey seal` / `open` / `peek`) · [specs/UC-23-sealed-file-storage.md](specs/UC-23-sealed-file-storage.md) |
-| Local live encrypted volume (design) | [specs/UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md) · [PRD §5 UC-25](PRD.md) |
+| Local live encrypted volume | [specs/UC-25-local-encrypted-volume.md](specs/UC-25-local-encrypted-volume.md) · [PRD §5 UC-25](PRD.md) |
 | Install or build | [INSTALL.md](INSTALL.md) |
 | Use the CLI | [CLI.md](CLI.md) |
 | Try a sample import | [../samples/README.md](../samples/README.md) |
@@ -18,7 +18,7 @@ Start here based on what you need:
 | Verify a release binary | [VERIFYING_RELEASES.md](VERIFYING_RELEASES.md) |
 | See what's shipped vs planned | [../ROADMAP.md](../ROADMAP.md) · [guides/hardware-factor-status.md](guides/hardware-factor-status.md) |
 | Enterprise / fleet deployment | [ENTERPRISE_POSTURE.md](ENTERPRISE_POSTURE.md) · [guides/enterprise-deployment.md](guides/enterprise-deployment.md) |
-| Agent / AI workflow (scaffold) | [AGENT_BROKER.md](AGENT_BROKER.md) · [specs/UC-16-agent-interface-future.md](specs/UC-16-agent-interface-future.md) |
+| Agent / AI workflow | [AGENT_BROKER.md](AGENT_BROKER.md) · [specs/UC-24-mcp-broker.md](specs/UC-24-mcp-broker.md) |
 | Contribute | [../CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Report a security issue | [../SECURITY.md](../SECURITY.md) |
 | Supply-chain policy & advisory exemptions | [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md) |
@@ -30,7 +30,7 @@ Start here based on what you need:
 
 ## Specs (design)
 
-Use-case specs live in [specs/](specs/README.md) (UC-01…UC-25). They are the design source for
+Use-case specs live in [specs/](specs/README.md) (UC-01…UC-30). They are the design source for
 implementation; start with UC-01 (install) and UC-04 (model-blind retrieval) if you are new to
 the project.
 

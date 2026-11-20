@@ -1,6 +1,8 @@
 # UC-16 — An AI Agent Uses Blindkey Without Ever Seeing a Secret
 
-> **Status: DESIGN EXPLORATION — post-v1, non-binding.**
+> **Status: DESIGN EXPLORATION — post-v1, non-binding.** Superseded for the shipped broker by
+> [UC-24](UC-24-mcp-broker.md) and [AGENT_BROKER.md](../AGENT_BROKER.md): v1.1 ships `blindkey agent`
+> and `blindkey mcp`. The text below is the original exploration.
 > Nothing in this document is committed for v1. v1 ships **no** agent interface
 > (intent `non_goals`; [ROADMAP](../../ROADMAP.md) "bigger vision"). Every section below is
 > exploration, not design-of-record. The only binding text is C27's FORWARD CONSTRAINT, which

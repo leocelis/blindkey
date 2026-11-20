@@ -8,7 +8,7 @@ makes that bar explicit and reachable.
 
 Blindkey uses **Intent-Verified Development (IVD)**: the design lives as testable constraints in
 [`blindkey_intent.yaml`](blindkey_intent.yaml) *before* code is written. Every security property is a
-numbered constraint (`C1`…`C74`) with a `test:` field. When you implement or change behavior:
+numbered constraint (`C1`…`C102`) with a `test:` field. When you implement or change behavior:
 
 1. **Read the relevant constraint(s)** in `blindkey_intent.yaml`.
 2. **Implement to satisfy them** — for security-critical work, in the segment order in the intent.
@@ -23,7 +23,7 @@ for post-1.0 candidate areas beyond the current 102 constraints.
 
 ## Ground rules for a security codebase
 
-- **No custom cryptography.** Use the approved audited libraries (libsodium / RustCrypto). If you
+- **No custom cryptography.** Use the approved audited libraries (RustCrypto). If you
   think you need a new primitive, you don't — open an issue.
 - **No `unsafe`** outside the one designated FFI crate, [`blindkey-sys`](crates/blindkey-sys/) (OS calls
   for `mlock`/`setrlimit`). Every other crate is `#![forbid(unsafe_code)]`.

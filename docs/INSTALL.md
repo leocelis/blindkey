@@ -95,7 +95,7 @@ sudo dnf install gtk3-devel openssl-devel xdg-desktop-portal-kde zenity
 
 Package list above is the canonical GTK stack for Linux builds.
 
-### Linux runtime hardening (gap B3)
+### Linux runtime hardening
 
 Blindkey marks itself **non-dumpable** at startup (`PR_SET_DUMPABLE`, `RLIMIT_CORE=0`,
 `coredump_filter=0`). Under the default **Yama** `ptrace_scope`, same-uid malware cannot
@@ -104,7 +104,7 @@ Blindkey marks itself **non-dumpable** at startup (`PR_SET_DUMPABLE`, `RLIMIT_CO
 Fleet admins may tighten further (optional):
 
 ```sh
-# /etc/sysctl.d/99-vault-ptrace.conf — restrict ptrace to CAP_SYS_PTRACE holders
+# /etc/sysctl.d/99-blindkey-ptrace.conf — restrict ptrace to CAP_SYS_PTRACE holders
 kernel.yama.ptrace_scope = 2
 sudo sysctl --system
 ```
@@ -135,8 +135,8 @@ grep VmLck /proc/self/status   # while vault is unlocked — should be > 0 when 
 docker run --rm -it \
   --cap-add=IPC_LOCK \
   --ulimit memlock=-1:-1 \
-  -v "$HOME/.vault:/vault:rw" \
-  vault:local blindkey ls /vault/test.vlt
+  -v "$HOME/.blindkey:/vault:rw" \
+  <your-image-with-blindkey> blindkey --vault /vault/test.vlt ls
 ```
 
 **Kubernetes (illustrative — adjust for your policy):**
