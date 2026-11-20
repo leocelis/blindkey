@@ -13,6 +13,9 @@ All notable changes to this project are documented here. The format is based on
   nothing is moved. One shared resolver: `blindkey_core::paths`.
 - Docs: the agent broker is shipped (not a scaffold); `agent use` takes DEST positionally;
   unlock flags, volume mount, exit codes, hardware factors, SECURITY.md versions corrected.
+- Release: `scripts/publish-crates.sh` now publishes `blindkey-agent` and `blindkey-fuse`,
+  which `blindkey-cli` depends on (without them the first publish stops at `blindkey-cli`), and
+  dry-runs the full set before any upload.
 
 ## [1.1.1] - 2026-11-09
 

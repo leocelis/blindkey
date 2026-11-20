@@ -9,7 +9,9 @@ if [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then
   exit 1
 fi
 
-PACKAGES=(blindkey-sys blindkey-core blindkey-hardware blindkey-clip blindkey-cli)
+# Every publishable crate blindkey-cli depends on, dependencies first. blindkey-agent and
+# blindkey-fuse are required too (fuse is optional in cli, but crates.io still resolves it).
+PACKAGES=(blindkey-sys blindkey-core blindkey-hardware blindkey-clip blindkey-agent blindkey-fuse blindkey-cli)
 
 publish_one() {
   local pkg=$1
@@ -24,6 +26,13 @@ publish_one() {
     sleep 45
   done
 }
+
+# Package and verify the whole set before any upload: a crate missing from the list
+# fails here, not after half the set is already on crates.io.
+pkg_args=()
+for pkg in "${PACKAGES[@]}"; do pkg_args+=(-p "$pkg"); done
+echo "==> Dry run of the full set"
+cargo publish --dry-run --locked "${pkg_args[@]}"
 
 for pkg in "${PACKAGES[@]}"; do
   echo "==> Publishing $pkg"
