@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- MCP bundle and registry entry: `scripts/build-mcpb.sh VERSION` packs the four release binaries
+  (checked against `SHA256SUMS.txt`) with a launcher into `blindkey-mcp-VERSION.mcpb`;
+  `server.json` lists it in the official MCP Registry as `io.github.leocelis/blindkey`, published
+  by the `Publish to MCP Registry` workflow over GitHub OIDC.
+
 ### Fixed
 - The desktop app and the TUI now open the same default vault as the CLI, `~/.blindkey/vault.vlt`
   (they defaulted to `~/.vault/vault.vlt`), and the desktop config is `~/.blindkey/config` as

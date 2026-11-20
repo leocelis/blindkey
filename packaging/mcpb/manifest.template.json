@@ -1,0 +1,29 @@
+{
+  "manifest_version": "0.3",
+  "name": "blindkey",
+  "display_name": "Blindkey",
+  "version": "@VERSION@",
+  "description": "Local credential broker for AI agents: run allowed commands with secrets the agent never sees.",
+  "long_description": "Blindkey keeps credentials in a local encrypted vault. `blindkey mcp` exposes two tools: `list_handles` (metadata only) and `use_handle` (status only). The secret is injected at the destination you allowed and never returned to the model. Approvals happen on a `blindkey agent run` broker in your terminal; with no broker running, `use_handle` fails closed. No server, no account, no proxy.",
+  "author": { "name": "Leo Celis", "url": "https://github.com/leocelis" },
+  "repository": { "type": "git", "url": "https://github.com/leocelis/blindkey" },
+  "homepage": "https://github.com/leocelis/blindkey",
+  "documentation": "https://github.com/leocelis/blindkey/blob/main/docs/AGENT_BROKER.md",
+  "support": "https://github.com/leocelis/blindkey/issues",
+  "license": "MIT OR Apache-2.0",
+  "keywords": ["credentials", "secrets", "ai-agents", "mcp", "local-first", "vault"],
+  "server": {
+    "type": "binary",
+    "entry_point": "server/run.sh",
+    "mcp_config": {
+      "command": "/bin/sh",
+      "args": ["${__dirname}/server/run.sh", "mcp"],
+      "env": {}
+    }
+  },
+  "tools": [
+    { "name": "list_handles", "description": "List the handles you allowed (metadata only, never values)." },
+    { "name": "use_handle", "description": "Deliver a handle's secret to an allowed destination; returns status only." }
+  ],
+  "compatibility": { "platforms": ["darwin", "linux"] }
+}

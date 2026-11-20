@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.leocelis/blindkey",
+  "title": "Blindkey",
+  "description": "Local credential broker for AI agents: use secrets the agent never sees. No server, no proxy.",
+  "repository": { "url": "https://github.com/leocelis/blindkey", "source": "github" },
+  "websiteUrl": "https://github.com/leocelis/blindkey",
+  "version": "1.1.1",
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/leocelis/blindkey/releases/download/v1.1.1/blindkey-mcp-1.1.1.mcpb",
+      "fileSha256": "35f424e4f482d2cc06ef5b11b9a17bd16ff04e68738069a35273b44e54795517",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}
